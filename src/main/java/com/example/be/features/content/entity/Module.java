@@ -62,8 +62,16 @@ public class Module {
     @OneToMany(mappedBy = "module", fetch = FetchType.LAZY)
     private List<ModuleAbility> moduleAbilities = new ArrayList<>();
 
-    @Column(nullable = true)
-    private Integer passScore;
+    /**
+     * Danh sách điểm đỗ (Pass Score) thay đổi theo từng AIM.
+     */
+    @OneToMany(
+            mappedBy = "module",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    private List<ModuleTargetThreshold> moduleTargetThresholds = new ArrayList<>();
 
     @OneToMany(
             mappedBy = "module",

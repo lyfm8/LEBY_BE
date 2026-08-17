@@ -33,7 +33,7 @@ public abstract class Lesson {
     private String title;
 
     @Column(nullable = false)
-    private int orderNo;
+    private Integer orderNo;
 
     @Column(columnDefinition = "TEXT")
     private String descriptions;
