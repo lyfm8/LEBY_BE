@@ -1,7 +1,6 @@
 package com.example.be.features.content.entity;
-import com.example.be.features.question.entity.Question;
 
-import com.example.be.features.ability.enums.EElection;
+import com.example.be.features.ability.enums.ESection;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

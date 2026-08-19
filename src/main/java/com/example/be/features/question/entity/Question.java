@@ -1,12 +1,8 @@
 package com.example.be.features.question.entity;
-import com.example.be.features.question.entity.PracticeQuestion;
-import com.example.be.features.question.entity.ModuleTestQuestion;
-import com.example.be.features.diagnostic.entity.DiagnosticAttemptQuestion;
-import com.example.be.features.ability.entity.Ability;
 
-import com.example.be.features.question.enums.EQuestionType;
-import com.example.be.features.ability.enums.EElection;
+import com.example.be.features.ability.enums.ESection;
 import com.example.be.features.content.entity.Part;
+import com.example.be.features.question.enums.EQuestionType;
 import tools.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -68,10 +64,10 @@ public abstract class Question {
     private Integer difficulty;
 
     /**
-     * sections: EElection - thuộc section nào (LISTENING/READING)
+     * sections: ESection - thuộc section nào (LISTENING/READING)
      */
     @Enumerated(EnumType.STRING)
-    private EElection sections;
+    private ESection sections;
 
     @Column(columnDefinition = "TEXT")
     private String descriptions;
