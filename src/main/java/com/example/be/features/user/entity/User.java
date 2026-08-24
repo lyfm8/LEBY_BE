@@ -63,6 +63,15 @@ public class User {
     private LocalDateTime updatedAt;
 
     /**
+     * Phiên bản token của user. Được nhúng vào mọi JWT khi cấp phát.
+     * JwtAuthenticationFilter so sánh giá trị này với version trong token payload.
+     * Khi logout hoặc đổi mật khẩu: tăng 1 → vô hiệu hóa toàn bộ token cũ ngay lập tức.
+     * Không cần Redis Blacklist.
+     */
+    @Column(nullable = false, columnDefinition = "INT DEFAULT 0")
+    private Integer tokenVersion = 0;
+
+    /**
      * User follows 0..1 LearningPath.
      * FK nằm ở User vì User là owner của LearningPath theo diagram.
      * Rule 9: OneToOne - User sở hữu LearningPath.
