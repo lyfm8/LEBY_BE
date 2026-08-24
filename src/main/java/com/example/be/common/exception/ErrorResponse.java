@@ -15,7 +15,8 @@ import java.util.Map;
  *     "timestamp": "2025-01-01T10:00:00",
  *     "status": 404,
  *     "error": "NOT_FOUND",
- *     "message": "User not found",
+ *     "code": "RESOURCE_NOT_FOUND",
+ *     "message": "Resource not found",
  *     "path": "/api/users/10"
  * }
  *
@@ -37,7 +38,13 @@ public class ErrorResponse {
 
     private final LocalDateTime timestamp;
     private final int status;
+
+    /** HTTP status name. Ví dụ: "NOT_FOUND", "BAD_REQUEST". */
     private final String error;
+
+    /** ErrorCode định danh lỗi. Ví dụ: "RESOURCE_NOT_FOUND", "VALIDATION_FAILED". */
+    private final String code;
+
     private final String message;
     private final String path;
 

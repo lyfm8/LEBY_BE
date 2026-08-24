@@ -21,37 +21,61 @@ import java.util.Map;
  * Xử lý tập trung tất cả exception trong hệ thống.
  *
  * Thứ tự ưu tiên xử lý:
- * 1. Custom exception (BaseException và các subclass)
+ * 1. BaseException (application / business exception duy nhất)
  * 2. Spring MVC validation exceptions
  * 3. Spring Data / JPA exceptions
  * 4. Generic fallback (Exception)
  *
  * Không expose stack trace, SQL, hoặc thông tin nhạy cảm cho client.
+ *
+ * Kiến trúc exception:
+ * <pre>
+ *   BaseException              → application / business exception
+ *   Spring Validation Exception → GlobalExceptionHandler
+ *   Spring MVC Exception        → GlobalExceptionHandler
+ *   Database Exception          → GlobalExceptionHandler
+ *   Unknown Exception           → Generic Exception Handler (500)
+ * </pre>
  */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     // -----------------------------------------------------------------------
-    // 1. Custom BaseException (và tất cả subclass)
+    // 1. BaseException — Application / Business Exception
     // -----------------------------------------------------------------------
 
     /**
-     * Xử lý tất cả exception kế thừa từ BaseException:
-     * BadRequestException, UnauthorizedException, ForbiddenException,
-     * ResourceNotFoundException, ConflictException, BusinessException.
+     * Xử lý tất cả BaseException được throw trong application.
+     * Lấy HTTP status, error code và message từ {@link ErrorCode}.
+     *
+     * Response format:
+     * {
+     *   "timestamp": "...",
+     *   "status": 404,
+     *   "error": "NOT_FOUND",
+     *   "code": "RESOURCE_NOT_FOUND",
+     *   "message": "User with id 1 was not found",
+     *   "path": "/api/users/1"
+     * }
      */
     @ExceptionHandler(BaseException.class)
     public ResponseEntity<ErrorResponse> handleBaseException(
             BaseException ex,
             HttpServletRequest request) {
 
-        log.warn("[{}] {} - {}", ex.getStatus().value(), request.getRequestURI(), ex.getMessage());
+        log.warn(
+                "[{}] {} - {}",
+                ex.getStatus().value(),
+                request.getRequestURI(),
+                ex.getMessage()
+        );
 
         ErrorResponse body = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(ex.getStatus().value())
                 .error(ex.getStatus().name())
+                .code(ex.getErrorCode().getCode())
                 .message(ex.getMessage())
                 .path(request.getRequestURI())
                 .build();
@@ -85,6 +109,7 @@ public class GlobalExceptionHandler {
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error(HttpStatus.BAD_REQUEST.name())
+                .code("VALIDATION_FAILED")
                 .message("Validation failed")
                 .path(request.getRequestURI())
                 .errors(fieldErrors)
@@ -118,6 +143,7 @@ public class GlobalExceptionHandler {
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error(HttpStatus.BAD_REQUEST.name())
+                .code("VALIDATION_FAILED")
                 .message("Validation failed")
                 .path(request.getRequestURI())
                 .errors(fieldErrors)
@@ -147,6 +173,7 @@ public class GlobalExceptionHandler {
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error(HttpStatus.BAD_REQUEST.name())
+                .code("TYPE_MISMATCH")
                 .message(message)
                 .path(request.getRequestURI())
                 .build();
@@ -168,6 +195,7 @@ public class GlobalExceptionHandler {
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error(HttpStatus.BAD_REQUEST.name())
+                .code("MESSAGE_NOT_READABLE")
                 .message("Request body is malformed or cannot be read")
                 .path(request.getRequestURI())
                 .build();
@@ -194,6 +222,7 @@ public class GlobalExceptionHandler {
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.CONFLICT.value())
                 .error(HttpStatus.CONFLICT.name())
+                .code("DATA_INTEGRITY_VIOLATION")
                 .message("The request conflicts with the current state of the resource")
                 .path(request.getRequestURI())
                 .build();
@@ -221,6 +250,7 @@ public class GlobalExceptionHandler {
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .error(HttpStatus.INTERNAL_SERVER_ERROR.name())
+                .code("INTERNAL_SERVER_ERROR")
                 .message("An unexpected error occurred. Please try again later.")
                 .path(request.getRequestURI())
                 .build();
