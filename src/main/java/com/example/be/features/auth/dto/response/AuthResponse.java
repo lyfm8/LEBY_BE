@@ -3,6 +3,8 @@ package com.example.be.features.auth.dto.response;
 import com.example.be.features.user.entity.User;
 import lombok.Getter;
 
+import java.time.LocalDate;
+
 /**
  * Thông tin user trả về sau khi đăng nhập hoặc đăng ký thành công.
  * Không chứa password, tokenVersion hay thông tin nhạy cảm.
@@ -14,6 +16,7 @@ public class AuthResponse {
     private final String email;
     private final String username;
     private final String fullName;
+    private final LocalDate dob;
     private final String avatar;
     private final String role;
 
@@ -22,6 +25,7 @@ public class AuthResponse {
         this.email = user.getEmail();
         this.username = user.getUsername();
         this.fullName = user.getFullName();
+        this.dob = user.getDob();
         this.avatar = user.getAvatar();
         this.role = user.getRole().name();
     }
