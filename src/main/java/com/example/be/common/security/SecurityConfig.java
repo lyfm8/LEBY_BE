@@ -45,8 +45,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
-    private final CustomAccessDeniedHandler customAccessDeniedHandler;
+    private final SecurityExceptionHandler securityExceptionHandler;
 
     /**
      * BCrypt PasswordEncoder với strength 10.
@@ -88,8 +87,8 @@ public class SecurityConfig {
 
                 // Custom error responses — trả JSON thay vì HTML mặc định của Spring Security.
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(customAuthenticationEntryPoint)  // 401
-                        .accessDeniedHandler(customAccessDeniedHandler)             // 403
+                        .authenticationEntryPoint(securityExceptionHandler)  // 401
+                        .accessDeniedHandler(securityExceptionHandler)        // 403
                 )
 
                 // Thêm JwtAuthenticationFilter trước UsernamePasswordAuthenticationFilter.
