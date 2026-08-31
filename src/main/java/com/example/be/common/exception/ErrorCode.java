@@ -33,11 +33,70 @@ public enum ErrorCode {
             "Bad request"
     ),
 
+    /** HTTP 400 - Mã OTP không tồn tại trong Cache (chưa gửi hoặc đã hết hạn). */
+    OTP_NOT_FOUND(
+            HttpStatus.BAD_REQUEST,
+            "OTP_NOT_FOUND",
+            "OTP not found or has not been sent"
+    ),
+
+    /** HTTP 400 - Mã OTP đã hết hạn (quá 10 phút). */
+    OTP_EXPIRED(
+            HttpStatus.BAD_REQUEST,
+            "OTP_EXPIRED",
+            "OTP has expired"
+    ),
+
+    /** HTTP 400 - Mã OTP không chính xác. */
+    OTP_INVALID(
+            HttpStatus.BAD_REQUEST,
+            "OTP_INVALID",
+            "OTP is incorrect"
+    ),
+
     /** HTTP 401 - Chưa xác thực, token không hợp lệ hoặc đã hết hạn. */
     UNAUTHORIZED(
             HttpStatus.UNAUTHORIZED,
             "UNAUTHORIZED",
             "Authentication required"
+    ),
+
+    /** HTTP 401 - Sai email hoặc mật khẩu khi đăng nhập. */
+    INVALID_CREDENTIALS(
+            HttpStatus.UNAUTHORIZED,
+            "INVALID_CREDENTIALS",
+            "Invalid email or password"
+    ),
+
+    /** HTTP 401 - Access Token hoặc Refresh Token đã hết hạn. */
+    TOKEN_EXPIRED(
+            HttpStatus.UNAUTHORIZED,
+            "TOKEN_EXPIRED",
+            "Token has expired"
+    ),
+
+    /** HTTP 401 - Token bị giả mạo hoặc sai định dạng. */
+    TOKEN_INVALID(
+            HttpStatus.UNAUTHORIZED,
+            "TOKEN_INVALID",
+            "Token is invalid"
+    ),
+
+    /**
+     * HTTP 401 - Token cũ sau khi user logout hoặc đổi mật khẩu.
+     * tokenVersion trong token không khớp với tokenVersion hiện tại trong DB.
+     */
+    TOKEN_VERSION_MISMATCH(
+            HttpStatus.UNAUTHORIZED,
+            "TOKEN_VERSION_MISMATCH",
+            "Session has been invalidated, please login again"
+    ),
+
+    /** HTTP 401 - Gọi /refresh nhưng không có Refresh Token Cookie. */
+    REFRESH_TOKEN_MISSING(
+            HttpStatus.UNAUTHORIZED,
+            "REFRESH_TOKEN_MISSING",
+            "Refresh token is missing"
     ),
 
     /** HTTP 403 - Đã xác thực nhưng không có quyền thực hiện hành động. */
