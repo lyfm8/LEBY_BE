@@ -68,7 +68,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             Long userId = jwtTokenProvider.getUserId(claims);
             Integer tokenVersion = jwtTokenProvider.getVersion(claims);
+            String role = jwtTokenProvider.getRole(claims);
 
+            // Query DB chỉ để verify tokenVersion — không dùng user.getRole().
+            // Role được đọc trực tiếp từ claim để tránh thêm query DB cho phân quyền.
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new BaseException(ErrorCode.TOKEN_INVALID));
 
@@ -76,9 +79,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 throw new BaseException(ErrorCode.TOKEN_VERSION_MISMATCH);
             }
 
-            // Tạo Authentication object với ROLE_ prefix theo chuẩn Spring Security.
+            // Tạo Authority từ role claim. ROLE_ prefix theo chuẩn Spring Security.
+            // Lưu ý: Khi ADMIN thay đổi role của user, phải tăng tokenVersion để
+            // vô hiệu hóa token cũ còn chứa role cũ — tránh leo thang quyền.
             List<SimpleGrantedAuthority> authorities = List.of(
-                    new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
+                    new SimpleGrantedAuthority("ROLE_" + role)
             );
 
             UsernamePasswordAuthenticationToken authentication =

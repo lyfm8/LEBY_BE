@@ -29,6 +29,7 @@ public class JwtTokenProvider {
 
     private static final String CLAIM_USER_ID = "userId";
     private static final String CLAIM_VERSION = "version";
+    private static final String CLAIM_ROLE    = "role";
 
     private final JwtProperties jwtProperties;
     private final CookieProperties cookieProperties;
@@ -38,13 +39,25 @@ public class JwtTokenProvider {
     // -----------------------------------------------------------------------
 
     /**
-     * Sinh Access Token chứa userId và tokenVersion.
+     * Sinh Access Token chứa userId, tokenVersion và role.
      * Ký bằng Access Secret, TTL từ application.properties (mặc định 15 phút).
+     *
+     * Role được nhúng vào claim để JwtAuthenticationFilter đọc trực tiếp
+     * mà không cần query DB thêm lần nào cho việc phân quyền.
+     *
+     * Lưu ý quan trọng: Khi role của user bị thay đổi (ADMIN đổi role),
+     * phải gọi incrementTokenVersion() để vô hiệu hóa Access Token cũ
+     * còn chứa role cũ — tránh leo thang quyền.
+     *
+     * @param userId       ID của user.
+     * @param tokenVersion Phiên bản token hiện tại.
+     * @param role         Tên role (giá trị ERole.name(), ví dụ "STUDENT", "ADMIN").
      */
-    public String generateAccessToken(Long userId, Integer tokenVersion) {
+    public String generateAccessToken(Long userId, Integer tokenVersion, String role) {
         return buildToken(
                 userId,
                 tokenVersion,
+                role,
                 jwtProperties.getAccess().getExpirationMs(),
                 getAccessSigningKey()
         );
@@ -53,23 +66,34 @@ public class JwtTokenProvider {
     /**
      * Sinh Refresh Token chứa userId và tokenVersion.
      * Ký bằng Refresh Secret, TTL từ application.properties (mặc định 7 ngày).
+     *
+     * Refresh Token KHÔNG chứa role claim — chỉ dùng để cấp lại Access Token mới.
+     * Role được đọc lại từ DB tại thời điểm refresh để đảm bảo luôn mới nhất.
      */
     public String generateRefreshToken(Long userId, Integer tokenVersion) {
         return buildToken(
                 userId,
                 tokenVersion,
+                null,   // Refresh Token không cần role.
                 jwtProperties.getRefresh().getExpirationMs(),
                 getRefreshSigningKey()
         );
     }
 
-    private String buildToken(Long userId, Integer version, long ttlMs, Key signingKey) {
+    private String buildToken(Long userId, Integer version, String role, long ttlMs, Key signingKey) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + ttlMs);
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .claim(CLAIM_USER_ID, userId)
-                .claim(CLAIM_VERSION, version)
+                .claim(CLAIM_VERSION, version);
+
+        // Role chỉ được nhúng vào Access Token, không có trong Refresh Token.
+        if (role != null) {
+            builder.claim(CLAIM_ROLE, role);
+        }
+
+        return builder
                 .setIssuedAt(now)
                 .setExpiration(expiry)
                 .signWith(signingKey, SignatureAlgorithm.HS256)
@@ -122,6 +146,11 @@ public class JwtTokenProvider {
     /** Lấy tokenVersion từ Claims đã parse. */
     public Integer getVersion(Claims claims) {
         return claims.get(CLAIM_VERSION, Integer.class);
+    }
+
+    /** Lấy role từ Claims đã parse (chỉ có trong Access Token). */
+    public String getRole(Claims claims) {
+        return claims.get(CLAIM_ROLE, String.class);
     }
 
     // -----------------------------------------------------------------------

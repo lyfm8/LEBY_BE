@@ -184,7 +184,9 @@ public class AuthService {
         }
 
         // Chỉ cấp lại Access Token. Refresh Token vẫn giữ nguyên.
-        String newAccessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getTokenVersion());
+        // Role được đọc từ DB vì đây là thời điểm duy nhất cần đảm bảo role là mới nhất.
+        String newAccessToken = jwtTokenProvider.generateAccessToken(
+                user.getId(), user.getTokenVersion(), user.getRole().name());
         ResponseCookie accessCookie = jwtTokenProvider.buildAccessTokenCookie(newAccessToken);
         response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
 
@@ -218,9 +220,13 @@ public class AuthService {
 
     /**
      * Sinh cả Access Token và Refresh Token, gắn vào Response Cookie.
+     *
+     * Role được nhung vào Access Token claim để JwtAuthenticationFilter
+     * đọc trực tiếp mà không cần query DB cho phân quyền.
      */
     private void issueTokenCookies(User user, HttpServletResponse response) {
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getTokenVersion());
+        String accessToken  = jwtTokenProvider.generateAccessToken(
+                user.getId(), user.getTokenVersion(), user.getRole().name());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId(), user.getTokenVersion());
 
         response.addHeader(HttpHeaders.SET_COOKIE, jwtTokenProvider.buildAccessTokenCookie(accessToken).toString());

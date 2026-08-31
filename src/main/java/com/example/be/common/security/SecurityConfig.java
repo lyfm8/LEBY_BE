@@ -23,8 +23,20 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *   Kẻ tấn công từ domain khác gửi request cross-site sẽ không được đính kèm Cookie.
  * - HTTP Basic và Form Login đều bị tắt.
  *
+ * Phân quyền:
+ * - Route-level: public endpoints được khai báo tại authorizeHttpRequests.
+ * - Method-level: dùng @PreAuthorize(Roles.*) trên từng Controller method.
+ *   @EnableMethodSecurity đã bật để hỗ trợ điều này.
+ *
+ * Khi role của user thay đổi, phải tăng tokenVersion để vô hiệu hóa
+ * Access Token cũ còn chứa role cũ — tránh leo thang quyền.
+ *
  * Luồng xác thực:
  *   Request → JwtAuthenticationFilter → SecurityContext → Controller
+ *
+ * Luồng lỗi:
+ *   Thiếu/sai token     → 401 JSON (CustomAuthenticationEntryPoint)
+ *   Đúng token, sai role → 403 JSON (CustomAccessDeniedHandler)
  */
 @Configuration
 @EnableWebSecurity
@@ -33,6 +45,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final SecurityExceptionHandler securityExceptionHandler;
 
     /**
      * BCrypt PasswordEncoder với strength 10.
@@ -57,7 +70,8 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
 
-                // Authorization rules.
+                // Authorization rules — route-level.
+                // Phân quyền theo role được thực hiện ở method-level bằng @PreAuthorize(Roles.*).
                 .authorizeHttpRequests(auth -> auth
 
                         // Public endpoints — không cần token.
@@ -67,7 +81,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
 
                         // Tất cả endpoint còn lại yêu cầu xác thực.
+                        // Quyền cụ thể (STUDENT/TEACHER/ADMIN) được kiểm tra bằng @PreAuthorize(Roles.*).
                         .anyRequest().authenticated()
+                )
+
+                // Custom error responses — trả JSON thay vì HTML mặc định của Spring Security.
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(securityExceptionHandler)  // 401
+                        .accessDeniedHandler(securityExceptionHandler)        // 403
                 )
 
                 // Thêm JwtAuthenticationFilter trước UsernamePasswordAuthenticationFilter.
