@@ -13,6 +13,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.List;
 
 /**
  * Cấu hình Spring Security cho hệ thống.
@@ -56,9 +60,35 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder(10);
     }
 
+    /**
+     * CORS configuration.
+     * withCredentials=true trên FE yêu cầu allowedOrigins phải là domain cụ thể,
+     * không được dùng "*".
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",  // Vite dev server (default)
+                "http://localhost:5174",  // Vite fallback port
+                "http://localhost:3000"   // Nếu sau này dùng port khác
+        ));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true); // Bắt buộc khi FE dùng withCredentials: true
+        config.setMaxAge(3600L);          // Cache preflight 1 giờ
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // CORS — phải đặt trước CSRF để preflight OPTIONS không bị chặn.
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
                 // Tắt CSRF — dựa hoàn toàn vào SameSite=Strict của Cookie.
                 .csrf(AbstractHttpConfigurer::disable)
 
