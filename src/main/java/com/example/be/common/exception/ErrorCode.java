@@ -61,11 +61,11 @@ public enum ErrorCode {
             "Authentication required"
     ),
 
-    /** HTTP 401 - Sai email hoặc mật khẩu khi đăng nhập. */
+    /** HTTP 401 - Sai tên đăng nhập hoặc mật khẩu khi đăng nhập. */
     INVALID_CREDENTIALS(
             HttpStatus.UNAUTHORIZED,
             "INVALID_CREDENTIALS",
-            "Invalid email or password"
+            "Invalid username or password"
     ),
 
     /** HTTP 401 - Access Token hoặc Refresh Token đã hết hạn. */

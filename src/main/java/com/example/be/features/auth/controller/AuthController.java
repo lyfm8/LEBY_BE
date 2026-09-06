@@ -67,7 +67,7 @@ public class AuthController {
     }
 
     /**
-     * Đăng nhập bằng Email / Mật khẩu.
+     * Đăng nhập bằng Username / Mật khẩu.
      * Trả về thông tin user + gắn accessToken + refreshToken vào Cookie.
      */
     @PostMapping("/login")

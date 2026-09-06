@@ -134,21 +134,21 @@ public class AuthService {
     // -----------------------------------------------------------------------
 
     /**
-     * Đăng nhập bằng Email / Mật khẩu.
+     * Đăng nhập bằng Username / Mật khẩu.
      *
-     * @param request  email và password.
+     * @param request  username và password.
      * @param response HTTP response để gắn Cookie.
      * @return AuthResponse chứa thông tin user.
      */
     public AuthResponse login(LoginRequest request, HttpServletResponse response) {
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new BaseException(ErrorCode.INVALID_CREDENTIALS));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new BaseException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        log.info("[AUTH] User logged in: id={}, email={}", user.getId(), user.getEmail());
+        log.info("[AUTH] User logged in: id={}, username={}", user.getId(), user.getUsername());
 
         issueTokenCookies(user, response);
         return new AuthResponse(user);
