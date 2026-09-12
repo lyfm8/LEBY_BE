@@ -16,8 +16,8 @@ import java.util.Date;
 /**
  * Xử lý toàn bộ vòng đời của JWT: sinh token, parse, tạo/xóa Cookie.
  *
- * Access Token:  thời hạn ngắn (15 phút), dùng để xác thực mỗi request.
- * Refresh Token: thời hạn dài  (7 ngày),  dùng để lấy Access Token mới.
+ * Access Token:  thời hạn ngắn (2 tieng), dùng để xác thực mỗi request.
+ * Refresh Token: thời hạn dài  (1 nam),  dùng để lấy Access Token mới.
  *
  * Cả hai loại đều chứa: userId (Long) và version (Integer).
  * version dùng để đối chiếu với tokenVersion trong DB khi xác thực.
