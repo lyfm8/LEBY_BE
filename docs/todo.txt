@@ -1,0 +1,65 @@
+--------------------------------------------------------------------------------
+1. DANH SÁCH CÁC TÀI LIỆU TODO CHI TIẾT (CHILD TODO LISTS)
+--------------------------------------------------------------------------------
+
+[STT] | [Tên File Tài Liệu]                                   | [Chức Năng Chính]                                 | [UI FE Hỗ Trợ]
+------+-------------------------------------------------------+---------------------------------------------------+-----------------------------
+01    | 01_Chucnang_Xac_Thuc_Va_Phan_Quyen_Auth.md            | Đăng ký, OTP, Đăng nhập (JWT Cookie), Me, Logout  | /login, /register, /verify-otp
+02    | 02_Chucnang_Chon_Va_Thiet_Lap_Muc_Tieu_Target.md      | Danh mục AIM (450-850+), Lưu kế hoạch mục tiêu    | /target-selection
+03    | 03_Chucnang_Phong_Thi_Chan_Doan_Va_Cham_Diem.md       | Lấy đề chẩn đoán 1 tầng, Chấm điểm 7 Part & Ability| /diagnostic/room
+04    | 04_Chucnang_Bao_Cao_Chan_Doan_Va_Radar_Nang_Luc.md    | Điểm dự đoán, Báo cáo 7 Part, Radar SVG đa giác   | /diagnostic/results/:attemptId
+05    | 05_Chucnang_Trang_Chu_Hoc_Tap_Dashboard.md            | Thống kê Streak, Điểm hiện tại, Chặng tiếp theo   | /dashboard, /home
+06    | 06_Chucnang_Lo_Trinh_Thich_Ung_Va_Chi_Tiet_Module.md  | Sinh lộ trình cá nhân hóa, Chi tiết khóa học      | /learning-path, /modules/:id
+07    | 07_Chucnang_Phong_Hoc_Bai_Giang_Va_Luyen_Tap.md       | Stream video bài giảng, Luyện tập phản hồi AI tức thì| /modules/:mId/lessons/:lId
+08    | 08_Chucnang_Thi_Vuot_Ai_Module_Test.md                | Đề thi 25 câu tính giờ, Chấm qua ải (Pass 65)     | /modules/:mId/test
+09    | 09_Chucnang_Bao_Cao_Ket_Qua_Kiem_Tra_Hoc_Tap.md       | Báo cáo điểm 78/100, Lịch sử thi, Phúc khảo đáp án| /results, /review/:attemptId
+10    | 10_Chucnang_Ho_So_Ca_Nhan_Va_Ma_Tran_Nang_Luc.md      | Thông tin học viên, Ma trận năng lực, Bảo mật     | /profile
+
+--------------------------------------------------------------------------------
+2. QUY CHUẨN KIẾN TRÚC & TIÊU CHUẨN KỸ THUẬT BẮT BUỘC CHO BE
+--------------------------------------------------------------------------------
+
+1. Chuẩn Phản Hồi API Toàn Cục (Unified ApiResponse Envelope):
+   Mọi endpoint BẮT BUỘC trả về định dạng chuẩn:
+   {
+       "success": boolean,
+       "message": string | null,
+       "data": T | null
+   }
+   - Thành công: ResponseEntity.ok(ApiResponse.success(data, "Thông báo nếu cần"))
+   - Lỗi: GlobalExceptionHandler bắt và đóng gói ApiResponse.error(errorCode, message)
+
+2. Cơ Chế Xác Thực & Phân Quyền (JWT qua HTTP-Only Cookie):
+   - KHÔNG lưu token trong LocalStorage của trình duyệt (tránh tấn công XSS).
+   - Backend set Cookie: Set-Cookie: access_token=...; HttpOnly; Secure; SameSite=Lax; Path=/
+   - Mọi request từ FE tự động gửi kèm cookie (apiClient.withCredentials = true).
+   - Tự động kiểm tra TokenVersion trong User Entity để vô hiệu hóa ngay khi logout hoặc đổi pass.
+
+3. Quản Lý Transaction & Toàn Vẹn Dữ Liệu:
+   - Tất cả các nghiệp vụ chấm thi, sinh lộ trình, cập nhật năng lực phải bọc trong:
+     @Transactional(rollbackFor = Exception.class)
+   - Tuyệt đối không để xảy ra trường hợp: Đã lưu kết quả thi nhưng lỗi ở bước cập nhật UserAbility
+     dẫn đến mất đồng bộ dữ liệu.
+
+4. Quy Tắc Ánh Xạ CSDL (Zero Waste - Không Thừa, Không Thiếu):
+   - Toàn bộ 27 JPA Entities trong dự án đều phải tham gia vào chu trình dữ liệu.
+   - Bảng abilities, user_abilities, ability_aim_plans, learning_paths đóng vai trò hạt nhân trung tâm.
+
+--------------------------------------------------------------------------------
+3. THỨ TỰ TRIỂN KHAI BACKEND KHUYẾN NGHỊ (STEP-BY-STEP ROADMAP)
+--------------------------------------------------------------------------------
+
+Giai đoạn 1: Nền tảng Xác thực & Onboarding (Files 01, 02)
+   ➔ Hoàn thiện Auth, Cookie JWT, Target Selection, tạo Aim Plan.
+
+Giai đoạn 2: Bộ Máy Chẩn Đoán & Tính Điểm Năng Lực (Files 03, 04)
+   ➔ Ngân hàng câu hỏi chẩn đoán, Scoring Engine phân loại 7 Part & Abilities, biểu đồ Radar.
+
+Giai đoạn 3: Lộ Trình Thích Ứng & Dashboard Học Tập (Files 05, 06)
+   ➔ Thuật toán sinh LearningPath từ các Ability bị WEAK, Dashboard tổng quan.
+
+Giai đoạn 4: Học Tập Tương Tác & Thi Vượt Ải Module (Files 07, 08, 09)
+   ➔ Chi tiết bài học, Luyện tập mini, Thi vượt ải 25 câu, Báo cáo kết quả theo ảnh mẫu.
+
+Giai đoạn 5: Quản Lý Hồ Sơ & Ma Trận Năng Lực (File 10)
+   ➔ Trang cá nhân, Cập nhật thông tin, Bảo mật, Bảng theo dõi tiến bộ năng lực TOEIC.
