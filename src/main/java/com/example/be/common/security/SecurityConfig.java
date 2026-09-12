@@ -70,8 +70,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",  // Vite dev server (default)
-                "http://localhost:5174",  // Vite fallback port
-                "http://localhost:3000"   // Nếu sau này dùng port khác
+                "http://localhost:5174"  // Vite fallback port
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
