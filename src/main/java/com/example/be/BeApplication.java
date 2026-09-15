@@ -1,14 +1,14 @@
 package com.example.be;
 
-import com.example.be.common.security.CookieProperties;
-import com.example.be.common.security.JwtProperties;
+import com.example.be.security.CookieProperties;
+import com.example.be.security.JwtProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 @SpringBootApplication
-@EnableCaching
+@EnableAsync
 @EnableConfigurationProperties({JwtProperties.class, CookieProperties.class})
 public class BeApplication {
 
