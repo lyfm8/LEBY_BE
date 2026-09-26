@@ -14,7 +14,6 @@ public class AuthResponse {
 
     private final Long id;
     private final String email;
-    private final String username;
     private final String fullName;
     private final LocalDate dob;
     private final String avatar;
@@ -23,7 +22,6 @@ public class AuthResponse {
     public AuthResponse(User user) {
         this.id = user.getId();
         this.email = user.getEmail();
-        this.username = user.getUsername();
         this.fullName = user.getFullName();
         this.dob = user.getDob();
         this.avatar = user.getAvatar();

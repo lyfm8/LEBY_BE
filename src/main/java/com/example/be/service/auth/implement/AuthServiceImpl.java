@@ -107,18 +107,14 @@ public class AuthServiceImpl implements AuthService {
         // 2. Xác minh OTP — throw BaseException nếu sai/hết hạn/không tồn tại.
         otpService.verify(request.getEmail(), OtpPurpose.REGISTER, request.getOtp());
 
-        // 3. Kiểm tra email và username chưa tồn tại.
+        // 3. Kiểm tra email chưa tồn tại.
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new BaseException(ErrorCode.EMAIL_ALREADY_EXISTS);
-        }
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new BaseException(ErrorCode.USERNAME_ALREADY_EXISTS);
         }
 
         // 4. Tạo và lưu User mới.
         User user = new User();
         user.setEmail(request.getEmail());
-        user.setUsername(request.getUsername());
         user.setFullName(request.getFullName());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(ERole.STUDENT);

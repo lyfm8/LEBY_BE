@@ -120,13 +120,6 @@ public enum ErrorCode {
             "Email already exists"
     ),
 
-    /** HTTP 409 - Username đã được sử dụng. */
-    USERNAME_ALREADY_EXISTS(
-            HttpStatus.CONFLICT,
-            "USERNAME_ALREADY_EXISTS",
-            "Username already exists"
-    ),
-
     // -----------------------------------------------------------------------
     // 422 - Business Rule Violations (LEBY-specific)
     // -----------------------------------------------------------------------

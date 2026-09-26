@@ -17,7 +17,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
-    boolean existsByUsername(String username);
 
     /**
      * Tăng tokenVersion thêm 1 trực tiếp trong DB mà không cần load entity lên.

@@ -1,0 +1,8 @@
+Ngày 26/9/2026
+*Done:
+1. Bỏ hoàn toàn field username khỏi hệ thống, chỉ sử dụng email cho cả login
+2. 
+
+
+*Bug:
+1. 
