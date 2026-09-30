@@ -152,6 +152,10 @@ public class AuthServiceImpl implements AuthService {
             throw new BaseException(ErrorCode.INVALID_CREDENTIALS);
         }
 
+        if (!Boolean.TRUE.equals(user.getIsActive())) {
+            throw new BaseException(ErrorCode.USER_IS_LOCKED);
+        }
+
         log.info("[AUTH] User logged in: id={}, email={}", user.getId(), user.getEmail());
 
         issueTokenCookies(user, response);
