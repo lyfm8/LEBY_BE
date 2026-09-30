@@ -707,7 +707,7 @@ Không tạo thêm `ModuleTestResult` nếu kết quả đã được lưu trong
 Nếu business rule yêu cầu nhiều attempt:
 
 ```text
-ModuleTest 1 ---- * ModuleTestAttempt
+Module 1 ---- * ModuleTestAttempt
 ```
 
 Nếu chỉ một attempt thì phải giữ đúng cardinality trong diagram.
@@ -781,14 +781,14 @@ Các method không trở thành Entity.
 Class Diagram có:
 
 ```text
-<<abstract>> Question
+Question (non-abstract)
 QuestionAbility
 PracticeQuestion
 ModuleTestQuestion
 DiagnosticAttemptQuestion
 ```
 
-Nếu `Question` là abstract domain object thì phải xác định inheritance strategy.
+`Question` là một concrete class để có thể khởi tạo trực tiếp (dùng chung cho Practice, Diagnostic, và Bank).
 
 Các relationship tới Question phải được mapping đúng.
 
@@ -959,7 +959,7 @@ Unlock Next Module
 không tạo:
 
 ```text
-ModuleTest 1 ---- 1 UnlockNextModule
+Module 1 ---- 1 UnlockNextModule
 ```
 
 Đây là relationship ở mức Use Case, không phải database relationship.
@@ -1265,7 +1265,7 @@ Trước khi sinh code, AI phải kiểm tra:
 - [ ] Không có `mappedBy` sai.
 - [ ] Không có ManyToMany dư thừa.
 - [ ] Composition được xem xét cascade/orphanRemoval.
-- [ ] Abstract class có inheritance strategy rõ ràng.
+- [ ] Entity không cần abstract class nếu có thể instantiate trực tiếp.
 - [ ] Enum sử dụng STRING.
 - [ ] JSON được mapping đúng.
 - [ ] Date/DateTime đúng Java type.

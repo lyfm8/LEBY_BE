@@ -37,4 +37,12 @@ public class AbilityAimPlanItem {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "module_id", nullable = true)
     private Module module;
+
+    /**
+     * Ability mà item này đang giải quyết (traceability cho báo cáo).
+     * Ví dụ: "Bạn đang học để cải thiện kỹ năng: Nghe chi tiết".
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ability_id", nullable = true)
+    private Ability ability;
 }

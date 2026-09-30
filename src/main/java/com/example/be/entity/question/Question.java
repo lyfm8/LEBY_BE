@@ -84,11 +84,6 @@ public abstract class Question {
      * Question 1 ---- * QuestionAbility (M-M với Ability qua entity trung gian).
      * Rule 12: Entity trung gian vì QuestionAbility có thuộc tính riêng.
      */
-    @OneToMany(
-            mappedBy = "question",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true,
-            fetch = FetchType.LAZY
-    )
+    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<QuestionAbility> questionAbilities = new ArrayList<>();
 }

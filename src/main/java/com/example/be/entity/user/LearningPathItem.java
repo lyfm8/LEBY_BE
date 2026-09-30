@@ -27,10 +27,17 @@ public class LearningPathItem {
     private Integer orderNo;
 
     /**
-     * isCorrect: Boolean - từ diagram "isCorrect: Boolean"
-     * Ý nghĩa nghiệp vụ: module này đã pass hay chưa trong lộ trình.
+     * isCorrect: Boolean - module này đã pass hay chưa trong lộ trình.
      */
     private Boolean isCorrect;
+
+    /**
+     * progressPercent: Int - % bài học đã hoàn thành trong module này.
+     * Cache để Dashboard hiển thị nhanh mà không cần JOIN tính lại.
+     * Cập nhật mỗi lần user hoàn thành 1 lesson (POST /complete).
+     */
+    @Column(nullable = false)
+    private Integer progressPercent = 0;
 
     /**
      * reason: String - lý do trạng thái (optional)
