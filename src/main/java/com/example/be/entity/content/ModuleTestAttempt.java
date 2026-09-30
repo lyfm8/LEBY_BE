@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,12 +37,12 @@ public class ModuleTestAttempt {
     private ETestResult result;
 
     /**
-     * status: Boolean - attempt này đã submit chưa
+     * isSubmitted: Boolean - attempt này đã submit chưa
      */
     @Column(nullable = false)
-    private Boolean status = false;
+    private Boolean isSubmitted = false;
 
-    private LocalDate submittedAt;
+    private LocalDateTime submittedAt;
 
     @OneToMany(
             mappedBy = "moduleTestAttempt",

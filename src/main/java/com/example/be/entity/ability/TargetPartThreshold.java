@@ -40,9 +40,10 @@ public class TargetPartThreshold {
     private Float confirmingScore;
 
     /**
-     * fullPartScore: Float - điểm tối đa của Part
+     * fullPartThreshold: Float - ngưỡng dưới để kết luận FULL_PART directive.
+     * Điểm Part thấp hơn ngưỡng này → user yếu toàn Part, phải học từ nền tảng.
      */
-    private Float fullPartScore;
+    private Float fullPartThreshold;
 
     /**
      * TargetPartThreshold * ---- 1 TargetProfile.
