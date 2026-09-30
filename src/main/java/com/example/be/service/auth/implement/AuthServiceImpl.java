@@ -8,6 +8,7 @@ import com.example.be.dto.request.auth.LoginRequest;
 import com.example.be.dto.request.auth.RegisterRequest;
 import com.example.be.dto.request.auth.SendOtpRequest;
 import com.example.be.dto.response.auth.AuthResponse;
+import com.example.be.mapper.AuthMapper;
 import com.example.be.enums.auth.OtpPurpose;
 import com.example.be.enums.user.ERole;
 import com.example.be.entity.user.User;
@@ -55,6 +56,7 @@ public class AuthServiceImpl implements AuthService {
     private final CookieProperties cookieProperties;
     private final OtpService otpService;
     private final MailService mailService;
+    private final AuthMapper authMapper;
 
     // -----------------------------------------------------------------------
     // Send OTP
@@ -127,7 +129,7 @@ public class AuthServiceImpl implements AuthService {
         // 5. Cấp JWT và gắn Cookie.
         issueTokenCookies(savedUser, response);
 
-        return new AuthResponse(savedUser);
+        return authMapper.toResponse(savedUser);
     }
 
     // -----------------------------------------------------------------------
@@ -153,7 +155,7 @@ public class AuthServiceImpl implements AuthService {
         log.info("[AUTH] User logged in: id={}, email={}", user.getId(), user.getEmail());
 
         issueTokenCookies(user, response);
-        return new AuthResponse(user);
+        return authMapper.toResponse(user);
     }
 
     // -----------------------------------------------------------------------

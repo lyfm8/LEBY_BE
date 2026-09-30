@@ -1,30 +1,22 @@
 package com.example.be.dto.response.auth;
 
 import com.example.be.entity.user.User;
-import lombok.Getter;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
-/**
- * Thông tin user trả về sau khi đăng nhập hoặc đăng ký thành công.
- * Không chứa password, tokenVersion hay thông tin nhạy cảm.
- */
-@Getter
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AuthResponse {
-
-    private final Long id;
-    private final String email;
-    private final String fullName;
-    private final LocalDate dob;
-    private final String avatar;
-    private final String role;
-
-    public AuthResponse(User user) {
-        this.id = user.getId();
-        this.email = user.getEmail();
-        this.fullName = user.getFullName();
-        this.dob = user.getDob();
-        this.avatar = user.getAvatar();
-        this.role = user.getRole().name();
-    }
+    private Long id;
+    private String email;
+    private String fullName;
+    private LocalDate dob;
+    private String avatar;
+    private String role;
 }

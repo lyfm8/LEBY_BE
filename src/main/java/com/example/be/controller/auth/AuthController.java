@@ -5,6 +5,7 @@ import com.example.be.dto.request.auth.LoginRequest;
 import com.example.be.dto.request.auth.RegisterRequest;
 import com.example.be.dto.request.auth.SendOtpRequest;
 import com.example.be.dto.response.auth.AuthResponse;
+import com.example.be.mapper.AuthMapper;
 import com.example.be.entity.user.User;
 import com.example.be.service.auth.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,6 +36,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthMapper authMapper;
 
     /**
      * Gửi OTP 6 số đến email.
@@ -123,7 +125,7 @@ public class AuthController {
             @AuthenticationPrincipal User currentUser
     ) {
         return ResponseEntity.ok(
-                new ApiResponse<>(true, "Success", new AuthResponse(currentUser))
+                new ApiResponse<>(true, "Success", authMapper.toResponse(currentUser))
         );
     }
 }
