@@ -1,6 +1,5 @@
 package com.example.be.entity.diagnostic;
 
-import com.example.be.enums.diagnostic.ETestType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -33,10 +32,6 @@ public class DiagnosticTest {
 
     @Column(nullable = false)
     private Boolean status = true; // Đề này có đang được sử dụng hay không
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ETestType testType;
 
     /**
      * Danh sách câu hỏi nằm trong Đề thi này.

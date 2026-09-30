@@ -1,21 +1,19 @@
 package com.example.be.entity.diagnostic;
 
-import com.example.be.entity.content.Part;
 import com.example.be.entity.user.User;
-import com.example.be.enums.diagnostic.ETestType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Lượt làm bài Diagnostic Attempt.
- * Lưu trữ thông tin một lần user làm bài test đánh giá năng lực.
- * Một lượt test tổng hợp (Tier 1) sẽ sinh ra nhiều PartDiagnosticResult.
+ * Lưu trữ thông tin một lần user làm bài Comprehensive Diagnostic Test.
+ * Sau khi nộp bài, hệ thống tự chấm 7 Part và tính Ability, sinh ra PartDiagnosticResult.
  */
 @Entity
 @Table(name = "diagnostic_attempts")
@@ -29,16 +27,14 @@ public class DiagnosticAttempt {
     private Long id;
 
     /**
-     * startedAt: Date - ngày bắt đầu làm diagnostic
-     * Rule 18: Date → LocalDate.
+     * startedAt: LocalDateTime - thời điểm bắt đầu làm bài (cần độ chính xác đến giây cho durationSeconds).
      */
-    private LocalDate startedAt;
+    private LocalDateTime startedAt;
 
     /**
-     * completedAt: Date - ngày hoàn thành diagnostic
-     * Rule 18: Date → LocalDate.
+     * completedAt: LocalDateTime - thời điểm nộp bài.
      */
-    private LocalDate completedAt;
+    private LocalDateTime completedAt;
 
     /**
      * DiagnosticAttempt * ---- 1 User.
@@ -54,12 +50,8 @@ public class DiagnosticAttempt {
     @JoinColumn(name = "diagnostic_test_id", nullable = false)
     private DiagnosticTest diagnosticTest;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ETestType testType;
-
     /**
-     * Kết quả của từng Part trong lượt làm bài này (chỉ có data nếu testType = TIER_1_PART).
+     * Kết quả điểm của từng Part (7 bản ghi) sau khi bộ máy chấm điểm hoàn tất.
      */
     @OneToMany(
             mappedBy = "diagnosticAttempt",

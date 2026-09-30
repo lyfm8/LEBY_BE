@@ -8,8 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Kết quả của một Part sau khi làm bài DiagnosticAttempt Tầng 1.
- * Một lượt làm bài (DiagnosticAttempt) có thể sinh ra nhiều PartDiagnosticResult (cho nhiều Part khác nhau).
+ * Kết quả của một Part sau khi làm bài Comprehensive Diagnostic Test.
+ * Một lượt làm bài (DiagnosticAttempt) sinh ra 7 PartDiagnosticResult (cho 7 Part TOEIC).
  */
 @Entity
 @Table(name = "part_diagnostic_results")

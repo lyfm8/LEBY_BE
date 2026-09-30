@@ -42,7 +42,7 @@ public class User {
 
     private LocalDate dob;
 
-    @Column(length = 50)
+    @Column(length = 500)
     private String avatar;
 
     @Column(nullable = false)
