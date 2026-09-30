@@ -1,5 +1,6 @@
 package com.example.be.repository.user;
 
+import com.example.be.enums.user.ERole;
 import com.example.be.entity.user.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,7 +16,14 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    Page<User> findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(String email, String fullName, Pageable pageable);
+    @Query("SELECT u FROM User u WHERE " +
+           "(:keyword IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "AND (:role IS NULL OR u.role = :role) " +
+           "AND (:isActive IS NULL OR u.isActive = :isActive)")
+    Page<User> findUsersByFilters(@Param("keyword") String keyword, 
+                                  @Param("role") ERole role, 
+                                  @Param("isActive") Boolean isActive, 
+                                  Pageable pageable);
 
     Optional<User> findByEmail(String email);
 

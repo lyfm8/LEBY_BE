@@ -1,6 +1,7 @@
 package com.example.be.service.user;
 
 import com.example.be.dto.response.user.UserResponse;
+import com.example.be.enums.user.ERole;
 import com.example.be.entity.user.User;
 import com.example.be.mapper.UserMapper;
 import com.example.be.exception.BaseException;
@@ -20,13 +21,22 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
 
     @Override
-    public Page<UserResponse> getAllUsers(String search, Pageable pageable) {
-        Page<User> users;
-        if (search != null && !search.trim().isEmpty()) {
-            users = userRepository.findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(search, search, pageable);
-        } else {
-            users = userRepository.findAll(pageable);
+    public Page<UserResponse> getAllUsers(String keyword, String role, Boolean isActive, Pageable pageable) {
+        ERole roleEnum = null;
+        if (role != null && !role.trim().isEmpty()) {
+            try {
+                roleEnum = ERole.valueOf(role.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Ignore invalid role
+            }
         }
+        
+        Page<User> users = userRepository.findUsersByFilters(
+                keyword != null && !keyword.trim().isEmpty() ? keyword.trim() : null,
+                roleEnum,
+                isActive,
+                pageable
+        );
         return users.map(userMapper::toResponse);
     }
 

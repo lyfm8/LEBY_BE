@@ -26,10 +26,12 @@ public class AdminUserController {
     public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) Boolean isActive) {
         
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<UserResponse> result = userService.getAllUsers(search, pageable);
+        Page<UserResponse> result = userService.getAllUsers(keyword, role, isActive, pageable);
         
         ApiResponse.Pagination pagination = ApiResponse.Pagination.builder()
                 .page(result.getNumber())
