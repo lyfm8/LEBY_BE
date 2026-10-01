@@ -1,4 +1,4 @@
-package com.example.be.service.user;
+package com.example.be.service.user.service;
 
 import com.example.be.dto.response.user.UserResponse;
 import org.springframework.data.domain.Page;

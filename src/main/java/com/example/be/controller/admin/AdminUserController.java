@@ -2,7 +2,7 @@ package com.example.be.controller.admin;
 
 import com.example.be.common.ApiResponse;
 import com.example.be.dto.response.user.UserResponse;
-import com.example.be.service.user.UserService;
+import com.example.be.service.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
