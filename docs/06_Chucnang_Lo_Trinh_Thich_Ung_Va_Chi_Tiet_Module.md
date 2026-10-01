@@ -22,7 +22,7 @@ Phân hệ biến kết quả chẩn đoán thành hành động học tập c�
 ## 3. Đặc Tả Giao Tiếp Dữ Liệu (API Contracts: Request & Response)
 
 ### 3.1. Lấy toàn bộ lộ trình học hiện tại của học viên
-* **Endpoint**: `GET /api/v1/learning-paths/current` hoặc `GET /api/v1/roadmap`
+* **Endpoint**: `GET /api/learning-paths/current` hoặc `GET /api/roadmap`
 * **Response (200 OK)**:
 ```json
 {
@@ -86,7 +86,7 @@ Phân hệ biến kết quả chẩn đoán thành hành động học tập c�
 ```
 
 ### 3.2. Lấy chi tiết một Module
-* **Endpoint**: `GET /api/v1/modules/{moduleId}`
+* **Endpoint**: `GET /api/modules/{moduleId}`
 * **Response (200 OK)**:
 ```json
 {
@@ -163,4 +163,4 @@ Phân hệ biến kết quả chẩn đoán thành hành động học tập c�
 - [ ] Tạo `LearningPathRepository`, `LearningPathItemRepository`, `ModuleRepository`, `LessonRepository`.
 - [ ] Tạo DTO Response: `RoadmapResponse`, `ModuleTimelineItemDto`, `ModuleDetailResponse`, `LessonSummaryDto`.
 - [ ] Viết `RoadmapService` & `RoadmapServiceImpl`.
-- [ ] Tạo `RoadmapController.java` với 2 endpoint: `GET /api/v1/learning-paths/current` và `GET /api/v1/modules/{moduleId}`.
+- [ ] Tạo `RoadmapController.java` với 2 endpoint: `GET /api/learning-paths/current` và `GET /api/modules/{moduleId}`.

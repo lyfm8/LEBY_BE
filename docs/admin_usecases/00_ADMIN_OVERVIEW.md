@@ -33,7 +33,7 @@ import type { XyzResponse } from '../types/xyzTypes';
 
 export const xyzService = {
     getList(): Promise<ApiResponse<XyzResponse[]>> {
-        return apiClient.get<ApiResponse<XyzResponse[]>>('/api/v1/admin/xyz');
+        return apiClient.get<ApiResponse<XyzResponse[]>>('/api/admin/xyz');
     },
 };
 ```
@@ -65,12 +65,12 @@ interface ApiResponse<T> {
 
 ### URL pattern Admin
 ```
-GET    /api/v1/admin/{resource}          ← danh sách (có phân trang)
-GET    /api/v1/admin/{resource}/{id}     ← chi tiết
-POST   /api/v1/admin/{resource}          ← tạo mới
-PUT    /api/v1/admin/{resource}/{id}     ← cập nhật toàn bộ
-PATCH  /api/v1/admin/{resource}/{id}/... ← cập nhật 1 trường
-DELETE /api/v1/admin/{resource}/{id}     ← xóa
+GET    /api/admin/{resource}          ← danh sách (có phân trang)
+GET    /api/admin/{resource}/{id}     ← chi tiết
+POST   /api/admin/{resource}          ← tạo mới
+PUT    /api/admin/{resource}/{id}     ← cập nhật toàn bộ
+PATCH  /api/admin/{resource}/{id}/... ← cập nhật 1 trường
+DELETE /api/admin/{resource}/{id}     ← xóa
 ```
 
 ### ApiResponse BE chuẩn

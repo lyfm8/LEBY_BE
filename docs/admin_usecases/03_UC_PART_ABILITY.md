@@ -10,11 +10,11 @@ UI dạng master-detail: chọn Part bên trái → xem/thêm/sửa/xóa Ability
 
 **Endpoints:**
 ```
-GET    /api/v1/admin/parts                          ← 7 Parts (không phân trang)
-GET    /api/v1/admin/parts/{partId}/abilities       ← Abilities của 1 Part
-POST   /api/v1/admin/parts/{partId}/abilities       ← Tạo Ability
-PUT    /api/v1/admin/abilities/{id}                 ← Cập nhật Ability
-DELETE /api/v1/admin/abilities/{id}                 ← Xóa Ability
+GET    /api/admin/parts                          ← 7 Parts (không phân trang)
+GET    /api/admin/parts/{partId}/abilities       ← Abilities của 1 Part
+POST   /api/admin/parts/{partId}/abilities       ← Tạo Ability
+PUT    /api/admin/abilities/{id}                 ← Cập nhật Ability
+DELETE /api/admin/abilities/{id}                 ← Xóa Ability
 ```
 
 **Response GET parts — `data: PartResponse[]`:**
@@ -68,19 +68,19 @@ DELETE /api/v1/admin/abilities/{id}                 ← Xóa Ability
 ```typescript
 export const adminPartService = {
     getParts(): Promise<ApiResponse<PartResponse[]>> {
-        return apiClient.get('/api/v1/admin/parts');
+        return apiClient.get('/api/admin/parts');
     },
     getAbilities(partId: number): Promise<ApiResponse<AbilityResponse[]>> {
-        return apiClient.get(`/api/v1/admin/parts/${partId}/abilities`);
+        return apiClient.get(`/api/admin/parts/${partId}/abilities`);
     },
     createAbility(partId: number, data: AbilityFormData): Promise<ApiResponse<AbilityResponse>> {
-        return apiClient.post(`/api/v1/admin/parts/${partId}/abilities`, data);
+        return apiClient.post(`/api/admin/parts/${partId}/abilities`, data);
     },
     updateAbility(id: number, data: AbilityFormData): Promise<ApiResponse<AbilityResponse>> {
-        return apiClient.put(`/api/v1/admin/abilities/${id}`, data);
+        return apiClient.put(`/api/admin/abilities/${id}`, data);
     },
     deleteAbility(id: number): Promise<ApiResponse<null>> {
-        return apiClient.delete(`/api/v1/admin/abilities/${id}`);
+        return apiClient.delete(`/api/admin/abilities/${id}`);
     },
 };
 ```

@@ -27,7 +27,7 @@
 ## 3. Đặc Tả Giao Tiếp Dữ Liệu (API Contracts: Request & Response)
 
 ### 3.1. Lấy đề thi chẩn đoán toàn diện
-* **Endpoint**: `GET /api/v1/diagnostic/comprehensive-test`
+* **Endpoint**: `GET /api/diagnostic/comprehensive-test`
 * **Yêu cầu xác thực**: Bắt buộc đăng nhập.
 * **Backend gửi xuống (Response 200 OK)**:
 ```json
@@ -66,7 +66,7 @@
 ```
 
 ### 3.2. Nộp bài làm chẩn đoán & Kích hoạt chấm điểm
-* **Endpoint**: `POST /api/v1/diagnostic/submit`
+* **Endpoint**: `POST /api/diagnostic/submit`
 * **Request Body**:
 ```json
 {

@@ -9,8 +9,8 @@ Quản lý bài kiểm tra cuối Module (tập hợp các câu hỏi). Sử d�
 
 **Endpoints:**
 ```
-GET    /api/v1/admin/modules/{moduleId}/test-questions          ← lấy danh sách câu hỏi test của module
-POST   /api/v1/admin/modules/{moduleId}/test-questions/batch    ← cập nhật toàn bộ danh sách câu hỏi
+GET    /api/admin/modules/{moduleId}/test-questions          ← lấy danh sách câu hỏi test của module
+POST   /api/admin/modules/{moduleId}/test-questions/batch    ← cập nhật toàn bộ danh sách câu hỏi
 ```
 
 **Response GET — `data: QuestionListItemResponse[]`:**
@@ -59,10 +59,10 @@ POST   /api/v1/admin/modules/{moduleId}/test-questions/batch    ← cập nhật
 ```typescript
 export const adminModuleTestService = {
     getTestQuestions(moduleId: number): Promise<ApiResponse<QuestionListItemResponse[]>> {
-        return apiClient.get(`/api/v1/admin/modules/${moduleId}/test-questions`);
+        return apiClient.get(`/api/admin/modules/${moduleId}/test-questions`);
     },
     updateTestQuestions(moduleId: number, data: { questionIds: number[] }): Promise<ApiResponse<null>> {
-        return apiClient.post(`/api/v1/admin/modules/${moduleId}/test-questions/batch`, data);
+        return apiClient.post(`/api/admin/modules/${moduleId}/test-questions/batch`, data);
     },
 };
 ```

@@ -26,7 +26,7 @@ Chốt chặn kiểm soát chất lượng đào tạo của từng Module:
 ## 3. Đặc Tả Giao Tiếp Dữ Liệu (API Contracts: Request & Response)
 
 ### 3.1. Lấy đề thi vượt ải module
-* **Endpoint**: `GET /api/v1/modules/{moduleId}/test`
+* **Endpoint**: `GET /api/modules/{moduleId}/test`
 * **Response (200 OK)**:
 ```json
 {
@@ -59,7 +59,7 @@ Chốt chặn kiểm soát chất lượng đào tạo của từng Module:
 ```
 
 ### 3.2. Nộp bài thi vượt ải
-* **Endpoint**: `POST /api/v1/modules/{moduleId}/test/submit`
+* **Endpoint**: `POST /api/modules/{moduleId}/test/submit`
 * **Request Body**:
 ```json
 {

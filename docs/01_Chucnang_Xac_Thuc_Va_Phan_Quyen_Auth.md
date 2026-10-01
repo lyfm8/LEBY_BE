@@ -94,7 +94,7 @@ Phân hệ quản lý vòng đời tài khoản người dùng, xác minh danh t
 ```
 
 ### 3.4. Lấy thông tin phiên hiện tại (Restore Session)
-* **Endpoint**: `GET /api/auth/me` hoặc `GET /api/v1/auth/me`
+* **Endpoint**: `GET /api/auth/me` hoặc `GET /api/auth/me`
 * **Cookie**: Tự động đính kèm `access_token`
 * **Response (200 OK)**:
 ```json
@@ -163,7 +163,7 @@ Phân hệ quản lý vòng đời tài khoản người dùng, xác minh danh t
 * **Xử lý Exception**:
   * Sai mật khẩu / Không tìm thấy user: Trả về chung một thông báo `"Tên đăng nhập hoặc mật khẩu không chính xác"` (tránh lộ thông tin user enumeration).
   * Tài khoản bị khóa (`status = false`): Trả về `403 Forbidden` kèm thông báo `"Tài khoản đã bị tạm khóa, vui lòng liên hệ hỗ trợ"`.
-* **Hỗ trợ cả 2 tiền tố URL**: Trong code controller, hỗ trợ cả `@RequestMapping("/api/auth")` và alias `@RequestMapping("/api/v1/auth")` để tránh lệch chuẩn với FE.
+* **Hỗ trợ cả 2 tiền tố URL**: Trong code controller, hỗ trợ cả `@RequestMapping("/api/auth")` và alias `@RequestMapping("/api/auth")` để tránh lệch chuẩn với FE.
 
 ---
 
@@ -174,4 +174,4 @@ Phân hệ quản lý vòng đời tài khoản người dùng, xác minh danh t
 - [ ] Viết `JwtTokenProvider` hỗ trợ tạo Cookie `ResponseCookie`.
 - [ ] Viết `JwtAuthenticationFilter` trích xuất token từ Cookie header.
 - [ ] Hoàn thiện `AuthServiceImpl` xử lý logic kiểm tra OTP, mã hóa BCrypt, kiểm tra tokenVersion.
-- [ ] Viết cấu hình `SecurityConfig` mở public cho `/api/auth/**`, `/api/v1/auth/**`.
+- [ ] Viết cấu hình `SecurityConfig` mở public cho `/api/auth/**`, `/api/auth/**`.

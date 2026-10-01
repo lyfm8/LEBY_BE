@@ -9,11 +9,11 @@ Quản lý các Đề thi chẩn đoán (Diagnostic Test) do Admin soạn sẵn.
 
 **Endpoints:**
 ```
-GET    /api/v1/admin/diagnostic-tests          ← danh sách + filter
-GET    /api/v1/admin/diagnostic-tests/{id}     ← chi tiết + danh sách câu hỏi
-POST   /api/v1/admin/diagnostic-tests          ← tạo mới
-PUT    /api/v1/admin/diagnostic-tests/{id}     ← cập nhật
-DELETE /api/v1/admin/diagnostic-tests/{id}     ← xóa
+GET    /api/admin/diagnostic-tests          ← danh sách + filter
+GET    /api/admin/diagnostic-tests/{id}     ← chi tiết + danh sách câu hỏi
+POST   /api/admin/diagnostic-tests          ← tạo mới
+PUT    /api/admin/diagnostic-tests/{id}     ← cập nhật
+DELETE /api/admin/diagnostic-tests/{id}     ← xóa
 ```
 
 **Response `data: DiagnosticTestListItemResponse[]`:**

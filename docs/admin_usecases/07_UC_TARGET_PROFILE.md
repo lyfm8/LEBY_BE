@@ -9,10 +9,10 @@ Quản lý các mốc điểm TOEIC mục tiêu (AIM 450/550/650/750/850+). Bên
 
 **Endpoints — Target Profile:**
 ```
-GET    /api/v1/admin/target-profiles          ← tất cả profiles (không phân trang, ~5 records)
-POST   /api/v1/admin/target-profiles          ← tạo mới
-PUT    /api/v1/admin/target-profiles/{id}     ← cập nhật
-DELETE /api/v1/admin/target-profiles/{id}     ← xóa
+GET    /api/admin/target-profiles          ← tất cả profiles (không phân trang, ~5 records)
+POST   /api/admin/target-profiles          ← tạo mới
+PUT    /api/admin/target-profiles/{id}     ← cập nhật
+DELETE /api/admin/target-profiles/{id}     ← xóa
 ```
 
 **Response `data: TargetProfileResponse[]`:**
@@ -33,8 +33,8 @@ DELETE /api/v1/admin/target-profiles/{id}     ← xóa
 
 **Endpoints — Module Target Threshold (ma trận):**
 ```
-GET /api/v1/admin/module-target-thresholds    ← toàn bộ matrix
-PUT /api/v1/admin/module-target-thresholds    ← batch upsert
+GET /api/admin/module-target-thresholds    ← toàn bộ matrix
+PUT /api/admin/module-target-thresholds    ← batch upsert
 ```
 
 **Response GET matrix — `data: ThresholdMatrixResponse`:**
@@ -80,18 +80,18 @@ PUT /api/v1/admin/module-target-thresholds    ← batch upsert
 ```typescript
 export const adminTargetProfileService = {
     getAll(): Promise<ApiResponse<TargetProfileResponse[]>> {
-        return apiClient.get('/api/v1/admin/target-profiles');
+        return apiClient.get('/api/admin/target-profiles');
     },
     create(data: CreateTargetProfileRequest): Promise<ApiResponse<TargetProfileResponse>> {
-        return apiClient.post('/api/v1/admin/target-profiles', data);
+        return apiClient.post('/api/admin/target-profiles', data);
     },
     // update, delete tương tự
 
     getThresholdMatrix(): Promise<ApiResponse<ThresholdMatrixResponse>> {
-        return apiClient.get('/api/v1/admin/module-target-thresholds');
+        return apiClient.get('/api/admin/module-target-thresholds');
     },
     batchUpdateThresholds(data: BatchUpdateThresholdRequest): Promise<ApiResponse<null>> {
-        return apiClient.put('/api/v1/admin/module-target-thresholds', data);
+        return apiClient.put('/api/admin/module-target-thresholds', data);
     },
 };
 ```

@@ -9,11 +9,11 @@ Quản lý toàn bộ câu hỏi (dùng chung cho Diagnostic Test và Practice L
 
 **Endpoints:**
 ```
-GET    /api/v1/admin/questions          ← danh sách + filter + phân trang
-GET    /api/v1/admin/questions/{id}     ← chi tiết đầy đủ
-POST   /api/v1/admin/questions          ← tạo mới
-PUT    /api/v1/admin/questions/{id}     ← cập nhật
-DELETE /api/v1/admin/questions/{id}     ← xóa
+GET    /api/admin/questions          ← danh sách + filter + phân trang
+GET    /api/admin/questions/{id}     ← chi tiết đầy đủ
+POST   /api/admin/questions          ← tạo mới
+PUT    /api/admin/questions/{id}     ← cập nhật
+DELETE /api/admin/questions/{id}     ← xóa
 ```
 
 **Query params GET:**
@@ -70,7 +70,7 @@ DELETE /api/v1/admin/questions/{id}     ← xóa
 ```typescript
 export const adminQuestionService = {
     getQuestions(params: QuestionFilterParams): Promise<ApiResponse<QuestionListItemResponse[]>> {
-        return apiClient.get('/api/v1/admin/questions', { params });
+        return apiClient.get('/api/admin/questions', { params });
     },
     // ... CRUD methods
 };

@@ -21,7 +21,7 @@ Không gian học tập tương tác cốt lõi của học viên trong từng b
 ## 3. Đặc Tả Giao Tiếp Dữ Liệu (API Contracts: Request & Response)
 
 ### 3.1. Lấy chi tiết bài học
-* **Endpoint**: `GET /api/v1/modules/{moduleId}/lessons/{lessonId}`
+* **Endpoint**: `GET /api/modules/{moduleId}/lessons/{lessonId}`
 * **Response (200 OK)**:
 ```json
 {
@@ -54,7 +54,7 @@ Không gian học tập tương tác cốt lõi của học viên trong từng b
 ```
 
 ### 3.2. Nộp câu trả lời bài luyện tập nhanh
-* **Endpoint**: `POST /api/v1/modules/{moduleId}/lessons/{lessonId}/practice`
+* **Endpoint**: `POST /api/modules/{moduleId}/lessons/{lessonId}/practice`
 * **Request Body**:
 ```json
 {
@@ -76,7 +76,7 @@ Không gian học tập tương tác cốt lõi của học viên trong từng b
 ```
 
 ### 3.3. Đánh dấu hoàn thành bài học
-* **Endpoint**: `POST /api/v1/modules/{moduleId}/lessons/{lessonId}/complete`
+* **Endpoint**: `POST /api/modules/{moduleId}/lessons/{lessonId}/complete`
 * **Response (200 OK)**:
 ```json
 {

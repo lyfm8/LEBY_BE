@@ -21,7 +21,7 @@ Sau khi nộp bài thi chẩn đoán toàn diện ở bước 3, Backend tổng 
 ## 3. Đặc Tả Giao Tiếp Dữ Liệu (API Contracts: Request & Response)
 
 ### 3.1. Lấy báo cáo chi tiết kết quả thi chẩn đoán
-* **Endpoint**: `GET /api/v1/diagnostic/results/{attemptId}`
+* **Endpoint**: `GET /api/diagnostic/results/{attemptId}`
 * **Headers**: `Accept: application/json`
 * **Response (200 OK)**:
 ```json
@@ -155,4 +155,4 @@ Sau khi nộp bài thi chẩn đoán toàn diện ở bước 3, Backend tổng 
 ## 6. Danh Sách Công Việc Backend Cần Làm (Checklist)
 - [ ] Tạo DTO Response: `DiagnosticResultReportResponse`, `PartResultDto`, `AbilityRadarDto`, `AiRoadmapSummaryDto`.
 - [ ] Viết `getDiagnosticResult(Long attemptId)` trong `DiagnosticService`.
-- [ ] Thêm endpoint `GET /api/v1/diagnostic/results/{attemptId}` trong `DiagnosticController`.
+- [ ] Thêm endpoint `GET /api/diagnostic/results/{attemptId}` trong `DiagnosticController`.

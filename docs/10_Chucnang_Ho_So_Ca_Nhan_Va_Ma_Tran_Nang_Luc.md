@@ -27,7 +27,7 @@ Quản lý thông tin học viên và theo dõi sự tiến bộ của bộ năn
 ## 3. Đặc Tả Giao Tiếp Dữ Liệu (API Contracts: Request & Response)
 
 ### 3.1. Lấy thông tin hồ sơ và ma trận năng lực học viên
-* **Endpoint**: `GET /api/v1/users/profile` hoặc `GET /api/v1/profile`
+* **Endpoint**: `GET /api/users/profile` hoặc `GET /api/profile`
 * **Response (200 OK)**:
 ```json
 {
@@ -63,7 +63,7 @@ Quản lý thông tin học viên và theo dõi sự tiến bộ của bộ năn
 ```
 
 ### 3.2. Cập nhật thông tin cá nhân & Mục tiêu
-* **Endpoint**: `PUT /api/v1/users/profile` hoặc `PUT /api/v1/profile/info`
+* **Endpoint**: `PUT /api/users/profile` hoặc `PUT /api/profile/info`
 * **Request Body**:
 ```json
 {
@@ -87,7 +87,7 @@ Quản lý thông tin học viên và theo dõi sự tiến bộ của bộ năn
 ```
 
 ### 3.3. Đổi mật khẩu tài khoản
-* **Endpoint**: `POST /api/v1/users/change-password`
+* **Endpoint**: `POST /api/users/change-password`
 * **Request Body**:
 ```json
 {

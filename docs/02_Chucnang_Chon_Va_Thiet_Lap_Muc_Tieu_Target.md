@@ -19,7 +19,7 @@
 ## 3. Đặc Tả Giao Tiếp Dữ Liệu (API Contracts: Request & Response)
 
 ### 3.1. Lấy danh sách các mốc điểm mục tiêu TOEIC
-* **Endpoint**: `GET /api/v1/targets`
+* **Endpoint**: `GET /api/targets`
 * **Headers**: `Accept: application/json`
 * **Response (200 OK)**:
 ```json
@@ -72,7 +72,7 @@
 ```
 
 ### 3.2. Lưu lựa chọn mục tiêu của học viên
-* **Endpoint**: `POST /api/v1/targets/select`
+* **Endpoint**: `POST /api/targets/select`
 * **Yêu cầu xác thực**: Bắt buộc có phiên đăng nhập (Cookie JWT của User).
 * **Request Body**:
 ```json
@@ -122,7 +122,7 @@
 ---
 
 ## 6. Các Lưu Ý Quan Trọng
-* **Tái sử dụng**: API `POST /api/v1/targets/select` được dùng ở cả 2 nơi: Màn hình Onboarding ban đầu (`/target-selection`) và Màn hình Cập nhật mục tiêu trong Profile (`/profile`).
+* **Tái sử dụng**: API `POST /api/targets/select` được dùng ở cả 2 nơi: Màn hình Onboarding ban đầu (`/target-selection`) và Màn hình Cập nhật mục tiêu trong Profile (`/profile`).
 * **Không làm mất lịch sử**: Khi người dùng đổi mục tiêu, nếu đã có các bài làm cũ, giữ nguyên kết quả các lần thi trước, chỉ cập nhật lại mốc so sánh cho các bài thi và lộ trình kế tiếp.
 
 ---
@@ -131,4 +131,4 @@
 - [ ] Tạo `TargetProfileRepository` kế thừa `JpaRepository<TargetProfile, Long>`.
 - [ ] Tạo DTO `TargetProfileResponse` và `SelectTargetRequest`.
 - [ ] Viết `TargetService` & `TargetServiceImpl` xử lý logic lấy danh sách và lưu kế hoạch mục tiêu.
-- [ ] Tạo `TargetController.java` tại `com.example.be.features.ability.controller` với 2 endpoint: `GET /api/v1/targets` và `POST /api/v1/targets/select`.
+- [ ] Tạo `TargetController.java` tại `com.example.be.features.ability.controller` với 2 endpoint: `GET /api/targets` và `POST /api/targets/select`.

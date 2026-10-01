@@ -24,7 +24,7 @@ Sau khi có kết quả chẩn đoán, học viên bước vào trang chủ họ
 ## 3. Đặc Tả Giao Tiếp Dữ Liệu (API Contracts: Request & Response)
 
 ### 3.1. Lấy thông tin tổng quan Dashboard
-* **Endpoint**: `GET /api/v1/dashboard/summary`
+* **Endpoint**: `GET /api/dashboard/summary`
 * **Yêu cầu xác thực**: Bắt buộc đăng nhập.
 * **Response (200 OK)**:
 ```json
@@ -117,4 +117,4 @@ Sau khi có kết quả chẩn đoán, học viên bước vào trang chủ họ
 ## 6. Danh Sách Công Việc Backend Cần Làm (Checklist)
 - [ ] Tạo DTO `DashboardSummaryResponse`, `StatCardSummaryDto`, `NextModuleItemDto`, `RecentActivityDto`.
 - [ ] Tạo `DashboardService` & `DashboardServiceImpl`.
-- [ ] Tạo `DashboardController.java` tại `com.example.be.features.content.controller` với endpoint `GET /api/v1/dashboard/summary`.
+- [ ] Tạo `DashboardController.java` tại `com.example.be.features.content.controller` với endpoint `GET /api/dashboard/summary`.

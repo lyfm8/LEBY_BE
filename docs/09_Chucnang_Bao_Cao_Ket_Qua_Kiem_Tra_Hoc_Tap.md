@@ -28,7 +28,7 @@ Bám sát 100% hình ảnh thiết kế tham khảo `module-test-results.png`:
 ## 3. Đặc Tả Giao Tiếp Dữ Liệu (API Contracts: Request & Response)
 
 ### 3.1. Lấy báo cáo kết quả kiểm tra học tập
-* **Endpoint**: `GET /api/v1/modules/{moduleId}/test/results/{attemptId}` hoặc `GET /api/v1/learning-results/latest`
+* **Endpoint**: `GET /api/modules/{moduleId}/test/results/{attemptId}` hoặc `GET /api/learning-results/latest`
 * **Response (200 OK)**:
 ```json
 {
@@ -83,7 +83,7 @@ Bám sát 100% hình ảnh thiết kế tham khảo `module-test-results.png`:
 ```
 
 ### 3.2. Lấy chi tiết phúc khảo đáp án từng câu
-* **Endpoint**: `GET /api/v1/modules/{moduleId}/test/review/{attemptId}`
+* **Endpoint**: `GET /api/modules/{moduleId}/test/review/{attemptId}`
 * **Response (200 OK)**:
 ```json
 {

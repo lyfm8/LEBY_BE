@@ -9,11 +9,11 @@ Xem danh sách học viên (phân trang + filter), xem chi tiết, thêm mới, 
 
 **Endpoints:**
 ```
-GET    /api/v1/admin/users          ← danh sách + filter + phân trang
-GET    /api/v1/admin/users/{id}     ← chi tiết
-POST   /api/v1/admin/users          ← tạo mới
-PUT    /api/v1/admin/users/{id}     ← cập nhật
-PATCH  /api/v1/admin/users/{id}/toggle-active  ← bật/tắt tài khoản
+GET    /api/admin/users          ← danh sách + filter + phân trang
+GET    /api/admin/users/{id}     ← chi tiết
+POST   /api/admin/users          ← tạo mới
+PUT    /api/admin/users/{id}     ← cập nhật
+PATCH  /api/admin/users/{id}/toggle-active  ← bật/tắt tài khoản
 ```
 
 **Query params GET danh sách:**
@@ -74,19 +74,19 @@ PATCH  /api/v1/admin/users/{id}/toggle-active  ← bật/tắt tài khoản
 // services/adminUserService.ts
 export const adminUserService = {
     getUsers(params: UserFilterParams): Promise<ApiResponse<UserListItemResponse[]>> {
-        return apiClient.get('/api/v1/admin/users', { params });
+        return apiClient.get('/api/admin/users', { params });
     },
     getById(id: number): Promise<ApiResponse<UserDetailResponse>> {
-        return apiClient.get(`/api/v1/admin/users/${id}`);
+        return apiClient.get(`/api/admin/users/${id}`);
     },
     create(data: CreateUserRequest): Promise<ApiResponse<UserDetailResponse>> {
-        return apiClient.post('/api/v1/admin/users', data);
+        return apiClient.post('/api/admin/users', data);
     },
     update(id: number, data: UpdateUserRequest): Promise<ApiResponse<UserDetailResponse>> {
-        return apiClient.put(`/api/v1/admin/users/${id}`, data);
+        return apiClient.put(`/api/admin/users/${id}`, data);
     },
     toggleActive(id: number): Promise<ApiResponse<{ isActive: boolean }>> {
-        return apiClient.patch(`/api/v1/admin/users/${id}/toggle-active`);
+        return apiClient.patch(`/api/admin/users/${id}/toggle-active`);
     },
 };
 ```

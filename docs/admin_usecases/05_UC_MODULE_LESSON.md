@@ -9,16 +9,16 @@ Quản lý Module và Lesson (Video / Practice). UI accordion: click Module → 
 
 **Endpoints:**
 ```
-GET    /api/v1/admin/modules                              ← danh sách modules
-GET    /api/v1/admin/modules/{id}/lessons                 ← lessons của 1 module (lazy khi accordion mở)
-POST   /api/v1/admin/modules                              ← tạo module
-PUT    /api/v1/admin/modules/{id}                         ← cập nhật module
-DELETE /api/v1/admin/modules/{id}                         ← xóa module
-POST   /api/v1/admin/modules/{moduleId}/lessons/video     ← tạo video lesson
-POST   /api/v1/admin/modules/{moduleId}/lessons/practice  ← tạo practice lesson
-PUT    /api/v1/admin/lessons/{id}                         ← cập nhật lesson (tự detect loại)
-DELETE /api/v1/admin/lessons/{id}                         ← xóa lesson
-PATCH  /api/v1/admin/modules/{id}/reorder-lessons         ← đổi thứ tự lessons
+GET    /api/admin/modules                              ← danh sách modules
+GET    /api/admin/modules/{id}/lessons                 ← lessons của 1 module (lazy khi accordion mở)
+POST   /api/admin/modules                              ← tạo module
+PUT    /api/admin/modules/{id}                         ← cập nhật module
+DELETE /api/admin/modules/{id}                         ← xóa module
+POST   /api/admin/modules/{moduleId}/lessons/video     ← tạo video lesson
+POST   /api/admin/modules/{moduleId}/lessons/practice  ← tạo practice lesson
+PUT    /api/admin/lessons/{id}                         ← cập nhật lesson (tự detect loại)
+DELETE /api/admin/lessons/{id}                         ← xóa lesson
+PATCH  /api/admin/modules/{id}/reorder-lessons         ← đổi thứ tự lessons
 ```
 
 **Response item GET modules — `data: ModuleResponse[]`:**
@@ -93,19 +93,19 @@ PATCH  /api/v1/admin/modules/{id}/reorder-lessons         ← đổi thứ tự 
 ```typescript
 export const adminModuleService = {
     getModules(params?: ModuleFilterParams): Promise<ApiResponse<ModuleResponse[]>> {
-        return apiClient.get('/api/v1/admin/modules', { params });
+        return apiClient.get('/api/admin/modules', { params });
     },
     getLessons(moduleId: number): Promise<ApiResponse<LessonResponse[]>> {
-        return apiClient.get(`/api/v1/admin/modules/${moduleId}/lessons`);
+        return apiClient.get(`/api/admin/modules/${moduleId}/lessons`);
     },
     createModule(data: CreateModuleRequest): Promise<ApiResponse<ModuleResponse>> {
-        return apiClient.post('/api/v1/admin/modules', data);
+        return apiClient.post('/api/admin/modules', data);
     },
     createVideoLesson(moduleId: number, data: CreateVideoLessonRequest): Promise<ApiResponse<LessonResponse>> {
-        return apiClient.post(`/api/v1/admin/modules/${moduleId}/lessons/video`, data);
+        return apiClient.post(`/api/admin/modules/${moduleId}/lessons/video`, data);
     },
     createPracticeLesson(moduleId: number, data: CreatePracticeLessonRequest): Promise<ApiResponse<LessonResponse>> {
-        return apiClient.post(`/api/v1/admin/modules/${moduleId}/lessons/practice`, data);
+        return apiClient.post(`/api/admin/modules/${moduleId}/lessons/practice`, data);
     },
     // ... update, delete, reorder tương tự
 };

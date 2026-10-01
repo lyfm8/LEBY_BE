@@ -7,7 +7,7 @@ Trang tổng quan: 4 stat cards, 3 biểu đồ (học viên theo tháng, phân 
 
 ## Backend
 
-**1 endpoint duy nhất:** `GET /api/v1/admin/dashboard/summary` — `@PreAuthorize("hasRole('ADMIN')")`
+**1 endpoint duy nhất:** `GET /api/admin/dashboard/summary` — `@PreAuthorize("hasRole('ADMIN')")`
 
 **Response `data`:**
 ```json
@@ -60,7 +60,7 @@ Trang tổng quan: 4 stat cards, 3 biểu đồ (học viên theo tháng, phân 
 // services/adminDashboardService.ts
 export const adminDashboardService = {
     getSummary(): Promise<ApiResponse<DashboardSummary>> {
-        return apiClient.get<ApiResponse<DashboardSummary>>('/api/v1/admin/dashboard/summary');
+        return apiClient.get<ApiResponse<DashboardSummary>>('/api/admin/dashboard/summary');
     },
 };
 ```

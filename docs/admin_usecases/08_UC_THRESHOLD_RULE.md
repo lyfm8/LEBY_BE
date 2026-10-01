@@ -31,10 +31,10 @@ rate < developingThreshold                  → WEAK
 
 **Endpoints — TargetPartThreshold:**
 ```
-GET    /api/v1/admin/target-part-thresholds          ← tất cả (không phân trang)
-POST   /api/v1/admin/target-part-thresholds          ← tạo mới
-PUT    /api/v1/admin/target-part-thresholds/{id}     ← cập nhật
-DELETE /api/v1/admin/target-part-thresholds/{id}     ← xóa
+GET    /api/admin/target-part-thresholds          ← tất cả (không phân trang)
+POST   /api/admin/target-part-thresholds          ← tạo mới
+PUT    /api/admin/target-part-thresholds/{id}     ← cập nhật
+DELETE /api/admin/target-part-thresholds/{id}     ← xóa
 ```
 
 **Response `data: TargetPartThresholdResponse[]`:**
@@ -71,10 +71,10 @@ DELETE /api/v1/admin/target-part-thresholds/{id}     ← xóa
 
 **Endpoints — AbilityEvaluationRule:**
 ```
-GET    /api/v1/admin/ability-evaluation-rules          ← tất cả
-POST   /api/v1/admin/ability-evaluation-rules          ← tạo mới
-PUT    /api/v1/admin/ability-evaluation-rules/{id}     ← cập nhật
-DELETE /api/v1/admin/ability-evaluation-rules/{id}     ← xóa
+GET    /api/admin/ability-evaluation-rules          ← tất cả
+POST   /api/admin/ability-evaluation-rules          ← tạo mới
+PUT    /api/admin/ability-evaluation-rules/{id}     ← cập nhật
+DELETE /api/admin/ability-evaluation-rules/{id}     ← xóa
 ```
 
 **Response `data: AbilityEvaluationRuleResponse[]`:**
@@ -121,18 +121,18 @@ DELETE /api/v1/admin/ability-evaluation-rules/{id}     ← xóa
 ```typescript
 export const adminThresholdService = {
     getPartThresholds(): Promise<ApiResponse<TargetPartThresholdResponse[]>> {
-        return apiClient.get('/api/v1/admin/target-part-thresholds');
+        return apiClient.get('/api/admin/target-part-thresholds');
     },
     createPartThreshold(data: CreatePartThresholdRequest): Promise<ApiResponse<TargetPartThresholdResponse>> {
-        return apiClient.post('/api/v1/admin/target-part-thresholds', data);
+        return apiClient.post('/api/admin/target-part-thresholds', data);
     },
     // update, delete tương tự
 
     getEvalRules(): Promise<ApiResponse<AbilityEvaluationRuleResponse[]>> {
-        return apiClient.get('/api/v1/admin/ability-evaluation-rules');
+        return apiClient.get('/api/admin/ability-evaluation-rules');
     },
     createEvalRule(data: CreateEvalRuleRequest): Promise<ApiResponse<AbilityEvaluationRuleResponse>> {
-        return apiClient.post('/api/v1/admin/ability-evaluation-rules', data);
+        return apiClient.post('/api/admin/ability-evaluation-rules', data);
     },
     // update, delete tương tự
 };
