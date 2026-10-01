@@ -1,3 +1,4 @@
 1. Tầng service phải được chia thành 2 folder : service + implementation
 2. Các endpoint phải được bọc trong apiresponse
 3. Sử dụng mapper để map data từ entity - dto
+4. Phải rà soát cấu trúc thư mục của dự án trước.
