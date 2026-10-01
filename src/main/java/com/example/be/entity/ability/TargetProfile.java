@@ -41,4 +41,7 @@ public class TargetProfile {
             fetch = FetchType.LAZY
     )
     private List<TargetPartThreshold> thresholds = new ArrayList<>();
+
+    @Column(length = 500)
+    private String description;
 }

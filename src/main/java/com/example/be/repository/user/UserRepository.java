@@ -38,4 +38,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Transactional
     @Query("UPDATE User u SET u.tokenVersion = u.tokenVersion + 1 WHERE u.id = :id")
     void incrementTokenVersion(@Param("id") Long id);
+
+    long countByTargetProfileId(Long targetProfileId);
 }
