@@ -34,7 +34,7 @@ PATCH  /api/v1/admin/users/{id}/toggle-active  ← bật/tắt tài khoản
   "createdAt": "2024-10-12T00:00:00"
 }
 ```
-> `aimTarget` = JOIN sang `ability_aim_plans → target_profiles.name` của user.  
+> `aimTarget` = JOIN sang `target_profiles.target_total_score` thông qua `users.target_profile_id`.  
 > Nếu user chưa chọn AIM → `aimTarget: null`.
 
 **Response item (GET chi tiết) — thêm:** `dob`, `avatar`, `username`.

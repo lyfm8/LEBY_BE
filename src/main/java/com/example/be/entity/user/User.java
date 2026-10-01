@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import com.example.be.entity.ability.TargetProfile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -76,4 +77,13 @@ public class User {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "learning_path_id", nullable = true)
     private LearningPath learningPath;
+
+    /**
+     * Mốc điểm mục tiêu TOEIC (AIM) của User.
+     * Logic nghiệp vụ: 1 User chỉ có 1 mục tiêu duy nhất.
+     * DB: ManyToOne vì nhiều User có thể cùng chọn 1 mốc (ví dụ 650).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "target_profile_id")
+    private TargetProfile targetProfile;
 }

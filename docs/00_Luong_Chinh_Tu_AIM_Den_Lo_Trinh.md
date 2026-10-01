@@ -1,4 +1,4 @@
-﻿# Luồng Chính: Từ Chọn AIM → Ra Lộ Trình Học
+# Luồng Chính: Từ Chọn AIM → Ra Lộ Trình Học
 
 > Mục đích: Nhìn vào là hiểu toàn bộ ý tưởng và DB thay đổi như thế nào ở từng bước.
 
@@ -27,17 +27,15 @@ UI: 5 card → [450] [550] [650★] [750] [850+]
 
 **DB thay đổi:**
 
-```
-ability_aim_plans
-┌────┬─────────┬───────────────────┬────────────┐
-│ id │ user_id │ target_profile_id │ created_at │
-├────┼─────────┼───────────────────┼────────────┤
-│ 1  │   12    │        3 (650)    │  NOW()     │  ← INSERT mới
-└────┴─────────┴───────────────────┴────────────┘
-```
+users
+┌────┬─────────┬───────────────────┐
+│ id │ email   │ target_profile_id │
+├────┼─────────┼───────────────────┤
+│ 12 │ a@b.com │        3 (650)    │  ← UPDATE
+└────┴─────────┴───────────────────┘
 
 > `target_profiles` là master data Admin cài sẵn (id=3 ứng với AIM 650).
-> `ability_aim_plans` lưu "học viên này đang nhắm tới AIM nào".
+> `target_profile_id` lưu thẳng vào bảng `users` để biết mục tiêu hiện tại của người dùng.
 
 ---
 
@@ -108,19 +106,11 @@ Luật phân loại (đọc từ ability_evaluation_rules):
   còn lại                     → DEVELOPING
 ```
 
-**③ Tạo danh sách Module cần học (backlog lộ trình):**
+**③ Tính toán danh sách Module cần học (Lưu trực tiếp vào Lộ trình):**
 
 ```
-ability_aim_plan_items
-┌────┬─────────┬──────────────────────┬──────────┐
-│ id │ plan_id │      module_id       │ order_no │
-├────┼─────────┼──────────────────────┼──────────┤
-│  1 │    1    │  5 (Module Part 4)   │    1     │ ← Ability WEAK → cần học
-│  2 │    1    │  8 (Module Part 7)   │    2     │ ← Ability WEAK → cần học
-└────┴─────────┴──────────────────────┴──────────┘
-
-Cách tìm module_id: Ability WEAK → tra module_abilities → lấy module tương ứng
-Chỉ WEAK/DEVELOPING mới được đưa vào. STABLE → bỏ qua.
+Cách tìm module_id: Ability WEAK/DEVELOPING → tra module_abilities → lấy module tương ứng
+(STABLE → bỏ qua, không cần học)
 ```
 
 **④ Sinh LearningPath ngay (trong cùng transaction — không cần chờ user vào trang lộ trình):**
@@ -175,9 +165,9 @@ Lộ trình học cá nhân (2 module, sắp xếp theo độ ưu tiên):
 target_profiles ─────────────────────────────────────────┐
    (id=3, score=650)                                      │
          │                                                │
-         ▼                                                ▼
-ability_aim_plans                         target_part_thresholds
-   (user + target)                          (ngưỡng điểm 7 Part theo từng AIM)
+         ▼ (ManyToOne)                                    ▼
+users.target_profile_id                   target_part_thresholds
+   (user chọn target nào)                   (ngưỡng điểm 7 Part theo từng AIM)
          │                                            │
          │                                            │ dùng để chấm
          │                                            ▼
@@ -185,17 +175,13 @@ ability_aim_plans                         target_part_thresholds
          │                                  (điểm + directive 7 Part)
          │
          ▼
-ability_aim_plan_items ←── question_abilities ←── user_abilities
+learning_path_items ◄──── question_abilities ◄──── user_abilities
    (Module cần học)          (câu nào đo Ability)   (Ability WEAK/STABLE)
-         │
+         │ (sinh trực tiếp từ Ability)
          │ tra module_abilities
          ▼
-learning_path_items ──────────── modules
-   (IN_PROGRESS / LOCKED)        (nội dung học)
-         │
-         ▼
-learning_paths ◄──── users.learning_path_id
-   (lộ trình của user)
+learning_paths ──────────── modules
+   (lộ trình của user)      (nội dung học)
 ```
 
 ---

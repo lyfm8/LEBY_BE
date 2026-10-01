@@ -3,7 +3,7 @@
 ## 1. Mô Tả Chức Năng & Mục Tiêu Nghiệp Vụ
 Đây là bước đầu tiên trong chu trình học tập cá nhân hóa sau khi người dùng đăng ký tài khoản thành công:
 * **Cung cấp danh mục mục tiêu TOEIC**: Trả về danh sách các gói mục tiêu điểm số chuẩn mực (AIM 450, AIM 550, AIM 650, AIM 750, AIM 850+) cùng mô tả chi tiết và gợi ý mục tiêu khuyến nghị.
-* **Lưu mốc điểm mục tiêu học viên chọn**: Kích hoạt bản ghi kế hoạch mục tiêu (`ability_aim_plans`) cho học viên trong cơ sở dữ liệu để làm mốc so sánh cho bài thi chẩn đoán tiếp theo.
+* **Lưu mốc điểm mục tiêu học viên chọn**: Lưu trữ trực tiếp `target_profile_id` vào bảng `users` cho học viên để làm mốc so sánh cho bài thi chẩn đoán tiếp theo.
 
 ---
 
@@ -106,9 +106,7 @@
 2. **Lưu lựa chọn mục tiêu (`POST /select`)**:
    * Trích xuất `currentUserId` từ `SecurityContextHolder`.
    * Kiểm tra `targetProfileId` có tồn tại và đang kích hoạt không ➔ Nếu không: Ném `404 Not Found`.
-   * Kiểm tra học viên đã có bản ghi trong `ability_aim_plans` chưa:
-     * Nếu chưa có: Tạo mới một bản ghi `AbilityAimPlan` với `user_id`, `target_profile_id`, `status = true`, `created_at = NOW()`.
-     * Nếu đã có: Cập nhật `target_profile_id` mới (trường hợp học viên đổi mục tiêu ở trang Profile).
+   * Cập nhật `target_profile_id` mới cho bản ghi `User` tương ứng.
    * Trả về DTO chứa `planId` vừa tạo/cập nhật.
 
 ---
@@ -116,8 +114,8 @@
 ## 5. Bảng Cơ Sở Dữ Liệu Liên Quan
 * **`target_profiles`**:
   * Đọc: `id`, `target_total_score`, `status`, `description`.
-* **`ability_aim_plans`**:
-  * Ghi (Insert/Update): `id`, `user_id`, `target_profile_id`, `status`, `created_at`, `updated_at`.
+* **`users`**:
+  * Đọc/Ghi (Update): `id`, `target_profile_id`.
 * **`users`**:
   * Đọc: Xác thực `user_id`.
 
@@ -131,7 +129,6 @@
 
 ## 7. Danh Sách Công Việc Backend Cần Làm (Checklist)
 - [ ] Tạo `TargetProfileRepository` kế thừa `JpaRepository<TargetProfile, Long>`.
-- [ ] Tạo `AbilityAimPlanRepository` kế thừa `JpaRepository<AbilityAimPlan, Long>`.
 - [ ] Tạo DTO `TargetProfileResponse` và `SelectTargetRequest`.
 - [ ] Viết `TargetService` & `TargetServiceImpl` xử lý logic lấy danh sách và lưu kế hoạch mục tiêu.
 - [ ] Tạo `TargetController.java` tại `com.example.be.features.ability.controller` với 2 endpoint: `GET /api/v1/targets` và `POST /api/v1/targets/select`.

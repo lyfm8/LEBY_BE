@@ -25,7 +25,7 @@ DELETE /api/v1/admin/target-profiles/{id}     ← xóa
   "totalUsers": 1142
 }
 ```
-> `totalUsers` = COUNT `ability_aim_plans` WHERE `target_profile_id = ?`
+> `totalUsers` = COUNT `users` WHERE `target_profile_id = ?`
 
 **Guard DELETE:** có user đang dùng profile → `BadRequestException`
 

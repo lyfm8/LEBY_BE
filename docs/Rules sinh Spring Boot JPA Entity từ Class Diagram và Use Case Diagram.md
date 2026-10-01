@@ -745,8 +745,6 @@ Class Diagram có:
 
 ```text
 UserAbility
-AbilityAimPlan
-AbilityAimPlanItem
 TargetProfile
 TargetPartThreshold
 ```
@@ -757,8 +755,6 @@ AI phải phân biệt:
 
 ```text
 UserAbility
-AbilityAimPlan
-AbilityAimPlanItem
 TargetProfile
 TargetPartThreshold
 ```
@@ -866,7 +862,7 @@ Module
 hoặc:
 
 ```text
-AbilityAimPlanItem
+LearningPathItem
  └── orderNo
 ```
 

@@ -2,7 +2,7 @@
 
 ## 1. Mô Tả Chức Năng & Mục Tiêu Nghiệp Vụ
 Phân hệ biến kết quả chẩn đoán thành hành động học tập cụ thể:
-* **Sinh lộ trình thích ứng cá nhân hóa (Adaptive Roadmap Generation)**: Tự động ghép nối các `modules` tương ứng với những kỹ năng bị `WEAK` trong bảng `ability_aim_plan_items` thành một chuỗi học tập có thứ tự logic.
+* **Sinh lộ trình thích ứng cá nhân hóa (Adaptive Roadmap Generation)**: Tự động ghép nối các `modules` tương ứng với những kỹ năng bị `WEAK` sau bài kiểm tra chẩn đoán thành một chuỗi học tập có thứ tự logic.
 * **Quản lý trạng thái từng chặng (Module Status Lifecycle)**:
   * `COMPLETED`: Đã học xong và vượt qua bài thi Module Test.
   * `IN_PROGRESS`: Module hiện tại đang học.
@@ -142,7 +142,7 @@ Phân hệ biến kết quả chẩn đoán thành hành động học tập c�
    * Khi học viên hoàn thành chẩn đoán và bấm vào lộ trình:
    * Nếu user chưa có `LearningPath` đang kích hoạt (`status = true`):
      * Tạo mới `LearningPath` (`user_id`, `version = 1`, `started_at = NOW()`).
-     * Quét các Ability có trạng thái `WEAK` trong `ability_aim_plan_items`.
+     * Quét các Ability có trạng thái `WEAK` trong đánh giá năng lực của học viên.
      * Tìm các `modules` gắn với những Ability đó (qua bảng `module_abilities`), sắp xếp theo trường `modules.sequence`.
      * Tạo các bản ghi `learning_path_items`: Item đầu tiên gán `status = 'IN_PROGRESS'`, các item sau gán `status = 'LOCKED'`.
 2. **Kiểm tra điều kiện mở khóa bài thi Module Test**:

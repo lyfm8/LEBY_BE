@@ -9,7 +9,7 @@
   2. So sánh điểm số từng Part với bảng ngưỡng `target_part_thresholds` của mốc AIM học viên đã chọn để sinh ra chỉ thị điều hướng: `PASS`, `CONFIRM`, `WEAK`, `FULL_PART`.
   3. Dựa trên bảng trung gian `question_abilities`, tính tỷ lệ chính xác cho từng kỹ năng `abilities`.
   4. Áp dụng quy tắc `ability_evaluation_rules` để tự động phân loại kỹ năng của học viên thành `STABLE`, `DEVELOPING`, hoặc `WEAK`.
-  5. Tự động sinh danh sách các kỹ năng bị `WEAK` vào bảng `ability_aim_plan_items` để làm nguyên liệu sinh lộ trình học thích ứng sau này.
+  5. Trực tiếp sinh các `learning_path_items` (Lộ trình học) dựa trên các kỹ năng bị `WEAK`.
 
 ---
 
@@ -108,7 +108,7 @@ Bọc toàn bộ trong `@Transactional`:
    * Duyệt qua từng câu trả lời trong `request.answers`.
    * So khớp với `questions.correct_answer`: Nếu trùng khớp ➔ Tính điểm câu.
    * Gom điểm theo từng `part_id` (từ Part 1 đến Part 7).
-   * Lấy `target_profile_id` từ `ability_aim_plans` của user để đọc ngưỡng trong `target_part_thresholds`:
+   * Lấy `target_profile_id` trực tiếp từ `users` của học viên để đọc ngưỡng trong `target_part_thresholds`:
      * Điểm >= `pass_threshold` ➔ Gán nhãn `directive = 'PASS'`.
      * Điểm >= `confirm_threshold` ➔ Gán nhãn `directive = 'CONFIRM'`.
      * Điểm thấp ➔ Gán nhãn `directive = 'WEAK'`.
@@ -125,16 +125,13 @@ Bọc toàn bộ trong `@Transactional`:
      * Còn lại ➔ `status = 'DEVELOPING'`.
    * Lưu hoặc cập nhật vào bảng `user_abilities` (lưu `accuracy_rate`, `evidence_count`, `status`).
 
-3. **Tạo Backlog Lộ trình (`ability_aim_plan_items`)**:
-   * Lọc toàn bộ các Ability bị xếp loại `WEAK` hoặc `DEVELOPING`.
-   * Thêm vào bảng `ability_aim_plan_items` gắn với `plan_id` hiện tại của học viên để chuẩn bị nguyên liệu cho việc sinh lộ trình học thích ứng.
-
-4. **Sinh Lộ Trình Học Ngay (`learning_paths` + `learning_path_items`)** *(Thực hiện ngay trong cùng transaction nộp bài)*:
+3. **Sinh Lộ Trình Học Ngay (`learning_paths` + `learning_path_items`)** *(Thực hiện ngay trong cùng transaction nộp bài)*:
    * Kiểm tra user đã có `LearningPath` với `status = true` chưa. Nếu chưa:
      * Tạo bản ghi mới trong `learning_paths`: `version = 1`, `status = true`, `started_at = NOW()`.
      * Cập nhật `users.learning_path_id = id vừa tạo`.
-   * Đọc danh sách Module từ `ability_aim_plan_items` (qua `module_id`, sắp xếp theo `modules.sequence`).
-   * Tạo các bản ghi `learning_path_items`:
+   * Lọc toàn bộ các Ability bị xếp loại `WEAK` hoặc `DEVELOPING` của user.
+   * Truy xuất sang bảng `module_abilities` để tìm các Module tương ứng cần học. Sắp xếp danh sách Module theo `modules.sequence`.
+   * Tạo các bản ghi `learning_path_items` trực tiếp từ danh sách module:
      * Item đầu tiên: `status = 'IN_PROGRESS'`.
      * Các item tiếp theo: `status = 'LOCKED'`.
    * **Lý do sinh ngay tại đây:** Khi học viên vào Dashboard sau khi xem báo cáo, hệ thống cần đọc `learning_paths` để hiển thị Module tiếp theo. Nếu không sinh ở đây, Dashboard sẽ trả về `nextModules = []` rỗng.
@@ -153,7 +150,6 @@ Bọc toàn bộ trong `@Transactional`:
 * **`diagnostic_attempts`**: Ghi bản ghi phiên thi (`started_at`, `completed_at`, `score`).
 * **`part_diagnostic_results`**: Ghi kết quả điểm và chỉ thị cho 7 Part.
 * **`user_abilities`**: Ghi hồ sơ năng lực của học viên.
-* **`ability_aim_plan_items`**: Ghi các kỹ năng bị yếu cần đào tạo.
 * **`module_abilities`**: Đọc để tìm Module tương ứng với từng Ability yếu khi sinh lộ trình.
 * **`learning_paths`**: Ghi lộ trình học ngay sau khi nộp bài (nếu chưa có).
 * **`learning_path_items`**: Ghi danh sách Module cần học theo thứ tự ưu tiên.
@@ -172,7 +168,7 @@ Bọc toàn bộ trong `@Transactional`:
 - [ ] Tạo `LearningPathRepository`, `LearningPathItemRepository` (dùng chung với Doc 06).
 - [ ] Tạo DTO Request: `SubmitDiagnosticRequest`, `DiagnosticAnswerItem`.
 - [ ] Tạo DTO Response: `ComprehensiveTestResponse`, `DiagnosticQuestionDto`.
-- [ ] Viết `DiagnosticScoringService` chịu trách nhiệm chấm điểm, ánh xạ ngưỡng Part, tính Ability, sinh Plan Items **và sinh LearningPath**.
+- [ ] Viết `DiagnosticScoringService` chịu trách nhiệm chấm điểm, ánh xạ ngưỡng Part, tính Ability và sinh LearningPath.
 - [ ] Viết `DiagnosticController.java` tại `com.example.be.features.diagnostic.controller` với 2 endpoint: `GET /comprehensive-test` và `POST /submit`.
 
 

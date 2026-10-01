@@ -112,7 +112,7 @@ Quản lý thông tin học viên và theo dõi sự tiến bộ của bộ năn
    * Format `accuracyRate` thành số thập phân (ví dụ `0.85`), `status` dạng Enum (`STABLE`, `DEVELOPING`, `WEAK`).
 2. **Cập nhật Mục tiêu (Khi đổi `targetScore`)**:
    * Tìm `target_profiles` có `target_total_score = targetScore`.
-   * Cập nhật `target_profile_id` trong `ability_aim_plans` của user.
+   * Cập nhật `target_profile_id` trực tiếp trên bảng `users` của user.
 3. **Đổi mật khẩu**:
    * So sánh `oldPassword` với `users.password_hash` bằng `passwordEncoder.matches(...)`. Nếu sai ➔ Ném `400 Bad Request`.
    * Băm `newPassword` bằng BCrypt.
@@ -122,7 +122,7 @@ Quản lý thông tin học viên và theo dõi sự tiến bộ của bộ năn
 
 ## 5. Bảng Cơ Sở Dữ Liệu Liên Quan
 * **`users`**: Đọc/Ghi thông tin cá nhân, mật khẩu, tokenVersion.
-* **`ability_aim_plans`** & **`target_profiles`**: Đọc/Ghi mục tiêu AIM.
+* **`users`** & **`target_profiles`**: Đọc/Ghi mục tiêu AIM qua `target_profile_id`.
 * **`user_abilities`** & **`abilities`**: Đọc ma trận năng lực của học viên.
 
 ---

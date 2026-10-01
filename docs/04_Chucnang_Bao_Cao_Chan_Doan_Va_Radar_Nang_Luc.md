@@ -135,7 +135,7 @@ Sau khi nộp bài thi chẩn đoán toàn diện ở bước 3, Backend tổng 
    * Đọc `diagnostic_attempts`: Lấy ngày giờ hoàn thành, điểm số dự đoán tổng thể.
    * Đọc `part_diagnostic_results`: Lấy điểm của 7 Part và directive tương ứng. Dựa trên directive để sinh feedback tự động phù hợp.
    * Đọc `user_abilities` join với `abilities`: Lấy danh sách 6 nhóm kỹ năng chính hiển thị trên Radar Chart.
-   * Đọc `ability_aim_plans` join với `target_profiles`: Lấy `target_total_score` (ví dụ AIM 650).
+   * Đọc `target_profile_id` từ `users` join với `target_profiles`: Lấy `target_total_score` (ví dụ AIM 650).
 3. **Sinh nhận định AI tổng quan (Summary Insight)**:
    * Tìm các Ability có tỷ lệ chính xác thấp nhất hoặc Part bị xếp `WEAK`/`FULL_PART` để tạo câu nhận xét: *"Phân tích cho thấy khối lượng kỹ năng nghe hiểu nhóm (Part 3-4) đang là rào cản chính..."*.
    * Tính toán số ngày ước tính dựa trên số lượng Ability bị yếu (mỗi Ability tương đương 8 - 12 ngày học).
@@ -148,7 +148,7 @@ Sau khi nộp bài thi chẩn đoán toàn diện ở bước 3, Backend tổng 
 * **`parts`**: Đọc tên Part (`Part 1: Photographs`...).
 * **`user_abilities`**: Đọc `accuracy_rate`, `status`.
 * **`abilities`**: Đọc `code`, `name`.
-* **`ability_aim_plans`** & **`target_profiles`**: Đọc mốc điểm AIM mục tiêu.
+* **`users`** & **`target_profiles`**: Đọc mốc điểm AIM mục tiêu thông qua `target_profile_id`.
 
 ---
 

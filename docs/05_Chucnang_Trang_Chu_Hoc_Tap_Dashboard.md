@@ -106,7 +106,7 @@ Sau khi có kết quả chẩn đoán, học viên bước vào trang chủ họ
 
 ## 5. Bảng Cơ Sở Dữ Liệu Liên Quan
 * **`users`**: Đọc `full_name`, `avatar`.
-* **`ability_aim_plans`** & **`target_profiles`**: Đọc mục tiêu AIM.
+* **`users`** & **`target_profiles`**: Đọc mục tiêu AIM từ `target_profile_id` của user.
 * **`part_diagnostic_results`**: Đọc điểm và chỉ thị 7 Part.
 * **`learning_paths`** & **`learning_path_items`**: Đọc tiến độ lộ trình, module đang học.
 * **`modules`**: Đọc tên module, mô tả.
