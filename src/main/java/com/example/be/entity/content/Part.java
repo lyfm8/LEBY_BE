@@ -21,8 +21,6 @@ public class Part {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private Integer partNo;
 
     @Column(nullable = false, length = 150)
     private String name;

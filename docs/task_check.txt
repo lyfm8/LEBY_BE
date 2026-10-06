@@ -4,6 +4,7 @@ Ngày 26/9/2026
 2. Quản lí user
 3. Bỏ logic 2 bảng ability_aim_plan và ability_aim_plan_item chuyển hoàn toàn sang learning_path
 4. quản lí target profile
+5. Quản lí Part & Ability
 
 *Bug:
 1. 

@@ -2,3 +2,4 @@
 2. Các endpoint phải được bọc trong apiresponse
 3. Sử dụng mapper để map data từ entity - dto
 4. Phải rà soát cấu trúc thư mục của dự án trước.
+5. Không dùng prefix v1, thống nhất chuẩn /api/admin/....
