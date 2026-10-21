@@ -1,5 +1,6 @@
 package com.example.be.entity.ability;
 
+import com.example.be.entity.base.AbstractEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,11 +19,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class TargetProfile {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class TargetProfile extends AbstractEntity {
 
     @Column(nullable = false)
     private Integer targetTotalScore;

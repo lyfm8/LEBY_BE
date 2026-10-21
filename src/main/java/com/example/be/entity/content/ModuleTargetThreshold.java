@@ -1,6 +1,7 @@
 package com.example.be.entity.content;
 
 import com.example.be.entity.ability.TargetProfile;
+import com.example.be.entity.base.AbstractEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,11 +16,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class ModuleTargetThreshold {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class ModuleTargetThreshold extends AbstractEntity {
 
     /**
      * passScore: Integer - Điểm tối thiểu để được tính là PASS module này cho AIM tương ứng.

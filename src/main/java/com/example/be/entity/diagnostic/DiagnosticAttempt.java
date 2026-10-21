@@ -1,5 +1,6 @@
 package com.example.be.entity.diagnostic;
 
+import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.user.User;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -20,11 +21,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class DiagnosticAttempt {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class DiagnosticAttempt extends AbstractEntity {
 
     /**
      * startedAt: LocalDateTime - thời điểm bắt đầu làm bài (cần độ chính xác đến giây cho durationSeconds).

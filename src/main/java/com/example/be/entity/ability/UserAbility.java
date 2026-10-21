@@ -1,5 +1,6 @@
 package com.example.be.entity.ability;
 
+import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.content.Part;
 import com.example.be.entity.user.User;
 import com.example.be.enums.ability.EAbilityStatus;
@@ -7,7 +8,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -21,11 +21,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-public class UserAbility {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class UserAbility extends AbstractEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -41,13 +37,6 @@ public class UserAbility {
      * accuracyRate: Float - tỉ lệ đúng
      */
     private Float accuracyRate;
-
-
-    /**
-     * updatedAt: LocalDateTime - thời điểm cập nhật cuối
-     */
-    @UpdateTimestamp
-    private LocalDateTime updateAt;
 
     /**
      * UserAbility * ---- 1 User.

@@ -1,5 +1,6 @@
 package com.example.be.entity.content;
 
+import com.example.be.entity.base.AbstractEntity;
 import tools.jackson.databind.JsonNode;
 import com.example.be.entity.question.ModuleTestQuestion;
 import jakarta.persistence.*;
@@ -17,11 +18,7 @@ import org.hibernate.type.SqlTypes;
 @Getter
 @Setter
 @NoArgsConstructor
-public class ModuleTestAnswer {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class ModuleTestAnswer extends AbstractEntity {
 
     private Boolean isCorrect;
 

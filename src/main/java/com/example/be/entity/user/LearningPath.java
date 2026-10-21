@@ -1,10 +1,10 @@
 package com.example.be.entity.user;
 
+import com.example.be.entity.base.AbstractEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -19,11 +19,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class LearningPath {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class LearningPath extends AbstractEntity {
 
     /**
      * version: Int - phiên bản lộ trình (từ Class Diagram)
@@ -35,13 +31,6 @@ public class LearningPath {
      */
     @Column(nullable = false)
     private Boolean status = true;
-
-    private LocalDateTime startedAt;
-
-    private LocalDateTime endedAt;
-
-    @CreationTimestamp
-    private LocalDateTime createdAt;
 
     /**
      * LearningPath 1 ---- * LearningPathItem.

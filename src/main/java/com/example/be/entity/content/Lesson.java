@@ -1,6 +1,7 @@
 package com.example.be.entity.content;
 
 import com.example.be.entity.ability.Ability;
+import com.example.be.entity.base.AbstractEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,11 +23,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public abstract class Lesson {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public abstract class Lesson extends AbstractEntity {
 
     @Column(nullable = false, length = 200)
     private String title;

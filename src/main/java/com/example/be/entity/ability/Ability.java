@@ -1,5 +1,6 @@
 package com.example.be.entity.ability;
 
+import com.example.be.entity.base.AbstractEntity;
 import com.example.be.enums.ability.ESection;
 import com.example.be.entity.question.QuestionAbility;
 import jakarta.persistence.*;
@@ -19,11 +20,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Ability {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class Ability extends AbstractEntity {
 
     @Column(nullable = false, length = 100)
     private String name;

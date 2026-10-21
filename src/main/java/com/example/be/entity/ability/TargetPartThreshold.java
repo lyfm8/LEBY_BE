@@ -1,5 +1,6 @@
 package com.example.be.entity.ability;
 
+import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.content.Part;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -16,11 +17,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class TargetPartThreshold {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class TargetPartThreshold extends AbstractEntity {
 
     /**
      * targetScore: Float - điểm mục tiêu cho Part này

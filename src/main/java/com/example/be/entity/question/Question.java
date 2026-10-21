@@ -1,6 +1,7 @@
 package com.example.be.entity.question;
 
 import com.example.be.entity.ability.Ability;
+import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.content.Part;
 import com.example.be.enums.ability.ESection;
 import com.example.be.enums.question.EQuestionType;
@@ -30,11 +31,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public abstract class Question {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public abstract class Question extends AbstractEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

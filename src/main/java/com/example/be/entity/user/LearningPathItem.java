@@ -1,5 +1,6 @@
 package com.example.be.entity.user;
 
+import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.content.Module;
 import com.example.be.enums.content.ELessonStatus;
 import jakarta.persistence.*;
@@ -17,11 +18,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class LearningPathItem {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class LearningPathItem extends AbstractEntity {
 
     @Column(nullable = false)
     private Integer orderNo;

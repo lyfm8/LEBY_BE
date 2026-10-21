@@ -1,6 +1,7 @@
 package com.example.be.entity.content;
 
 import com.example.be.entity.ability.Ability;
+import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.question.ModuleTestQuestion;
 import com.example.be.enums.content.EModuleStatus;
 import jakarta.persistence.*;
@@ -22,11 +23,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Module {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class Module extends AbstractEntity {
 
     @Column(nullable = false, length = 200)
     private String title;

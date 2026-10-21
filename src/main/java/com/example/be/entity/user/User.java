@@ -1,13 +1,12 @@
 package com.example.be.entity.user;
 
+import com.example.be.entity.base.AbstractEntity;
 import com.example.be.enums.user.ELearnerType;
 import com.example.be.enums.user.ERole;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 import com.example.be.entity.ability.TargetProfile;
 
 import java.time.LocalDate;
@@ -23,11 +22,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-public class User {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class User extends AbstractEntity {
 
     @Column(nullable = false)
     private String password;
@@ -52,12 +47,6 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private ELearnerType learnerType;
-
-    @CreationTimestamp
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
 
     /**
      * Phiên bản token của user. Được nhúng vào mọi JWT khi cấp phát.
