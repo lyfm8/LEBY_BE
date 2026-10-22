@@ -19,24 +19,24 @@ import lombok.Setter;
 public class AbilityEvaluationRule extends AbstractEntity {
 
     /**
-     * weakMax: Float - ngưỡng trên của WEAK
+     * level1: Float - ngưỡng mức 1 (thấp nhất - WEAK)
      */
-    private Float weakMax;
+    private Float level1;
+
+    /**
+     * level2: Float - ngưỡng mức 2 (DEVELOPING)
+     */
+    private Float level2;
+
+    /**
+     * level3: Float - ngưỡng mức 3 (cao nhất - STABLE)
+     */
+    private Float level3;
 
     /**
      * minEvidenceCount: Int - số lần tối thiểu để kết luận (đủ tin cậy)
      */
     @Column(nullable = false)
     private Integer minEvidenceCount;
-
-    /**
-     * developingMax: Float - ngưỡng trên của DEVELOPING
-     */
-    private Float developingMax;
-
-    /**
-     * stableMin: Float - ngưỡng dưới của STABLE
-     */
-    private Float stableMin;
 
 }

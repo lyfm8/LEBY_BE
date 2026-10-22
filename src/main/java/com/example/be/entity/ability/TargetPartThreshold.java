@@ -20,27 +20,24 @@ import lombok.Setter;
 public class TargetPartThreshold extends AbstractEntity {
 
     /**
-     * targetScore: Float - điểm mục tiêu cho Part này
+     * level1: Float - ngưỡng mức 1 (thấp nhất - dưới mức này là FULL_PART, cần học lại toàn bộ Part)
      */
-    @Column(nullable = false)
-    private Float targetScore;
+    private Float level1;
 
     /**
-     * passScore: Float - điểm pass tối thiểu
+     * level2: Float - ngưỡng mức 2 (tiếp theo - từ level1 đến level2 là WEAK)
      */
-    @Column(nullable = false)
-    private Float passScore;
+    private Float level2;
 
     /**
-     * confirmingScore: Float - điểm để confirm (không cần học thêm)
+     * level3: Float - ngưỡng mức 3 (từ level2 đến level3 là CONFIRM / Đạt chuẩn)
      */
-    private Float confirmingScore;
+    private Float level3;
 
     /**
-     * fullPartThreshold: Float - ngưỡng dưới để kết luận FULL_PART directive.
-     * Điểm Part thấp hơn ngưỡng này → user yếu toàn Part, phải học từ nền tảng.
+     * level4: Float - ngưỡng mức 4 (cao nhất - đạt hoặc vượt mục tiêu TARGET/PASS)
      */
-    private Float fullPartThreshold;
+    private Float level4;
 
     /**
      * TargetPartThreshold * ---- 1 TargetProfile.
