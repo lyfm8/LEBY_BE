@@ -31,11 +31,12 @@ public abstract class AbstractEntity {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "created_at", updatable = false, columnDefinition = "datetime(6) default current_timestamp(6)")
+    @Column(name = "created_at", updatable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", columnDefinition = "datetime(6) default current_timestamp(6) on update current_timestamp(6)")
+    @Column(name = "updated_at")
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
 }
