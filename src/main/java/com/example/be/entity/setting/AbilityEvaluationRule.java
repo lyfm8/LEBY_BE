@@ -1,4 +1,4 @@
-package com.example.be.entity.ability;
+package com.example.be.entity.setting;
 
 import com.example.be.entity.base.AbstractEntity;
 import jakarta.persistence.*;

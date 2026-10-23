@@ -1,9 +1,9 @@
 package com.example.be.controller.admin;
 
 import com.example.be.common.ApiResponse;
-import com.example.be.dto.request.target.TargetProfileRequest;
-import com.example.be.dto.response.target.TargetProfileResponse;
-import com.example.be.service.ability.TargetProfileService;
+import com.example.be.dto.request.user.TargetProfileRequest;
+import com.example.be.dto.response.user.TargetProfileResponse;
+import com.example.be.service.user.service.TargetProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

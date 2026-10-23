@@ -1,7 +1,6 @@
-package com.example.be.entity.user;
+package com.example.be.entity.content;
 
 import com.example.be.entity.base.AbstractEntity;
-import com.example.be.entity.content.Module;
 import com.example.be.enums.content.ELessonStatus;
 import jakarta.persistence.*;
 import lombok.Getter;

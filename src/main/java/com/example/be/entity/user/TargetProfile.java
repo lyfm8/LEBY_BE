@@ -1,6 +1,7 @@
-package com.example.be.entity.ability;
+package com.example.be.entity.user;
 
 import com.example.be.entity.base.AbstractEntity;
+import com.example.be.entity.setting.TargetPartThreshold;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

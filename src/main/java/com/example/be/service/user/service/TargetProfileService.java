@@ -1,7 +1,7 @@
-package com.example.be.service.ability;
+package com.example.be.service.user.service;
 
-import com.example.be.dto.request.target.TargetProfileRequest;
-import com.example.be.dto.response.target.TargetProfileResponse;
+import com.example.be.dto.request.user.TargetProfileRequest;
+import com.example.be.dto.response.user.TargetProfileResponse;
 
 import java.util.List;
 

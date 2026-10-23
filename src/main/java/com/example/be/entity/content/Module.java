@@ -3,6 +3,7 @@ package com.example.be.entity.content;
 import com.example.be.entity.ability.Ability;
 import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.question.ModuleTestQuestion;
+import com.example.be.entity.setting.ModuleTargetThreshold;
 import com.example.be.enums.content.EModuleStatus;
 import jakarta.persistence.*;
 import lombok.Getter;

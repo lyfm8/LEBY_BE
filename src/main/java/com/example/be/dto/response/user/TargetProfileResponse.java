@@ -1,4 +1,4 @@
-package com.example.be.dto.response.target;
+package com.example.be.dto.response.user;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

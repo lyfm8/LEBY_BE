@@ -7,7 +7,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import com.example.be.entity.ability.TargetProfile;
+import com.example.be.entity.content.LearningPath;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

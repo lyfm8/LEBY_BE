@@ -1,6 +1,6 @@
-package com.example.be.entity.diagnostic;
+package com.example.be.entity.question;
 
-import com.example.be.entity.question.Question;
+import com.example.be.entity.diagnostic.DiagnosticTest;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
