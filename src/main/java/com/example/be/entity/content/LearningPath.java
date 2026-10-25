@@ -1,7 +1,21 @@
 package com.example.be.entity.content;
 
 import com.example.be.entity.base.AbstractEntity;
-import jakarta.persistence.*;
+import com.example.be.entity.diagnostic.DiagnosticAttempt;
+import com.example.be.entity.user.TargetProfile;
+import com.example.be.entity.user.User;
+import com.example.be.enums.content.ELearningPathStatus;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -10,8 +24,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Lộ trình học tập được sinh ra cho User dựa trên AbilityAimPlan.
- * Rule 24: LearningPath là persistent domain object, không phải Use Case.
+ * Lộ trình học tập cá nhân hóa được sinh ra cho User.
+ * Áp dụng Kịch bản B: Gộp trực tiếp TargetProfile và DiagnosticAttempt vào LearningPath
+ * để tối ưu hiệu năng, giảm 1 bảng trung gian và lưu vết trọn vẹn lịch sử lộ trình.
  */
 @Entity
 @Table(name = "learning_paths")
@@ -21,20 +36,40 @@ import java.util.List;
 public class LearningPath extends AbstractEntity {
 
     /**
-     * version: Int - phiên bản lộ trình (từ Class Diagram)
+     * Phiên bản lộ trình (Int).
      */
     private Integer version;
 
     /**
-     * status: Boolean - trạng thái active của lộ trình
+     * Trạng thái lộ trình: ACTIVE (đang học), ARCHIVED (đã lưu trữ khi đổi AIM), COMPLETED (đã hoàn thành).
      */
-    @Column(nullable = false)
-    private Boolean status = true;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private ELearningPathStatus status = ELearningPathStatus.ACTIVE;
 
     /**
-     * LearningPath 1 ---- * LearningPathItem.
-     * Composition: LearningPathItem phụ thuộc vòng đời vào LearningPath.
-     * Rule 13: Dùng CascadeType.ALL + orphanRemoval vì composition.
+     * Học viên sở hữu lộ trình học tập này.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    /**
+     * Mục tiêu điểm TOEIC (AIM) mà lộ trình này hướng tới.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "target_profile_id", nullable = false)
+    private TargetProfile targetProfile;
+
+    /**
+     * Lượt thi chẩn đoán (DiagnosticAttempt) đầu vào làm căn cứ sinh ra lộ trình này.
+     */
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "diagnostic_attempt_id", nullable = true)
+    private DiagnosticAttempt diagnosticAttempt;
+
+    /**
+     * Danh sách các module trong lộ trình học.
      */
     @OneToMany(
             mappedBy = "learningPath",
@@ -43,5 +78,4 @@ public class LearningPath extends AbstractEntity {
             fetch = FetchType.LAZY
     )
     private List<LearningPathItem> items = new ArrayList<>();
-
 }

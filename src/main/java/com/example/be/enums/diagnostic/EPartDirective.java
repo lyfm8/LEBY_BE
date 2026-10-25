@@ -1,8 +1,12 @@
 package com.example.be.enums.diagnostic;
 
+/**
+ * Chỉ thị điều hướng 4 nhánh Tầng 1 cho từng Part sau bài thi chẩn đoán.
+ */
 public enum EPartDirective {
-    LEVEL_1_FULL_PART,          // Mức 1 (Dưới level1 - Thấp nhất): Yếu toàn diện, phải học lại cả Part
-    LEVEL_2_ABILITY_DIAGNOSTIC,  // Mức 2 (Từ level1 -> level2): Cần làm bài chẩn đoán sâu từng kỹ năng
-    LEVEL_3_CONFIRM,             // Mức 3 (Từ level2 -> level3): Đạt chuẩn, chỉ cần luyện tập củng cố
-    LEVEL_4_PASS                 // Mức 4 (Trên level3/level4 - Cao nhất): Quá giỏi, bỏ qua không cần học Part này
+    PASS,                 // Nhánh 1: Đạt chuẩn AIM -> Miễn học Part này (0 module)
+    CONFIRM,              // Nhánh 2: Cận chuẩn -> Xuống Tầng 2 lọc khắt khe (developingThreshold ~50%)
+    ABILITY_DIAGNOSTIC,   // Nhánh 3: Dưới chuẩn -> Xuống Tầng 2 lọc an toàn (stableThreshold ~75%)
+    FULL_PART,            // Nhánh 4: Mất gốc (< fullPartThreshold) -> Bốc toàn bộ 100% module của Part
+
 }

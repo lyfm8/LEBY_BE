@@ -44,6 +44,12 @@ public class Module extends AbstractEntity {
     private EModuleStatus status;
 
     /**
+     * Điểm đỗ mặc định (Fallback) toàn hệ thống nếu chưa cấu hình ngưỡng theo AIM.
+     */
+    @Column(nullable = false)
+    private Integer defaultPassScore;
+
+    /**
      * Module * ---- 1 Part (module thuộc về Part nào trong TOEIC).
      */
     @ManyToOne(fetch = FetchType.LAZY)

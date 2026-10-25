@@ -35,6 +35,12 @@ public abstract class Lesson extends AbstractEntity {
     private String descriptions;
 
     /**
+     * Cờ đánh dấu bài học miễn phí hay yêu cầu trả phí (Freemium). Mặc định true.
+     */
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
+    private Boolean isFree = true;
+
+    /**
      * Lesson * ---- 1 Module.
      * FK nằm ở bảng lessons (base table).
      */

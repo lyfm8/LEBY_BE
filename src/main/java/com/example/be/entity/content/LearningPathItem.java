@@ -1,5 +1,6 @@
 package com.example.be.entity.content;
 
+import com.example.be.entity.ability.Ability;
 import com.example.be.entity.base.AbstractEntity;
 import com.example.be.enums.content.ELessonStatus;
 import jakarta.persistence.*;
@@ -59,4 +60,11 @@ public class LearningPathItem extends AbstractEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "module_id", nullable = false)
     private Module module;
+
+    /**
+     * Module này được đưa vào lộ trình nhằm khắc phục năng lực (Ability) yếu nào của học viên.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ability_id", nullable = true)
+    private Ability ability;
 }

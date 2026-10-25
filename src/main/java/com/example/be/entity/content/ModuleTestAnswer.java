@@ -20,7 +20,14 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor
 public class ModuleTestAnswer extends AbstractEntity {
 
+    @Column(nullable = false)
     private Boolean isCorrect;
+
+    /**
+     * Cờ đánh dấu câu hỏi này học viên muốn xem lại trước khi nộp bài.
+     */
+    @Column(nullable = false)
+    private Boolean isFlagged = false;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSON")

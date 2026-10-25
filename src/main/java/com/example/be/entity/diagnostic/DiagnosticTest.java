@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import com.example.be.enums.diagnostic.ETestType;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,6 +32,19 @@ public class DiagnosticTest extends AbstractEntity {
 
     @Column(nullable = false)
     private Boolean status = true; // Đề này có đang được sử dụng hay không
+
+    /**
+     * Phân loại đề thi: DIAGNOSTIC (45 phút) hoặc FULL_MOCK_TEST (120 phút).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private ETestType testType = ETestType.DIAGNOSTIC;
+
+    /**
+     * Thời lượng làm bài (tính bằng phút), đọc động từ cấu hình đề.
+     */
+    @Column(nullable = false)
+    private Integer durationMinutes;
 
     /**
      * Danh sách câu hỏi nằm trong Đề thi này.

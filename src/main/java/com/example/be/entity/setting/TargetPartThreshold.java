@@ -3,15 +3,29 @@ package com.example.be.entity.setting;
 import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.content.Part;
 import com.example.be.entity.user.TargetProfile;
-import jakarta.persistence.*;
+import com.example.be.enums.diagnostic.EPartDirective;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Ngưỡng điểm của từng Part trong một TargetProfile.
- * Được dùng để đánh giá kết quả Diagnostic và quyết định directive (PASS/CONFIRM/...).
- * Rule 25: TargetPartThreshold là Domain Entity.
+ * Ngưỡng điểm của từng Part trong một TargetProfile (AIM).
+ * Được dùng để đánh giá kết quả Diagnostic và quyết định directive (PASS/CONFIRM/ABILITY_DIAGNOSTIC/FULL_PART).
+ *
+ * SƠ ĐỒ TRỤC ĐIỂM SỐ ĐÁNH GIÁ PART (Thang điểm 0% - 100%):
+ *
+ *   0%                     35%                     60%                 80%           100%
+ *   |------ FULL_PART ------|-------- WEAK ---------|----- CONFIRM ------|---- PASS ---|
+ *   [Mất gốc: học cả Part]  [Dưới chuẩn: soi kỹ]    [Cận chuẩn: soi nhẹ] [Đạt: miễn học]
+ *                           ^                       ^                    ^
+ *                   fullPartThreshold       confirmingScore           passScore
+ *                   (Level 1 - Sàn đáy)   (Level 2 - Cận chuẩn)  (Level 3 - Đích đến)
  */
 @Entity
 @Table(name = "target_part_thresholds")
@@ -21,24 +35,25 @@ import lombok.Setter;
 public class TargetPartThreshold extends AbstractEntity {
 
     /**
-     * level1: Float - ngưỡng mức 1 (thấp nhất - dưới mức này là FULL_PART, cần học lại toàn bộ Part)
+     * Level 3: Điểm đạt chuẩn (PASS) theo AIM.
+     * Nếu điểm thi >= passScore -> Miễn học toàn bộ Part này (0 module).
      */
-    private Float level1;
+    @Column(nullable = false)
+    private Float passScore;
 
     /**
-     * level2: Float - ngưỡng mức 2 (tiếp theo - từ level1 đến level2 là WEAK)
+     * Level 2: Điểm cận chuẩn (CONFIRM).
+     * Nếu confirmingScore <= điểm thi < passScore -> Xuống Tầng 2 lọc khắt khe (developingThreshold).
      */
-    private Float level2;
+    @Column(nullable = true)
+    private Float confirmingScore;
 
     /**
-     * level3: Float - ngưỡng mức 3 (từ level2 đến level3 là CONFIRM / Đạt chuẩn)
+     * Level 1: Điểm sàn mất gốc (FULL_PART).
+     * Nếu điểm thi < fullPartThreshold -> Bốc 100% module của Part, không cần lọc Tầng 2.
      */
-    private Float level3;
-
-    /**
-     * level4: Float - ngưỡng mức 4 (cao nhất - đạt hoặc vượt mục tiêu TARGET/PASS)
-     */
-    private Float level4;
+    @Column(nullable = true)
+    private Float fullPartThreshold;
 
     /**
      * TargetPartThreshold * ---- 1 TargetProfile.
@@ -48,9 +63,29 @@ public class TargetPartThreshold extends AbstractEntity {
     private TargetProfile targetProfile;
 
     /**
-     * TargetPartThreshold * ---- 1 Part (ngưỡng cho Part nào).
+     * TargetPartThreshold * ---- 1 Part (ngưỡng cho Part nào trong 7 Part TOEIC).
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "part_id", nullable = false)
     private Part part;
+
+    /**
+     * Hàm nghiệp vụ tự động phân loại kết quả điểm số thành Directive 4 nhánh Tầng 1.
+     * Giúp Dev không cần phải tự viết if-else phức tạp, tránh sai sót logic so sánh.
+     *
+     * @param actualScore Điểm số phần thi của học viên (ví dụ 75.5f)
+     * @return EPartDirective kết quả phân loại
+     */
+    public EPartDirective determineDirective(float actualScore) {
+        if (this.passScore != null && actualScore >= this.passScore) {
+            return EPartDirective.PASS;
+        }
+        if (this.confirmingScore != null && actualScore >= this.confirmingScore) {
+            return EPartDirective.CONFIRM;
+        }
+        if (this.fullPartThreshold != null && actualScore < this.fullPartThreshold) {
+            return EPartDirective.FULL_PART;
+        }
+        return EPartDirective.ABILITY_DIAGNOSTIC;
+    }
 }

@@ -11,6 +11,8 @@ import com.example.be.entity.content.LearningPath;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Đại diện cho người dùng trong hệ thống.
@@ -58,14 +60,10 @@ public class User extends AbstractEntity {
     private Integer tokenVersion = 0;
 
     /**
-     * User follows 0..1 LearningPath.
-     * FK nằm ở User vì User là owner của LearningPath theo diagram.
-     * Rule 9: OneToOne - User sở hữu LearningPath.
-     * Nullable = true vì cardinality là 0..1 (User có thể chưa có LearningPath).
+     * User 1 ---- * LearningPath (Lịch sử các lộ trình học tập của User theo thời gian).
      */
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "learning_path_id", nullable = true)
-    private LearningPath learningPath;
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    private List<LearningPath> learningPaths = new ArrayList<>();
 
     /**
      * Mốc điểm mục tiêu TOEIC (AIM) của User.

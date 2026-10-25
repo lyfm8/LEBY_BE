@@ -26,12 +26,11 @@ import java.util.List;
  * Chúng reference Question nhưng thuộc về context riêng của chúng.
  */
 @Entity
-@Inheritance(strategy = InheritanceType.JOINED)
 @Table(name = "questions")
 @Getter
 @Setter
 @NoArgsConstructor
-public abstract class Question extends AbstractEntity {
+public class Question extends AbstractEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -76,6 +75,24 @@ public abstract class Question extends AbstractEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "part_id", nullable = true)
     private Part part;
+
+    /**
+     * Giải thích chi tiết câu hỏi (transcript, translation, clue, analysis, vocabulary) theo Phụ lục 1.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "JSON")
+    private JsonNode explanation;
+
+    /**
+     * Câu hỏi cha chứa nội dung bài đọc (Part 6, 7) hoặc audio chung (Part 3, 4).
+     * Nếu là câu hỏi độc lập (Part 1, 2, 5) thì parent = null.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id", nullable = true)
+    private Question parent;
+
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Question> subQuestions = new ArrayList<>();
 
     /**
      * Question 1 ---- * QuestionAbility (M-M với Ability qua entity trung gian).
