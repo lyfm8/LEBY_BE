@@ -57,9 +57,6 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
     @Override
     @Transactional
     public LearningPath generateAdaptivePath(DiagnosticAttempt attempt, Long targetProfileId) {
-        log.info("Bắt đầu sinh lộ trình thích ứng cho User ID: {}, Attempt ID: {}, TargetProfile ID: {}",
-                attempt.getUser().getId(), attempt.getId(), targetProfileId);
-
         TargetProfile targetProfile = targetProfileRepo.findById(targetProfileId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy TargetProfile với ID: " + targetProfileId));
 
@@ -68,10 +65,9 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
                 .ifPresent(oldPath -> {
                     oldPath.setStatus(ELearningPathStatus.ARCHIVED);
                     learningPathRepo.save(oldPath);
-                    log.info("Đã chuyển lộ trình cũ ID {} sang trạng thái ARCHIVED", oldPath.getId());
                 });
 
-        // Khởi tạo Lộ trình mới (Kịch bản B: gộp trực tiếp TargetProfile và DiagnosticAttempt)
+        // Khởi tạo Lộ trình mới 
         LearningPath learningPath = new LearningPath();
         learningPath.setUser(attempt.getUser());
         learningPath.setTargetProfile(targetProfile);
@@ -98,20 +94,14 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
                 EPartDirective directive = threshold.determineDirective(partScore);
                 partResult.setDirective(directive);
 
-                log.info("Part {}: Điểm = {}%, Directive = {}", partId, partScore, directive);
-
                 // XỬ LÝ 4 NHÁNH TẦNG 1
                 switch (directive) {
                     case PASS:
-                    case LEVEL_4_PASS:
                         // Nhánh 1: Đạt chuẩn AIM -> MIỄN HỌC 100% Part này (0 module)
-                        log.info("Part {} đạt chuẩn PASS ({}%), miễn học toàn bộ part", partId, partScore);
                         break;
 
                     case FULL_PART:
-                    case LEVEL_1_FULL_PART:
                         // Nhánh 4: Mất gốc (< fullPartThreshold) -> Bốc toàn bộ 100% module của Part theo sequence
-                        log.info("Part {} mất gốc FULL_PART ({}%), bốc toàn bộ module", partId, partScore);
                         List<Module> allModulesOfPart = moduleRepo.findByPartIdOrderBySequenceAsc(partId);
                         for (Module m : allModulesOfPart) {
                             selectedModuleMap.putIfAbsent(m.getId(), new SelectedModuleEntry(m, null));
@@ -119,9 +109,7 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
                         break;
 
                     case CONFIRM:
-                    case LEVEL_3_CONFIRM:
                     case ABILITY_DIAGNOSTIC:
-                    case LEVEL_2_ABILITY_DIAGNOSTIC:
                         // Nhánh 2 & 3: Xuống Tầng 2 soi Ability vi mô
                         // CONFIRM dùng developingThreshold (Seed Data mẫu 50%)
                         // ABILITY_DIAGNOSTIC dùng stableThreshold (Seed Data mẫu 75%)
@@ -151,9 +139,6 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
             order++;
         }
 
-        log.info("Sinh lộ trình thành công cho LearningPath ID: {}, tổng số Module: {}",
-                learningPath.getId(), finalEntries.size());
-
         return learningPath;
     }
 
@@ -175,7 +160,7 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
                 isWeak = rule.isWeak(abilityScore.getAccuracyRate(), directive);
             } else {
                 // Fallback an toàn nếu chưa kịp gán rule cho Ability
-                float fallbackCutoff = (directive == EPartDirective.CONFIRM)
+                float fallbackCutoff = (directive == EPartDirective.CONFIRM || directive == EPartDirective.LEVEL_3_CONFIRM)
                         ? 50.0f
                         : 75.0f;
                 isWeak = abilityScore.getAccuracyRate() < fallbackCutoff;
@@ -183,9 +168,6 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
 
             // ĐÁNH GIÁ NHỊ PHÂN TẦNG 2: Nếu tỷ lệ đúng < ngưỡng cắt -> BỐC MODULE
             if (isWeak) {
-                log.info("Ability ID {} ({}) bị đánh giá YẾU ({}%), bốc module bổ trợ",
-                        abilityScore.getAbilityId(), abilityScore.getAbilityName(), abilityScore.getAccuracyRate());
-
                 List<Module> modulesForAbility = moduleRepo.findByAbilityId(abilityScore.getAbilityId());
                 for (Module m : modulesForAbility) {
                     Ability abilityObj = new Ability();
