@@ -1,5 +1,6 @@
 package com.example.be.entity.ability;
 
+import com.example.be.entity.base.AbstractEntity;
 import com.example.be.enums.ability.ESection;
 import com.example.be.entity.question.QuestionAbility;
 import jakarta.persistence.*;
@@ -19,28 +20,20 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Ability {
+public class Ability extends AbstractEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, unique = true, length = 50)
-    private String code;
-
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
 
-    /**
-     * sections: ESection - LISTENING hoặc READING.
-     * Rule 43 (DECISION): Giá trị enum LISTENING/READING dựa trên context TOEIC.
-     * Cần xác nhận lại nếu có thêm giá trị.
-     */
     @Enumerated(EnumType.STRING)
     private ESection sections;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "part_id", nullable = false)
+    private com.example.be.entity.content.Part part;
 
     /**
      * Ability 1 ---- * QuestionAbility (many-to-many trung gian với Question).

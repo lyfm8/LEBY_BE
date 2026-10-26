@@ -1,5 +1,6 @@
 package com.example.be.entity.content;
 
+import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.user.User;
 import com.example.be.enums.diagnostic.ETestResult;
 import jakarta.persistence.*;
@@ -22,11 +23,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class ModuleTestAttempt {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class ModuleTestAttempt extends AbstractEntity {
 
     /**
      * score: Int - điểm đạt được trong lần attempt này

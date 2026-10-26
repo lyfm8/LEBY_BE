@@ -8,6 +8,7 @@ import com.example.be.dto.request.auth.LoginRequest;
 import com.example.be.dto.request.auth.RegisterRequest;
 import com.example.be.dto.request.auth.SendOtpRequest;
 import com.example.be.dto.response.auth.AuthResponse;
+import com.example.be.mapper.AuthMapper;
 import com.example.be.enums.auth.OtpPurpose;
 import com.example.be.enums.user.ERole;
 import com.example.be.entity.user.User;
@@ -55,6 +56,7 @@ public class AuthServiceImpl implements AuthService {
     private final CookieProperties cookieProperties;
     private final OtpService otpService;
     private final MailService mailService;
+    private final AuthMapper authMapper;
 
     // -----------------------------------------------------------------------
     // Send OTP
@@ -107,18 +109,14 @@ public class AuthServiceImpl implements AuthService {
         // 2. Xác minh OTP — throw BaseException nếu sai/hết hạn/không tồn tại.
         otpService.verify(request.getEmail(), OtpPurpose.REGISTER, request.getOtp());
 
-        // 3. Kiểm tra email và username chưa tồn tại.
+        // 3. Kiểm tra email chưa tồn tại.
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new BaseException(ErrorCode.EMAIL_ALREADY_EXISTS);
-        }
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new BaseException(ErrorCode.USERNAME_ALREADY_EXISTS);
         }
 
         // 4. Tạo và lưu User mới.
         User user = new User();
         user.setEmail(request.getEmail());
-        user.setUsername(request.getUsername());
         user.setFullName(request.getFullName());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(ERole.STUDENT);
@@ -131,7 +129,7 @@ public class AuthServiceImpl implements AuthService {
         // 5. Cấp JWT và gắn Cookie.
         issueTokenCookies(savedUser, response);
 
-        return new AuthResponse(savedUser);
+        return authMapper.toResponse(savedUser);
     }
 
     // -----------------------------------------------------------------------
@@ -154,10 +152,14 @@ public class AuthServiceImpl implements AuthService {
             throw new BaseException(ErrorCode.INVALID_CREDENTIALS);
         }
 
+        if (!Boolean.TRUE.equals(user.getIsActive())) {
+            throw new BaseException(ErrorCode.USER_IS_LOCKED);
+        }
+
         log.info("[AUTH] User logged in: id={}, email={}", user.getId(), user.getEmail());
 
         issueTokenCookies(user, response);
-        return new AuthResponse(user);
+        return authMapper.toResponse(user);
     }
 
     // -----------------------------------------------------------------------

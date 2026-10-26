@@ -1,5 +1,6 @@
 package com.example.be.entity.diagnostic;
 
+import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.content.Part;
 import com.example.be.enums.diagnostic.EPartDirective;
 import jakarta.persistence.*;
@@ -16,11 +17,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class PartDiagnosticResult {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class PartDiagnosticResult extends AbstractEntity {
 
     @Column(nullable = false)
     private Float score;

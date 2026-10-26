@@ -1,5 +1,6 @@
 package com.example.be.entity.content;
 
+import com.example.be.entity.base.AbstractEntity;
 import tools.jackson.databind.JsonNode;
 import com.example.be.entity.question.ModuleTestQuestion;
 import jakarta.persistence.*;
@@ -17,13 +18,16 @@ import org.hibernate.type.SqlTypes;
 @Getter
 @Setter
 @NoArgsConstructor
-public class ModuleTestAnswer {
+public class ModuleTestAnswer extends AbstractEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
+    @Column(nullable = false)
     private Boolean isCorrect;
+
+    /**
+     * Cờ đánh dấu câu hỏi này học viên muốn xem lại trước khi nộp bài.
+     */
+    @Column(nullable = false)
+    private Boolean isFlagged = false;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSON")

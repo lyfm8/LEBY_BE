@@ -113,18 +113,18 @@ public enum ErrorCode {
             "Resource not found"
     ),
 
+    /** HTTP 403 - Tài khoản đã bị khoá. */
+    USER_IS_LOCKED(
+            HttpStatus.FORBIDDEN,
+            "USER_IS_LOCKED",
+            "Tài khoản bạn đã bị khoá hãy liên hệ quản trị viên để khiếu nại!"
+    ),
+
     /** HTTP 409 - Email đã tồn tại trong hệ thống. */
     EMAIL_ALREADY_EXISTS(
             HttpStatus.CONFLICT,
             "EMAIL_ALREADY_EXISTS",
             "Email already exists"
-    ),
-
-    /** HTTP 409 - Username đã được sử dụng. */
-    USERNAME_ALREADY_EXISTS(
-            HttpStatus.CONFLICT,
-            "USERNAME_ALREADY_EXISTS",
-            "Username already exists"
     ),
 
     // -----------------------------------------------------------------------

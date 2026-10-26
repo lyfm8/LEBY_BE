@@ -1,10 +1,13 @@
 package com.example.be.entity.diagnostic;
 
+import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.user.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import com.example.be.enums.diagnostic.EAttemptStatus;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -20,11 +23,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class DiagnosticAttempt {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class DiagnosticAttempt extends AbstractEntity {
 
     /**
      * startedAt: LocalDateTime - thời điểm bắt đầu làm bài (cần độ chính xác đến giây cho durationSeconds).
@@ -35,6 +34,18 @@ public class DiagnosticAttempt {
      * completedAt: LocalDateTime - thời điểm nộp bài.
      */
     private LocalDateTime completedAt;
+
+    /**
+     * Trạng thái bài thi: IN_PROGRESS (đang làm), SUBMITTED (đã nộp), TIMED_OUT (hết giờ), ABANDONED (bỏ thi).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private EAttemptStatus status;
+
+    /**
+     * Thời gian làm bài thực tế tính bằng giây.
+     */
+    private Integer durationSeconds;
 
     /**
      * DiagnosticAttempt * ---- 1 User.
@@ -60,4 +71,15 @@ public class DiagnosticAttempt {
             fetch = FetchType.LAZY
     )
     private List<PartDiagnosticResult> partResults = new ArrayList<>();
+
+    /**
+     * Danh sách câu trả lời chi tiết của học viên trong lượt thi này.
+     */
+    @OneToMany(
+            mappedBy = "diagnosticAttempt",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    private List<DiagnosticAnswer> answers = new ArrayList<>();
 }

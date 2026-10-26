@@ -1,6 +1,9 @@
 package com.example.be.repository.user;
 
+import com.example.be.enums.user.ERole;
 import com.example.be.entity.user.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -13,11 +16,19 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
+    @Query("SELECT u FROM User u WHERE " +
+           "(:keyword IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "AND (:role IS NULL OR u.role = :role) " +
+           "AND (:isActive IS NULL OR u.isActive = :isActive)")
+    Page<User> findUsersByFilters(@Param("keyword") String keyword, 
+                                  @Param("role") ERole role, 
+                                  @Param("isActive") Boolean isActive, 
+                                  Pageable pageable);
+
     Optional<User> findByEmail(String email);
 
     boolean existsByEmail(String email);
 
-    boolean existsByUsername(String username);
 
     /**
      * Tăng tokenVersion thêm 1 trực tiếp trong DB mà không cần load entity lên.
@@ -27,4 +38,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Transactional
     @Query("UPDATE User u SET u.tokenVersion = u.tokenVersion + 1 WHERE u.id = :id")
     void incrementTokenVersion(@Param("id") Long id);
+
+    long countByTargetProfileId(Long targetProfileId);
 }

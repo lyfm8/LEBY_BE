@@ -1,5 +1,6 @@
 package com.example.be.entity.content;
 
+import com.example.be.entity.base.AbstractEntity;
 import com.example.be.enums.ability.ESection;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -15,14 +16,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Part {
+public class Part extends AbstractEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false)
-    private Integer partNo;
 
     @Column(nullable = false, length = 150)
     private String name;

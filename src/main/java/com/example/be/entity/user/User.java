@@ -1,16 +1,18 @@
 package com.example.be.entity.user;
 
+import com.example.be.entity.base.AbstractEntity;
 import com.example.be.enums.user.ELearnerType;
 import com.example.be.enums.user.ERole;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import com.example.be.entity.content.LearningPath;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Đại diện cho người dùng trong hệ thống.
@@ -22,14 +24,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-public class User {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false, unique = true, length = 100)
-    private String username;
+public class User extends AbstractEntity {
 
     @Column(nullable = false)
     private String password;
@@ -55,12 +50,6 @@ public class User {
     @Enumerated(EnumType.STRING)
     private ELearnerType learnerType;
 
-    @CreationTimestamp
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
-
     /**
      * Phiên bản token của user. Được nhúng vào mọi JWT khi cấp phát.
      * JwtAuthenticationFilter so sánh giá trị này với version trong token payload.
@@ -71,12 +60,17 @@ public class User {
     private Integer tokenVersion = 0;
 
     /**
-     * User follows 0..1 LearningPath.
-     * FK nằm ở User vì User là owner của LearningPath theo diagram.
-     * Rule 9: OneToOne - User sở hữu LearningPath.
-     * Nullable = true vì cardinality là 0..1 (User có thể chưa có LearningPath).
+     * User 1 ---- * LearningPath (Lịch sử các lộ trình học tập của User theo thời gian).
      */
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "learning_path_id", nullable = true)
-    private LearningPath learningPath;
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    private List<LearningPath> learningPaths = new ArrayList<>();
+
+    /**
+     * Mốc điểm mục tiêu TOEIC (AIM) của User.
+     * Logic nghiệp vụ: 1 User chỉ có 1 mục tiêu duy nhất.
+     * DB: ManyToOne vì nhiều User có thể cùng chọn 1 mốc (ví dụ 650).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "target_profile_id")
+    private TargetProfile targetProfile;
 }

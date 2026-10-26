@@ -1,7 +1,9 @@
 package com.example.be.entity.content;
 
 import com.example.be.entity.ability.Ability;
+import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.question.ModuleTestQuestion;
+import com.example.be.entity.setting.ModuleTargetThreshold;
 import com.example.be.enums.content.EModuleStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -22,11 +24,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Module {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class Module extends AbstractEntity {
 
     @Column(nullable = false, length = 200)
     private String title;
@@ -44,6 +42,12 @@ public class Module {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EModuleStatus status;
+
+    /**
+     * Điểm đỗ mặc định (Fallback) toàn hệ thống nếu chưa cấu hình ngưỡng theo AIM.
+     */
+    @Column(nullable = false)
+    private Integer defaultPassScore;
 
     /**
      * Module * ---- 1 Part (module thuộc về Part nào trong TOEIC).
