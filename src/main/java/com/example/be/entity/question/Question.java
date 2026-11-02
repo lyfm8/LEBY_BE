@@ -17,13 +17,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Abstract Question - base class cho tất cả câu hỏi trong hệ thống.
- * Strategy: JOINED - để normalize và tránh quá nhiều nullable columns.
- *
- * DECISION: Question là abstract domain entity với JOINED strategy.
- * PracticeQuestion, ModuleTestQuestion, DiagnosticAttemptQuestion là
- * association/join entities (KHÔNG phải subclass của Question).
- * Chúng reference Question nhưng thuộc về context riêng của chúng.
+ * Question - base entity cho tất cả câu hỏi trong hệ thống ngân hàng đề thi.
+ * Hỗ trợ các liên kết media độc lập: audioUrl, videoUrl, imageUrl.
  */
 @Entity
 @Table(name = "questions")
@@ -40,7 +35,25 @@ public class Question extends AbstractEntity {
     private String name;
 
     /**
-     * questionData: JSON - nội dung câu hỏi (text, hình ảnh, audio...)
+     * Đường dẫn file âm thanh câu hỏi / bài nghe (Audio clip / Listening audio).
+     */
+    @Column(name = "audio_url", length = 500)
+    private String audioUrl;
+
+    /**
+     * Đường dẫn video liên quan đến câu hỏi / giải thích (Video clip).
+     */
+    @Column(name = "video_url", length = 500)
+    private String videoUrl;
+
+    /**
+     * Đường dẫn hình ảnh câu hỏi / bài đọc / biểu đồ minh họa (Photo / Diagram / Reading scan).
+     */
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    /**
+     * questionData: JSON - nội dung câu hỏi (text, các lựa chọn A/B/C/D...)
      * Rule 17: Dùng JsonNode + @JdbcTypeCode(SqlTypes.JSON), không dùng String.
      */
     @JdbcTypeCode(SqlTypes.JSON)

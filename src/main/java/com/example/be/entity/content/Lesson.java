@@ -8,22 +8,15 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Abstract base class cho Lesson (VideoLesson và PracticeLesson).
- * Rule 20: Dùng JPA Inheritance thay vì biến thành relationship.
- * Strategy: JOINED - VideoLesson và PracticeLesson có data riêng biệt.
- *
- * DECISION: Chọn JOINED strategy vì:
- * - VideoLesson có uri, duration riêng
- * - PracticeLesson có instructions, practiceQuestions riêng
- * - Tránh nullable columns dư thừa của SINGLE_TABLE
+ * Entity đại diện cho bài học (Lesson) trong một Module học tập.
+ * Hỗ trợ các liên kết media độc lập: audioUrl, videoUrl, imageUrl.
  */
 @Entity
-@Inheritance(strategy = InheritanceType.JOINED)
 @Table(name = "lessons")
 @Getter
 @Setter
 @NoArgsConstructor
-public abstract class Lesson extends AbstractEntity {
+public class Lesson extends AbstractEntity {
 
     @Column(nullable = false, length = 200)
     private String title;
@@ -35,6 +28,24 @@ public abstract class Lesson extends AbstractEntity {
     private String descriptions;
 
     /**
+     * Đường dẫn file âm thanh bài học (Listening / Audio guide).
+     */
+    @Column(name = "audio_url", length = 500)
+    private String audioUrl;
+
+    /**
+     * Đường dẫn video bài giảng (Video lecture).
+     */
+    @Column(name = "video_url", length = 500)
+    private String videoUrl;
+
+    /**
+     * Đường dẫn hình ảnh minh họa / sơ đồ / tài liệu trực quan (Picture / Diagram).
+     */
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    /**
      * Cờ đánh dấu bài học miễn phí hay yêu cầu trả phí (Freemium). Mặc định true.
      */
     @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
@@ -42,7 +53,7 @@ public abstract class Lesson extends AbstractEntity {
 
     /**
      * Lesson * ---- 1 Module.
-     * FK nằm ở bảng lessons (base table).
+     * FK nằm ở bảng lessons.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "module_id", nullable = false)
@@ -51,7 +62,6 @@ public abstract class Lesson extends AbstractEntity {
     /**
      * Lesson "references" Ability - lesson này train ability nào.
      * Đây là aggregation, không cascade delete.
-     * Rule 14: Aggregation không đồng nghĩa CascadeType.ALL.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ability_id", nullable = true)

@@ -160,7 +160,7 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
                 isWeak = rule.isWeak(abilityScore.getAccuracyRate(), directive);
             } else {
                 // Fallback an toàn nếu chưa kịp gán rule cho Ability
-                float fallbackCutoff = (directive == EPartDirective.CONFIRM || directive == EPartDirective.LEVEL_3_CONFIRM)
+                float fallbackCutoff = (directive == EPartDirective.CONFIRM)
                         ? 50.0f
                         : 75.0f;
                 isWeak = abilityScore.getAccuracyRate() < fallbackCutoff;
