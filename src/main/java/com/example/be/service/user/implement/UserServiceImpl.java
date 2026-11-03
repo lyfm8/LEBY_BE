@@ -4,7 +4,7 @@ import com.example.be.service.user.service.UserService;
 import com.example.be.dto.response.user.UserResponse;
 import com.example.be.enums.user.ERole;
 import com.example.be.entity.user.User;
-import com.example.be.mapper.UserMapper;
+import com.example.be.mapper.user.UserMapper;
 import com.example.be.exception.BaseException;
 import com.example.be.exception.ErrorCode;
 import com.example.be.repository.user.UserRepository;

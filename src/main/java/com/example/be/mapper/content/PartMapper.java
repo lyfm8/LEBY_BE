@@ -1,10 +1,13 @@
-package com.example.be.mapper;
+package com.example.be.mapper.content;
 
 import com.example.be.dto.request.content.PartRequest;
 import com.example.be.dto.response.content.PartResponse;
 import com.example.be.entity.content.Part;
 import org.springframework.stereotype.Component;
 
+/**
+ * Mapper chuyển đổi giữa Entity Part và các DTO Request/Response.
+ */
 @Component
 public class PartMapper {
 
@@ -31,3 +34,4 @@ public class PartMapper {
         return part;
     }
 }
+
