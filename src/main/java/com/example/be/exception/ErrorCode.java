@@ -127,6 +127,27 @@ public enum ErrorCode {
             "Email already exists"
     ),
 
+    /** HTTP 404 - Không tìm thấy bản ghi media. */
+    MEDIA_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "MEDIA_NOT_FOUND",
+            "Bản ghi media không tồn tại trong hệ thống"
+    ),
+
+    /** HTTP 400 - Danh sách media chứa public_id bị trùng hoặc đã tồn tại. */
+    MEDIA_DUPLICATE(
+            HttpStatus.BAD_REQUEST,
+            "MEDIA_DUPLICATE",
+            "Public ID của media bị trùng lặp hoặc đã tồn tại"
+    ),
+
+    /** HTTP 500 - Cấu hình Cloudinary không hợp lệ hoặc thiếu thông tin. */
+    MEDIA_CONFIG_INVALID(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "MEDIA_CONFIG_INVALID",
+            "Cấu hình lưu trữ media chưa được thiết lập đầy đủ"
+    ),
+
     // -----------------------------------------------------------------------
     // 422 - Business Rule Violations (LEBY-specific)
     // -----------------------------------------------------------------------
