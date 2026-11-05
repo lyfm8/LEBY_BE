@@ -8,7 +8,7 @@ import com.example.be.dto.request.auth.LoginRequest;
 import com.example.be.dto.request.auth.RegisterRequest;
 import com.example.be.dto.request.auth.SendOtpRequest;
 import com.example.be.dto.response.auth.AuthResponse;
-import com.example.be.mapper.AuthMapper;
+import com.example.be.mapper.auth.AuthMapper;
 import com.example.be.enums.auth.OtpPurpose;
 import com.example.be.enums.user.ERole;
 import com.example.be.entity.user.User;

@@ -17,7 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/parts")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
 public class AdminPartController {
 
     private final PartService partService;

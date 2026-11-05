@@ -1,4 +1,4 @@
-package com.example.be.mapper;
+package com.example.be.mapper.ability;
 
 import com.example.be.dto.request.ability.AbilityRequest;
 import com.example.be.dto.response.ability.AbilityResponse;
@@ -6,6 +6,9 @@ import com.example.be.entity.ability.Ability;
 import com.example.be.entity.content.Part;
 import org.springframework.stereotype.Component;
 
+/**
+ * Mapper chuyển đổi giữa Entity Ability và các DTO Request/Response.
+ */
 @Component
 public class AbilityMapper {
 
