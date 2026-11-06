@@ -55,6 +55,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         String token = extractTokenFromCookie(request, cookieProperties.getAccessTokenName());
+        if (token == null) {
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                token = authHeader.substring(7);
+            }
+        }
 
         if (token == null) {
             // Không có Cookie → tiếp tục filter chain.

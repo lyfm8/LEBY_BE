@@ -1,11 +1,15 @@
-package com.example.be.mapper;
+package com.example.be.mapper.auth;
 
 import com.example.be.dto.response.auth.AuthResponse;
 import com.example.be.entity.user.User;
 import org.springframework.stereotype.Component;
 
+/**
+ * Mapper chuyển đổi giữa Entity User và DTO AuthResponse.
+ */
 @Component
 public class AuthMapper {
+
     public AuthResponse toResponse(User user) {
         if (user == null) {
             return null;

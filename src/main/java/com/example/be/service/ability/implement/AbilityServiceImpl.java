@@ -6,7 +6,7 @@ import com.example.be.entity.ability.Ability;
 import com.example.be.entity.content.Part;
 import com.example.be.exception.BaseException;
 import com.example.be.exception.ErrorCode;
-import com.example.be.mapper.AbilityMapper;
+import com.example.be.mapper.ability.AbilityMapper;
 import com.example.be.repository.ability.AbilityRepository;
 import com.example.be.repository.content.PartRepository;
 import com.example.be.repository.question.QuestionAbilityRepository;
