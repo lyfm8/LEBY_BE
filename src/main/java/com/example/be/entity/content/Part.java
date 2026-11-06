@@ -2,7 +2,11 @@ package com.example.be.entity.content;
 
 import com.example.be.entity.base.AbstractEntity;
 import com.example.be.enums.ability.ESection;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

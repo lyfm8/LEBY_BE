@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,7 +36,7 @@ public class AbilityServiceImpl implements AbilityService {
         return abilityRepository.findByPartIdOrderByIdAsc(partId)
                 .stream()
                 .map(abilityMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
