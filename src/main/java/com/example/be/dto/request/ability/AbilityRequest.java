@@ -15,5 +15,6 @@ public class AbilityRequest {
     @NotBlank(message = "Tên Ability không được để trống")
     private String name;
 
+    @NotBlank(message = "Mô tả Ability không được để trống")
     private String description;
 }

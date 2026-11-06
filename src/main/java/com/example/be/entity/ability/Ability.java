@@ -1,9 +1,18 @@
 package com.example.be.entity.ability;
 
 import com.example.be.entity.base.AbstractEntity;
+import com.example.be.entity.content.Part;
 import com.example.be.enums.ability.ESection;
 import com.example.be.entity.question.QuestionAbility;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -33,7 +42,7 @@ public class Ability extends AbstractEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "part_id", nullable = false)
-    private com.example.be.entity.content.Part part;
+    private Part part;
 
     /**
      * Ability 1 ---- * QuestionAbility (many-to-many trung gian với Question).
