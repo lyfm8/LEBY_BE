@@ -1,4 +1,5 @@
 package com.example.be.entity.ability;
+package com.example.be.entity.content;
 
 import com.example.be.entity.base.AbstractEntity;
 import com.example.be.enums.ability.ESection;
@@ -33,7 +34,7 @@ public class Ability extends AbstractEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "part_id", nullable = false)
-    private com.example.be.entity.content.Part part;
+    private Part part;
 
     /**
      * Ability 1 ---- * QuestionAbility (many-to-many trung gian với Question).
