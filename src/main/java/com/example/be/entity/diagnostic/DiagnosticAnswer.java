@@ -2,7 +2,6 @@ package com.example.be.entity.diagnostic;
 
 import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.question.Question;
-import tools.jackson.databind.JsonNode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -12,8 +11,6 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 /**
  * Lưu câu trả lời chi tiết của học viên trong bài Diagnostic Test & Mock Test.
@@ -26,11 +23,10 @@ import org.hibernate.type.SqlTypes;
 public class DiagnosticAnswer extends AbstractEntity {
 
     /**
-     * Đáp án học viên chọn (ví dụ: {"selected": "A"}).
+     * Đáp án học viên chọn dạng chuỗi JSON (ví dụ: {"selected": "A"}).
      */
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "JSON")
-    private JsonNode userAnswer;
+    @Column(name = "user_answer", columnDefinition = "JSON")
+    private String userAnswer;
 
     /**
      * Kết quả đúng hay sai.
@@ -57,4 +53,5 @@ public class DiagnosticAnswer extends AbstractEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "question_id", nullable = false)
     private Question question;
+
 }

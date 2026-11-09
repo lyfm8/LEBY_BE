@@ -22,5 +22,7 @@ public class SavedMediaResponse {
     private Long bytes;
     private Integer width;
     private Integer height;
+    private String originalFilename;
+    private Double duration;
     private String status;
 }

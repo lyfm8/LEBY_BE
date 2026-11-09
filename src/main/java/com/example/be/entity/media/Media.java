@@ -80,6 +80,18 @@ public class Media extends AbstractEntity {
     private Integer height;
 
     /**
+     * Tên tệp tin gốc khi người dùng tải lên từ máy khách (Original Filename).
+     */
+    @Column(name = "original_filename")
+    private String originalFilename;
+
+    /**
+     * Thời lượng phát của tệp tin đa phương tiện tính theo giây (áp dụng cho audio/video).
+     */
+    @Column(name = "duration")
+    private Double duration;
+
+    /**
      * Trạng thái vòng đời của media (PENDING hoặc ACTIVE).
      */
     @Enumerated(EnumType.STRING)

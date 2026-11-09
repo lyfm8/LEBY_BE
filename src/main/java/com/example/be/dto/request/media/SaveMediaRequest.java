@@ -48,4 +48,11 @@ public class SaveMediaRequest {
 
     @Positive(message = "height phải lớn hơn 0")
     private Integer height;
+
+    @JsonProperty("original_filename")
+    @Size(max = 255, message = "original_filename không được vượt quá 255 ký tự")
+    private String originalFilename;
+
+    @Positive(message = "duration phải lớn hơn 0")
+    private Double duration;
 }

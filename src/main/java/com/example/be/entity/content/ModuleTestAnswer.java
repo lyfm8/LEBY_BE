@@ -1,14 +1,16 @@
 package com.example.be.entity.content;
 
 import com.example.be.entity.base.AbstractEntity;
-import tools.jackson.databind.JsonNode;
 import com.example.be.entity.question.ModuleTestQuestion;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 /**
  * Câu trả lời của User cho một ModuleTestQuestion trong một ModuleTestAttempt.
@@ -29,9 +31,11 @@ public class ModuleTestAnswer extends AbstractEntity {
     @Column(nullable = false)
     private Boolean isFlagged = false;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "JSON")
-    private JsonNode userAnswer;
+    /**
+     * Đáp án học viên chọn dạng chuỗi JSON.
+     */
+    @Column(name = "user_answer", columnDefinition = "JSON")
+    private String userAnswer;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "module_test_attempt_id", nullable = false)

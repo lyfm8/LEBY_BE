@@ -1,10 +1,17 @@
 package com.example.be.enums.question;
 
+/**
+ * Phân loại hình thức tương tác của câu hỏi trong hệ thống LEBY.
+ */
 public enum EQuestionType {
-    MULTIPLE_CHOICE,
-    //FILL_BLANK,
-    //DRAG_DROP,
-    TRUE_FALSE,
+
+    /**
+     * Câu hỏi trắc nghiệm một đáp án đúng duy nhất (chuẩn toàn bộ đề thi TOEIC).
+     */
     SINGLE_CHOICE,
-    //MATCHING
+
+    /**
+     * Dạng điền khuyết (dự phòng phục vụ các bài tập bổ trợ ngữ pháp/từ vựng trong Lesson).
+     */
+    FILL_IN_BLANK
 }
