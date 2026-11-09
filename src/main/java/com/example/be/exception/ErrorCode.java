@@ -141,6 +141,34 @@ public enum ErrorCode {
             "Public ID của media bị trùng lặp hoặc đã tồn tại"
     ),
 
+    /** HTTP 404 - Không tìm thấy câu hỏi. */
+    QUESTION_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "QUESTION_NOT_FOUND",
+            "Không tìm thấy câu hỏi trong hệ thống"
+    ),
+
+    /** HTTP 409 - Câu hỏi đang được sử dụng trong đề thi, không thể xóa. */
+    QUESTION_IN_USE(
+            HttpStatus.CONFLICT,
+            "QUESTION_IN_USE",
+            "Câu hỏi này đang được sử dụng trong đề thi hoạt động. Bạn chỉ có thể chỉnh sửa nội dung hoặc tạm ẩn câu hỏi"
+    ),
+
+    /** HTTP 400 - Dữ liệu câu hỏi không hợp lệ hoặc thiếu phương án đúng. */
+    QUESTION_INVALID(
+            HttpStatus.BAD_REQUEST,
+            "QUESTION_INVALID",
+            "Vui lòng nhập nội dung câu hỏi và phương án đúng"
+    ),
+
+    /** HTTP 400 - Tệp tin đa phương tiện không hợp lệ cho loại câu hỏi hoặc section này. */
+    QUESTION_MEDIA_INVALID(
+            HttpStatus.BAD_REQUEST,
+            "QUESTION_MEDIA_INVALID",
+            "Tệp tin đa phương tiện đính kèm không hợp lệ"
+    ),
+
     /** HTTP 500 - Cấu hình Cloudinary không hợp lệ hoặc thiếu thông tin. */
     MEDIA_CONFIG_INVALID(
             HttpStatus.INTERNAL_SERVER_ERROR,

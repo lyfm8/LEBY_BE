@@ -135,6 +135,23 @@ public class MediaServiceImpl implements MediaService {
     }
 
     /**
+     * Thu hồi kích hoạt Media khi bị gỡ khỏi thực thể nghiệp vụ (chuyển ACTIVE sang PENDING với TTL 12h).
+     *
+     * @param media Đối tượng Entity Media cần thu hồi
+     */
+    @Override
+    @Transactional
+    public void releaseMedia(Media media) {
+        if (media == null) {
+            return;
+        }
+        media.setStatus(EMediaStatus.PENDING);
+        media.setPendingExpiresAt(LocalDateTime.now().plusHours(PENDING_MEDIA_TTL_HOURS));
+        mediaRepository.save(media);
+        log.info("Đã chuyển mediaId={} về trạng thái PENDING để thu hồi", media.getId());
+    }
+
+    /**
      * Xóa tài nguyên vật lý trên Cloudinary.
      *
      * @param publicId Mã tài nguyên Cloudinary

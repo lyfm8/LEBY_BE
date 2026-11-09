@@ -32,6 +32,8 @@ public class MediaMapper {
                 .bytes(request.getBytes())
                 .width(request.getWidth())
                 .height(request.getHeight())
+                .originalFilename(request.getOriginalFilename())
+                .duration(request.getDuration())
                 .build();
     }
 
@@ -55,6 +57,8 @@ public class MediaMapper {
                 .bytes(media.getBytes())
                 .width(media.getWidth())
                 .height(media.getHeight())
+                .originalFilename(media.getOriginalFilename())
+                .duration(media.getDuration())
                 .status(media.getStatus() != null ? media.getStatus().name() : null)
                 .build();
     }

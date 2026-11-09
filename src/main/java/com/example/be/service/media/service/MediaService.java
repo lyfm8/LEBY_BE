@@ -45,6 +45,13 @@ public interface MediaService {
     void confirmMediaById(Long mediaId);
 
     /**
+     * Thu hồi kích hoạt của Media khi bị gỡ khỏi thực thể (chuyển về PENDING kèm hạn TTL 12h để scheduler tự dọn dẹp).
+     *
+     * @param media Đối tượng Entity Media cần thu hồi
+     */
+    void releaseMedia(Media media);
+
+    /**
      * Xóa tài nguyên vật lý trên Cloudinary.
      *
      * @param publicId Mã định danh tài nguyên trên Cloudinary
