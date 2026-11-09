@@ -1,10 +1,6 @@
 package com.example.be.enums.question;
 
 public enum EQuestionType {
-    MULTIPLE_CHOICE,
-    //FILL_BLANK,
-    //DRAG_DROP,
-    TRUE_FALSE,
-    SINGLE_CHOICE,
-    //MATCHING
+    SINGLE_CHOICE,    // Mặc định cho toàn bộ bài thi TOEIC
+    FILL_IN_BLANK     // Dự phòng cho các bài tập bổ trợ ngữ pháp/từ vựng trong Lesson
 }
