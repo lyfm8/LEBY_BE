@@ -2,6 +2,7 @@ package com.example.be.entity.content;
 
 import com.example.be.entity.ability.Ability;
 import com.example.be.entity.base.AbstractEntity;
+import com.example.be.enums.content.ELessonType;
 import com.example.be.enums.content.EModuleStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -68,6 +69,19 @@ public class Lesson extends AbstractEntity {
      */
     @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
     private Boolean isFree = true;
+
+    /**
+     * Phân loại bài học: VIDEO (Bài giảng lý thuyết) hoặc PRACTICE (Luyện tập tức thì).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "lesson_type", nullable = false, length = 30)
+    private ELessonType lessonType = ELessonType.VIDEO;
+
+    /**
+     * Thời lượng bài học (tính bằng giây), phục vụ quy tắc BR09 giám sát học viên xem >= 60% thời lượng.
+     */
+    @Column(name = "duration_seconds", nullable = false)
+    private Integer durationSeconds = 0;
 
     /**
      * Lesson thuộc về 1 Module cụ thể.
