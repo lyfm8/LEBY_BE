@@ -29,6 +29,8 @@ public class ModuleSummaryResponse {
     private List<Long> abilityIds;
     private List<String> abilityNames;
     private int totalLessons;
+    private int totalVideoLessons;
+    private int totalPracticeLessons;
     private List<LessonSummaryResponse> lessons;
 }
 

@@ -14,10 +14,12 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -88,6 +90,7 @@ public class Module extends AbstractEntity {
 
     /**
      * Danh sách bài học (Lesson) thuộc Module.
+     * Sắp xếp tăng dần theo orderNo và cấu hình BatchSize để Hibernate tự động gom nạp IN (...) triệt tiêu N+1.
      */
     @OneToMany(
             mappedBy = "module",
@@ -95,6 +98,8 @@ public class Module extends AbstractEntity {
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
+    @OrderBy("orderNo ASC")
+    @BatchSize(size = 50)
     private List<Lesson> lessons = new ArrayList<>();
 
     /**

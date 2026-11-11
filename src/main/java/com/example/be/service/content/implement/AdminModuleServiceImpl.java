@@ -26,7 +26,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -48,11 +50,15 @@ public class AdminModuleServiceImpl implements AdminModuleService {
     @Override
     @Transactional(readOnly = true)
     public List<ModuleSummaryResponse> getAllModules() {
-        List<Module> modules = moduleRepository.findAllByOrderBySequenceAsc();
-        return modules.stream().map(module -> {
-            List<Lesson> lessons = lessonRepository.findByModuleIdOrderByOrderNoAsc(module.getId());
-            return moduleMapper.toSummaryResponse(module, lessons);
-        }).collect(Collectors.toList());
+        // Bước 1: Lấy danh sách module kèm abilities và part trong 1 query (triệt tiêu N+1)
+        List<Module> modules = moduleRepository.findAllWithLessonsAndAbilities();
+
+        // Bước 2: Lấy trực tiếp lessons từ module.
+        // Nhờ @BatchSize(size = 50) và default_batch_fetch_size, Hibernate sẽ tự động gom nạp các Lesson
+        // của toàn bộ modules theo lô (WHERE module_id IN (...)) và đã được sắp xếp qua @OrderBy("orderNo ASC").
+        return modules.stream()
+                .map(module -> moduleMapper.toSummaryResponse(module, module.getLessons()))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -82,11 +88,11 @@ public class AdminModuleServiceImpl implements AdminModuleService {
         // Bước 3: Sử dụng ModuleMapper để chuyển đổi DTO sang Entity
         Module module = moduleMapper.toEntity(request, part);
 
-        // Bước 4: Lưu Module vào CSDL để sinh ID
-        Module savedModule = moduleRepository.save(module);
+        // Bước 4: Liên kết danh sách Ability mục tiêu trước khi lưu
+        assignAbilitiesToModule(module, request.getAbilityIds());
 
-        // Bước 5: Liên kết danh sách Ability mục tiêu
-        assignAbilitiesToModule(savedModule, request.getAbilityIds());
+        // Bước 5: Lưu Module vào CSDL để sinh ID (CascadeType.ALL tự động lưu moduleAbilities)
+        Module savedModule = moduleRepository.save(module);
 
         return getModuleById(savedModule.getId());
     }
@@ -107,8 +113,8 @@ public class AdminModuleServiceImpl implements AdminModuleService {
         // Bước 3: Cập nhật Entity thông qua ModuleMapper
         moduleMapper.updateEntity(module, request, part);
 
-        // Bước 4: Cập nhật quan hệ Many-to-Many với Ability
-        moduleAbilityRepository.deleteByModuleId(module.getId());
+        // Bước 4: Cập nhật quan hệ Many-to-Many với Ability qua collection quản lý của Module
+        // orphanRemoval = true sẽ tự động sinh lệnh DELETE các liên kết cũ và INSERT liên kết mới
         assignAbilitiesToModule(module, request.getAbilityIds());
 
         moduleRepository.save(module);
@@ -149,15 +155,23 @@ public class AdminModuleServiceImpl implements AdminModuleService {
     @Transactional
     public void reorderModules(ReorderModulesRequest request) {
         List<Long> orderedIds = request.getOrderedModuleIds();
+        // Bước 1: Nạp tất cả modules cần đổi thứ tự trong 1 câu SELECT WHERE id IN (...)
+        List<Module> modules = moduleRepository.findAllById(orderedIds);
+        Map<Long, Module> moduleMap = modules.stream()
+                .collect(Collectors.toMap(Module::getId, m -> m));
+
+        // Bước 2: Cập nhật giá trị sequence mới trực tiếp trên Managed Entities
         for (int i = 0; i < orderedIds.size(); i++) {
-            Long moduleId = orderedIds.get(i);
-            int newSequence = i + 1;
-            Module module = moduleRepository.findById(moduleId).orElse(null);
+            Module module = moduleMap.get(orderedIds.get(i));
             if (module != null) {
-                module.setSequence(newSequence);
-                moduleRepository.save(module);
+                module.setSequence(i + 1);
             }
         }
+
+        // TẬN DỤNG DIRTY CHECKING & JDBC BATCHING:
+        // Không cần gọi moduleRepository.saveAll(modules). Khi @Transactional commit,
+        // Hibernate tự động Dirty Check và nhờ cấu hình jdbc.batch_size + rewriteBatchedStatements,
+        // toàn bộ các câu UPDATE sequence sẽ được gom thành 1 chuyến xe JDBC duy nhất gửi xuống MySQL.
     }
 
     // ==========================================
@@ -170,18 +184,25 @@ public class AdminModuleServiceImpl implements AdminModuleService {
     }
 
     private void assignAbilitiesToModule(Module module, List<Long> abilityIds) {
+        if (module.getModuleAbilities() == null) {
+            module.setModuleAbilities(new ArrayList<>());
+        } else {
+            module.getModuleAbilities().clear();
+        }
+
         if (abilityIds == null || abilityIds.isEmpty()) {
             return;
         }
 
         for (Long abilityId : abilityIds) {
-            Ability ability = abilityRepository.findById(abilityId).orElse(null);
-            if (ability != null) {
-                ModuleAbility moduleAbility = new ModuleAbility();
-                moduleAbility.setModule(module);
-                moduleAbility.setAbility(ability);
-                moduleAbilityRepository.save(moduleAbility);
-            }
+            // NOTE: Ném exception thay vì bỏ qua để tránh lưu Module với danh sách Ability thiếu — dễ gây nhầm lẫn cho admin
+            Ability ability = abilityRepository.findById(abilityId)
+                    .orElseThrow(() -> new BaseException(ErrorCode.RESOURCE_NOT_FOUND,
+                            "Không tìm thấy Ability với ID: " + abilityId));
+            ModuleAbility moduleAbility = new ModuleAbility();
+            moduleAbility.setModule(module);
+            moduleAbility.setAbility(ability);
+            module.getModuleAbilities().add(moduleAbility);
         }
     }
 }
