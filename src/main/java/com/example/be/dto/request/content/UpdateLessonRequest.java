@@ -1,6 +1,8 @@
 package com.example.be.dto.request.content;
 
+import com.example.be.enums.content.ELessonType;
 import com.example.be.enums.content.EModuleStatus;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -31,6 +33,12 @@ public class UpdateLessonRequest {
     private EModuleStatus status;
 
     private String descriptions;
+
+    private ELessonType lessonType;
+
+    @Min(value = 0, message = "Thời lượng bài học không được âm")
+    @Max(value = 86400, message = "Thời lượng bài học tối đa là 24 giờ")
+    private Integer durationSeconds;
 
     @Size(max = 500, message = "Đường dẫn file âm thanh tối đa 500 ký tự")
     private String audioUrl;

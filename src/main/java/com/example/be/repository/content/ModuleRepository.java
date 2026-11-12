@@ -22,6 +22,19 @@ public interface ModuleRepository extends JpaRepository<Module, Long> {
      */
     List<Module> findAllByOrderBySequenceAsc();
 
+    /**
+     * Lấy toàn bộ Module kèm Abilities và Part trong 1 query (triệt tiêu N+1).
+     * NOTE: Tách riêng lessons query để tránh MultipleBagFetchException (2 List collections).
+     *
+     * @return Danh sách modules đã JOIN FETCH moduleAbilities, ability, part
+     */
+    @Query("SELECT DISTINCT m FROM Module m " +
+            "LEFT JOIN FETCH m.moduleAbilities ma " +
+            "LEFT JOIN FETCH ma.ability " +
+            "LEFT JOIN FETCH m.part " +
+            "ORDER BY m.sequence ASC")
+    List<Module> findAllWithLessonsAndAbilities();
+
     List<Module> findByPartIdOrderBySequenceAsc(Long partId);
 
     @Query("SELECT DISTINCT m FROM Module m JOIN m.moduleAbilities ma WHERE ma.ability.id = :abilityId ORDER BY m.sequence ASC")

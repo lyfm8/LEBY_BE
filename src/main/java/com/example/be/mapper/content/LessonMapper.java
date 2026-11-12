@@ -9,6 +9,8 @@ import com.example.be.entity.ability.Ability;
 import com.example.be.entity.content.Lesson;
 import com.example.be.entity.content.LessonScript;
 import com.example.be.entity.content.Module;
+import com.example.be.enums.content.ELessonType;
+import com.example.be.enums.content.EModuleStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -34,7 +36,9 @@ public class LessonMapper {
         lesson.setAbility(ability);
         lesson.setTitle(request.getTitle().trim());
         lesson.setOrderNo(orderNo);
-        lesson.setStatus(request.getStatus());
+        lesson.setStatus(request.getStatus() != null ? request.getStatus() : EModuleStatus.DRAFT);
+        lesson.setLessonType(request.getLessonType() != null ? request.getLessonType() : ELessonType.VIDEO);
+        lesson.setDurationSeconds(request.getDurationSeconds() != null ? request.getDurationSeconds() : 0);
         lesson.setDescriptions(request.getDescriptions());
         lesson.setAudioUrl(request.getAudioUrl());
         lesson.setVideoUrl(request.getVideoUrl());
@@ -54,7 +58,15 @@ public class LessonMapper {
 
         lesson.setTitle(request.getTitle().trim());
         lesson.setOrderNo(request.getOrderNo());
-        lesson.setStatus(request.getStatus());
+        if (request.getStatus() != null) {
+            lesson.setStatus(request.getStatus());
+        }
+        if (request.getLessonType() != null) {
+            lesson.setLessonType(request.getLessonType());
+        }
+        if (request.getDurationSeconds() != null) {
+            lesson.setDurationSeconds(request.getDurationSeconds());
+        }
         lesson.setDescriptions(request.getDescriptions());
         lesson.setAudioUrl(request.getAudioUrl());
         lesson.setVideoUrl(request.getVideoUrl());
@@ -78,6 +90,8 @@ public class LessonMapper {
                 .title(lesson.getTitle())
                 .orderNo(lesson.getOrderNo())
                 .status(lesson.getStatus())
+                .lessonType(lesson.getLessonType())
+                .durationSeconds(lesson.getDurationSeconds())
                 .isFree(lesson.getIsFree())
                 .abilityId(lesson.getAbility() != null ? lesson.getAbility().getId() : null)
                 .abilityName(lesson.getAbility() != null ? lesson.getAbility().getName() : null)
@@ -106,6 +120,8 @@ public class LessonMapper {
                 .title(lesson.getTitle())
                 .orderNo(lesson.getOrderNo())
                 .status(lesson.getStatus())
+                .lessonType(lesson.getLessonType())
+                .durationSeconds(lesson.getDurationSeconds())
                 .isFree(lesson.getIsFree())
                 .descriptions(lesson.getDescriptions())
                 .abilityId(lesson.getAbility() != null ? lesson.getAbility().getId() : null)

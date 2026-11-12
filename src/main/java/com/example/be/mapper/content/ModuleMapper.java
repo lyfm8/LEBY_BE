@@ -9,6 +9,7 @@ import com.example.be.entity.content.Lesson;
 import com.example.be.entity.content.Module;
 import com.example.be.entity.content.ModuleAbility;
 import com.example.be.entity.content.Part;
+import com.example.be.enums.content.EModuleStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -38,7 +39,7 @@ public class ModuleMapper {
         module.setTitle(request.getTitle().trim());
         module.setType(request.getType());
         module.setSequence(request.getSequence());
-        module.setStatus(request.getStatus());
+        module.setStatus(request.getStatus() != null ? request.getStatus() : EModuleStatus.DRAFT);
         module.setDefaultPassScore(request.getDefaultPassScore() != null ? request.getDefaultPassScore() : 65);
         module.setRequiredCompletionRate(request.getRequiredCompletionRate() != null ? request.getRequiredCompletionRate() : 80);
         module.setDescriptions(request.getDescriptions());
@@ -58,9 +59,15 @@ public class ModuleMapper {
         module.setTitle(request.getTitle().trim());
         module.setType(request.getType());
         module.setSequence(request.getSequence());
-        module.setStatus(request.getStatus());
-        module.setDefaultPassScore(request.getDefaultPassScore());
-        module.setRequiredCompletionRate(request.getRequiredCompletionRate());
+        if (request.getStatus() != null) {
+            module.setStatus(request.getStatus());
+        }
+        if (request.getDefaultPassScore() != null) {
+            module.setDefaultPassScore(request.getDefaultPassScore());
+        }
+        if (request.getRequiredCompletionRate() != null) {
+            module.setRequiredCompletionRate(request.getRequiredCompletionRate());
+        }
         module.setDescriptions(request.getDescriptions());
         module.setPart(part);
     }
@@ -76,6 +83,18 @@ public class ModuleMapper {
         List<LessonSummaryResponse> lessonResponses = lessons != null
                 ? lessons.stream().map(lessonMapper::toSummaryResponse).collect(Collectors.toList())
                 : Collections.emptyList();
+
+        int totalVideo = 0;
+        int totalPractice = 0;
+        if (lessons != null) {
+            for (Lesson l : lessons) {
+                if (l.getVideoUrl() != null && !l.getVideoUrl().isBlank()) {
+                    totalVideo++;
+                } else {
+                    totalPractice++;
+                }
+            }
+        }
 
         List<Long> abilityIds = new ArrayList<>();
         List<String> abilityNames = new ArrayList<>();
@@ -101,6 +120,8 @@ public class ModuleMapper {
                 .abilityIds(abilityIds)
                 .abilityNames(abilityNames)
                 .totalLessons(lessonResponses.size())
+                .totalVideoLessons(totalVideo)
+                .totalPracticeLessons(totalPractice)
                 .lessons(lessonResponses)
                 .build();
     }
@@ -111,6 +132,18 @@ public class ModuleMapper {
     public ModuleDetailResponse toDetailResponse(Module module, long lessonCount) {
         if (module == null) {
             return null;
+        }
+
+        int totalVideo = 0;
+        int totalPractice = 0;
+        if (module.getLessons() != null) {
+            for (Lesson l : module.getLessons()) {
+                if (l.getVideoUrl() != null && !l.getVideoUrl().isBlank()) {
+                    totalVideo++;
+                } else {
+                    totalPractice++;
+                }
+            }
         }
 
         List<Long> abilityIds = new ArrayList<>();
@@ -138,6 +171,8 @@ public class ModuleMapper {
                 .abilityIds(abilityIds)
                 .abilityNames(abilityNames)
                 .totalLessons((int) lessonCount)
+                .totalVideoLessons(totalVideo)
+                .totalPracticeLessons(totalPractice)
                 .createdAt(module.getCreatedAt())
                 .updatedAt(module.getUpdatedAt())
                 .build();

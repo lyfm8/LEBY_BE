@@ -31,6 +31,8 @@ public class ModuleDetailResponse {
     private List<Long> abilityIds;
     private List<String> abilityNames;
     private int totalLessons;
+    private int totalVideoLessons;
+    private int totalPracticeLessons;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

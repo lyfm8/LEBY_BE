@@ -1,5 +1,6 @@
 package com.example.be.dto.response.content;
 
+import com.example.be.enums.content.ELessonType;
 import com.example.be.enums.content.EModuleStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,6 +20,8 @@ public class LessonSummaryResponse {
     private String title;
     private Integer orderNo;
     private EModuleStatus status;
+    private ELessonType lessonType;
+    private Integer durationSeconds;
     private Boolean isFree;
     private Long abilityId;
     private String abilityName;

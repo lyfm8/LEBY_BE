@@ -9,6 +9,7 @@ import com.example.be.dto.response.content.LessonDetailResponse;
 import com.example.be.dto.response.content.ModuleDetailResponse;
 import com.example.be.entity.content.Lesson;
 import com.example.be.entity.content.Module;
+import com.example.be.enums.content.ELessonType;
 import com.example.be.enums.content.EModuleStatus;
 import com.example.be.exception.BaseException;
 import com.example.be.exception.ErrorCode;
@@ -21,8 +22,10 @@ import com.example.be.repository.content.LessonScriptRepository;
 import com.example.be.repository.content.ModuleAbilityRepository;
 import com.example.be.repository.content.ModuleRepository;
 import com.example.be.repository.content.PartRepository;
+import com.example.be.repository.media.MediaRepository;
 import com.example.be.service.content.implement.AdminLessonServiceImpl;
 import com.example.be.service.content.implement.AdminModuleServiceImpl;
+import com.example.be.service.media.service.MediaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,6 +67,10 @@ class AdminModuleLessonServiceTest {
     private LearningPathItemRepository learningPathItemRepository;
     @Mock
     private LessonScriptRepository lessonScriptRepository;
+    @Mock
+    private MediaRepository mediaRepository;
+    @Mock
+    private MediaService mediaService;
 
     @Spy
     private LessonMapper lessonMapper = new LessonMapper();
@@ -96,6 +103,8 @@ class AdminModuleLessonServiceTest {
         mockLesson.setTitle("At the Restaurant");
         mockLesson.setOrderNo(1);
         mockLesson.setStatus(EModuleStatus.DRAFT);
+        mockLesson.setLessonType(ELessonType.VIDEO);
+        mockLesson.setDurationSeconds(120);
         mockLesson.setModule(mockModule);
     }
 
@@ -201,7 +210,6 @@ class AdminModuleLessonServiceTest {
         LessonDetailResponse response = adminLessonService.saveLessonScripts(10L, request);
 
         assertNotNull(response);
-        verify(lessonScriptRepository).deleteByLessonId(10L);
-        verify(lessonScriptRepository).saveAll(any());
+        verify(lessonRepository).save(mockLesson);
     }
 }

@@ -2,6 +2,7 @@ package com.example.be.dto.request.content;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,6 +20,7 @@ import java.util.List;
 public class SaveLessonScriptsRequest {
 
     @NotNull(message = "Danh sách kịch bản không được null")
+    @Size(max = 500, message = "Mỗi bài học tối đa 500 đoạn kịch bản phụ đề")
     @Valid
     private List<LessonScriptDto> scripts;
 }

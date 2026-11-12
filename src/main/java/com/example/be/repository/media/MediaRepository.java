@@ -33,6 +33,14 @@ public interface MediaRepository extends JpaRepository<Media, Long> {
     Optional<Media> findByPublicId(String publicId);
 
     /**
+     * Tìm kiếm bản ghi media theo đường dẫn an toàn secure_url.
+     *
+     * @param secureUrl Đường dẫn truy cập tệp tin
+     * @return Optional chứa đối tượng Media nếu tìm thấy
+     */
+    Optional<Media> findBySecureUrl(String secureUrl);
+
+    /**
      * Lấy tối đa 100 bản ghi media ở trạng thái chỉ định đã quá hạn xử lý (phục vụ cronjob dọn rác).
      *
      * @param status Trạng thái cần quét (thường là PENDING)
