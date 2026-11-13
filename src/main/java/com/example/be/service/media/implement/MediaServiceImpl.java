@@ -93,7 +93,6 @@ public class MediaServiceImpl implements MediaService {
 
         // Bước 4: Lưu hàng loạt vào database và trả về danh sách phản hồi cho client
         List<Media> savedMedias = mediaRepository.saveAll(medias);
-        log.info("Đã lưu {} bản ghi media mới ở trạng thái PENDING bởi userId={}", savedMedias.size(), user.getId());
 
         return mediaMapper.toSavedMediaResponses(savedMedias);
     }
@@ -148,7 +147,6 @@ public class MediaServiceImpl implements MediaService {
         media.setStatus(EMediaStatus.PENDING);
         media.setPendingExpiresAt(LocalDateTime.now().plusHours(PENDING_MEDIA_TTL_HOURS));
         mediaRepository.save(media);
-        log.info("Đã chuyển mediaId={} về trạng thái PENDING để thu hồi", media.getId());
     }
 
     /**
@@ -225,9 +223,8 @@ public class MediaServiceImpl implements MediaService {
             public void afterCommit() {
                 try {
                     mediaStorageAdapter.removeTag(TEMPORARY_TAG, media.getPublicId());
-                    log.info("Đã gỡ tag 'tmp' trên Cloudinary cho media publicId={}", media.getPublicId());
                 } catch (Exception ex) {
-                    log.warn("Không thể gỡ tag 'tmp' cho media publicId={}: {}", media.getPublicId(), ex.getMessage());
+                    // Bỏ qua lỗi gỡ tag sau commit
                 }
             }
         });

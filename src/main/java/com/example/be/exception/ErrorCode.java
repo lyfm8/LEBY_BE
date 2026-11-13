@@ -214,6 +214,78 @@ public enum ErrorCode {
             HttpStatus.UNPROCESSABLE_ENTITY,
             "DIAGNOSTIC_NOT_COMPLETED",
             "Diagnostic test must be completed first"
+    ),
+
+    /**
+     * HTTP 404 - Không tìm thấy đề thi.
+     */
+    EXAM_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "EXAM_NOT_FOUND",
+            "Không tìm thấy đề thi tương ứng"
+    ),
+
+    /**
+     * HTTP 409 - Đề thi đã có lượt làm bài, không thể xóa hoặc sửa câu hỏi.
+     */
+    EXAM_IN_USE(
+            HttpStatus.CONFLICT,
+            "EXAM_IN_USE",
+            "Đề thi đã có lượt làm bài, không thể xóa hoặc thay đổi câu hỏi"
+    ),
+
+    /**
+     * HTTP 409 - Đề thi này đã ở trạng thái Active trước đó.
+     */
+    EXAM_ALREADY_ACTIVE(
+            HttpStatus.CONFLICT,
+            "EXAM_ALREADY_ACTIVE",
+            "Đề thi này đã được kích hoạt trước đó"
+    ),
+
+    /**
+     * HTTP 400 - Cơ cấu đề thi hoặc số lượng câu hỏi không khớp ma trận.
+     */
+    EXAM_INVALID_MATRIX(
+            HttpStatus.BAD_REQUEST,
+            "EXAM_INVALID_MATRIX",
+            "Cơ cấu đề thi không thỏa mãn ma trận yêu cầu"
+    ),
+
+    /**
+     * HTTP 400 - Đề chẩn đoán đầu vào chưa bao phủ toàn bộ Ability trong hệ thống.
+     */
+    DIAGNOSTIC_MISSING_ABILITIES(
+            HttpStatus.BAD_REQUEST,
+            "DIAGNOSTIC_MISSING_ABILITIES",
+            "Đề thi chẩn đoán bắt buộc phải bao phủ toàn bộ các kỹ năng (Abilities) trong hệ thống"
+    ),
+
+    /**
+     * HTTP 409 - Chỉ được có một đề chẩn đoán Active tại một thời điểm.
+     */
+    DIAGNOSTIC_ACTIVE_CONFLICT(
+            HttpStatus.CONFLICT,
+            "DIAGNOSTIC_ACTIVE_CONFLICT",
+            "Chỉ được có một đề chẩn đoán Active tại một thời điểm"
+    ),
+
+    /**
+     * HTTP 400 - Ngân hàng câu hỏi không đủ số lượng câu để tạo đề.
+     */
+    QUESTION_BANK_NOT_ENOUGH(
+            HttpStatus.BAD_REQUEST,
+            "QUESTION_BANK_NOT_ENOUGH",
+            "Ngân hàng câu hỏi không đủ số lượng câu hỏi khả dụng theo yêu cầu"
+    ),
+
+    /**
+     * HTTP 403 - Chỉ quản trị viên mới có quyền kích hoạt đề thi.
+     */
+    FORBIDDEN_ACTIVATE_EXAM(
+            HttpStatus.FORBIDDEN,
+            "FORBIDDEN_ACTIVATE_EXAM",
+            "Chỉ Quản trị viên (Admin) mới có quyền kích hoạt hoặc lưu trữ đề thi"
     );
 
     // -----------------------------------------------------------------------

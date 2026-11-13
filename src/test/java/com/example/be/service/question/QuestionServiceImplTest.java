@@ -41,7 +41,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -221,6 +220,68 @@ class QuestionServiceImplTest {
         questionService.deleteQuestion(60L);
 
         verify(questionRepository).delete(question);
+    }
+
+    @Test
+    @DisplayName("Tạo chùm câu hỏi thành công khi các câu hỏi con có linh hoạt 3 hoặc 4 phương án trả lời")
+    void createQuestionGroup_AllowsMixed3And4Options_Success() {
+        Ability readingAbility = new Ability();
+        readingAbility.setId(20L);
+        readingAbility.setName("Đọc hiểu chi tiết");
+        readingAbility.setPart(readingPart);
+
+        QuestionGroupItemRequest itemWith3Options = QuestionGroupItemRequest.builder()
+                .name("Câu con 1 (3 đáp án)")
+                .text("Question 1?")
+                .options(List.of(
+                        new QuestionOptionRequest("A", "Opt A"),
+                        new QuestionOptionRequest("B", "Opt B"),
+                        new QuestionOptionRequest("C", "Opt C")
+                ))
+                .correctKey("C")
+                .abilityIds(List.of(20L))
+                .difficulty(2)
+                .build();
+
+        QuestionGroupItemRequest itemWith4Options = QuestionGroupItemRequest.builder()
+                .name("Câu con 2 (4 đáp án)")
+                .text("Question 2?")
+                .options(List.of(
+                        new QuestionOptionRequest("A", "Opt A"),
+                        new QuestionOptionRequest("B", "Opt B"),
+                        new QuestionOptionRequest("C", "Opt C"),
+                        new QuestionOptionRequest("D", "Opt D")
+                ))
+                .correctKey("D")
+                .abilityIds(List.of(20L))
+                .difficulty(4)
+                .build();
+
+        CreateQuestionGroupRequest groupRequest = CreateQuestionGroupRequest.builder()
+                .name("Chùm câu hỏi Part 6/7 linh hoạt đáp án")
+                .partId(5L)
+                .passage("This is a sample passage for testing.")
+                .items(List.of(itemWith3Options, itemWith4Options))
+                .build();
+
+        when(partRepository.findById(5L)).thenReturn(Optional.of(readingPart));
+        when(abilityRepository.findAllById(List.of(20L))).thenReturn(List.of(readingAbility));
+        when(questionRepository.save(any(Question.class))).thenAnswer(inv -> {
+            Question saved = inv.getArgument(0);
+            saved.setId(200L);
+            return saved;
+        });
+
+        QuestionDetailResponse response = questionService.createQuestionGroup(groupRequest);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(200L);
+        assertThat(response.getItems()).hasSize(2);
+        assertThat(response.getItems().get(0).getOptions()).hasSize(3);
+        assertThat(response.getItems().get(0).getCorrectKey()).isEqualTo("C");
+        assertThat(response.getItems().get(1).getOptions()).hasSize(4);
+        assertThat(response.getItems().get(1).getCorrectKey()).isEqualTo("D");
+        verify(questionRepository).save(any(Question.class));
     }
 }
 

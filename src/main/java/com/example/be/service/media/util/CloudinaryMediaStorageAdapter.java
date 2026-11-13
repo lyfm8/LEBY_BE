@@ -78,7 +78,6 @@ public class CloudinaryMediaStorageAdapter implements MediaStorageAdapter {
             Object status = result.get("result");
             return CLOUDINARY_RESULT_OK.equals(status) || CLOUDINARY_RESULT_NOT_FOUND.equals(status);
         } catch (Exception ex) {
-            log.warn("Không thể xóa tài nguyên Cloudinary publicId={}: {}", publicId, ex.getMessage());
             return false;
         }
     }
@@ -98,8 +97,7 @@ public class CloudinaryMediaStorageAdapter implements MediaStorageAdapter {
                     ObjectUtils.emptyMap()
             );
         } catch (Exception ex) {
-            log.warn("Không thể xóa tag '{}' cho tài nguyên Cloudinary publicId={}: {}",
-                    tag, publicId, ex.getMessage());
+            // Bỏ qua lỗi xóa tag
         }
     }
 
