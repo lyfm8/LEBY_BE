@@ -71,5 +71,24 @@ public class AbilityEvaluationRule extends AbstractEntity {
         return accuracyRate < cutoff;
     }
 
+    // Các helper aliases phục vụ tương thích ngữ nghĩa API và DTO
+    public Float getStableMin() {
+        return this.stableThreshold;
+    }
 
+    public void setStableMin(Float stableMin) {
+        this.stableThreshold = stableMin;
+    }
+
+    public Float getWeakMax() {
+        return this.developingThreshold;
+    }
+
+    public void setWeakMax(Float weakMax) {
+        this.developingThreshold = weakMax;
+    }
+
+    public Float getDevelopingMax() {
+        return this.stableThreshold;
+    }
 }
