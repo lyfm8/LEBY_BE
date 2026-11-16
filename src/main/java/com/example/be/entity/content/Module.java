@@ -1,10 +1,10 @@
 package com.example.be.entity.content;
 
-import com.example.be.entity.ability.Ability;
 import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.question.ModuleTestQuestion;
 import com.example.be.entity.setting.ModuleTargetThreshold;
 import com.example.be.enums.content.EModuleStatus;
+import com.example.be.enums.content.EModuleTestSelectionMode;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -63,6 +63,31 @@ public class Module extends AbstractEntity {
      */
     @Column(name = "required_completion_rate", nullable = false)
     private Integer requiredCompletionRate = 80;
+
+    /**
+     * Thời gian làm bài thi vượt ải mô-đun tính bằng phút (mẫu 25 phút - UC A07).
+     */
+    @Column(name = "test_duration_minutes", nullable = false)
+    private Integer testDurationMinutes = 25;
+
+    /**
+     * Số lượng câu hỏi mục tiêu của bài thi vượt ải mô-đun (mẫu 25 câu - UC A07).
+     */
+    @Column(name = "test_question_count", nullable = false)
+    private Integer testQuestionCount = 25;
+
+    /**
+     * Cờ tự động xáo trộn thứ tự câu hỏi và đáp án mỗi lần thi vượt ải (BR05).
+     */
+    @Column(name = "shuffle_questions", nullable = false)
+    private Boolean shuffleQuestions = true;
+
+    /**
+     * Phương thức sinh đề vượt ải: chọn thủ công (MANUAL) hoặc bốc ngẫu nhiên từ kho Ability (RANDOM_BY_ABILITY).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "test_selection_mode", nullable = false, length = 30)
+    private EModuleTestSelectionMode testSelectionMode = EModuleTestSelectionMode.MANUAL;
 
     /**
      * Mô tả mục tiêu bài học của Module.

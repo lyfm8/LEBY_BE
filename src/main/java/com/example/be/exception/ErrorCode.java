@@ -361,6 +361,15 @@ public enum ErrorCode {
     ),
 
     /**
+     * HTTP 409 - Một số câu hỏi trong bài thi vượt ải không thuộc năng lực đào tạo của mô-đun (UC A07 - Luồng 6b).
+     */
+    MODULE_TEST_ABILITY_MISMATCH(
+            HttpStatus.CONFLICT,
+            "MODULE_TEST_ABILITY_MISMATCH",
+            "Một số câu hỏi được chọn không thuộc năng lực đào tạo của mô-đun này. Bạn có chắc chắn muốn đưa vào đề không?"
+    ),
+
+    /**
      * HTTP 500 - Gửi email thông báo cho người dùng thất bại.
      */
     MAIL_SEND_FAILED(
