@@ -1,4 +1,4 @@
-package com.example.be.dto.request.exam;
+package com.example.be.dto.request.diagnostic;
 
 import com.example.be.enums.diagnostic.ETestType;
 import jakarta.validation.constraints.Min;

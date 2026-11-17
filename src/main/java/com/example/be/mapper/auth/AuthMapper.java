@@ -15,11 +15,7 @@ public class AuthMapper {
         if (user == null) {
             return null;
         }
-        String roleName = null;
-        if (user.getRole() != null) {
-            // Chuẩn hóa role STUDENT sang USER để tương thích chặt chẽ với Frontend AuthGuard
-            roleName = user.getRole() == ERole.STUDENT ? "USER" : user.getRole().name();
-        }
+        String roleName = user.getRole() != null ? user.getRole().name() : null;
         return AuthResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())

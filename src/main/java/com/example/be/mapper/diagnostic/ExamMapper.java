@@ -1,9 +1,9 @@
-package com.example.be.mapper.exam;
+package com.example.be.mapper.diagnostic;
 
-import com.example.be.dto.request.exam.CreateExamRequest;
-import com.example.be.dto.response.exam.ExamDetailResponse;
-import com.example.be.dto.response.exam.ExamListItemResponse;
-import com.example.be.dto.response.exam.ExamQuestionItemResponse;
+import com.example.be.dto.request.diagnostic.CreateExamRequest;
+import com.example.be.dto.response.diagnostic.ExamDetailResponse;
+import com.example.be.dto.response.diagnostic.ExamListItemResponse;
+import com.example.be.dto.response.diagnostic.ExamQuestionItemResponse;
 import com.example.be.entity.diagnostic.DiagnosticTest;
 import com.example.be.entity.question.DiagnosticTestQuestion;
 import com.example.be.entity.question.Question;

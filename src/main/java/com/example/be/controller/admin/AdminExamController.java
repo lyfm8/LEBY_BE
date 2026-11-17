@@ -1,18 +1,18 @@
 package com.example.be.controller.admin;
 
 import com.example.be.common.ApiResponse;
-import com.example.be.dto.request.exam.AutoSelectQuestionsRequest;
-import com.example.be.dto.request.exam.CreateExamRequest;
-import com.example.be.dto.request.exam.UpdateExamRequest;
-import com.example.be.dto.response.exam.AutoSelectQuestionsResponse;
-import com.example.be.dto.response.exam.ExamDetailResponse;
-import com.example.be.dto.response.exam.ExamListItemResponse;
-import com.example.be.dto.response.exam.ExamMatrixAvailabilityResponse;
+import com.example.be.dto.request.diagnostic.AutoSelectQuestionsRequest;
+import com.example.be.dto.request.diagnostic.CreateExamRequest;
+import com.example.be.dto.request.diagnostic.UpdateExamRequest;
+import com.example.be.dto.response.diagnostic.AutoSelectQuestionsResponse;
+import com.example.be.dto.response.diagnostic.ExamDetailResponse;
+import com.example.be.dto.response.diagnostic.ExamListItemResponse;
+import com.example.be.dto.response.diagnostic.ExamMatrixAvailabilityResponse;
 import com.example.be.entity.user.User;
 import com.example.be.enums.diagnostic.EExamStatus;
 import com.example.be.enums.diagnostic.ETestType;
 import com.example.be.security.Roles;
-import com.example.be.service.exam.service.AdminExamService;
+import com.example.be.service.diagnostic.service.AdminExamService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

@@ -1,4 +1,4 @@
-package com.example.be.dto.response.exam;
+package com.example.be.dto.response.diagnostic;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
