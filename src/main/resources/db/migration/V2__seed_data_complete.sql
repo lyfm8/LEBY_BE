@@ -44,7 +44,9 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- =====================================================================================
 INSERT INTO target_profiles (id, target_total_score, status, description, created_at, updated_at) VALUES
 (1, 450, 1, 'Mục tiêu Sơ cấp 450 TOEIC - Nắm vững từ vựng cơ bản và cấu trúc ngữ pháp thông dụng.', NOW(), NOW()),
+(5, 550, 1, 'Mục tiêu Tiền trung cấp 550 TOEIC - Nền tảng giao tiếp công sở và cấu trúc câu đa dạng.', NOW(), NOW()),
 (2, 650, 1, 'Mục tiêu Trung cấp 650 TOEIC - Chuẩn đầu ra tốt nghiệp đại học và giao tiếp công sở tự tin.', NOW(), NOW()),
+(6, 750, 1, 'Mục tiêu Thành thạo 750 TOEIC - Tự tin thuyết trình, xử lý tài liệu chuyên môn và hợp đồng.', NOW(), NOW()),
 (3, 800, 1, 'Mục tiêu Nâng cao 800 TOEIC - Làm việc chuyên nghiệp trong tập đoàn đa quốc gia.', NOW(), NOW()),
 (4, 990, 1, 'Mục tiêu Xuất sắc 990 TOEIC - Đỉnh cao năng lực ngôn ngữ, thành thạo như người bản xứ.', NOW(), NOW());
 
@@ -94,6 +96,15 @@ INSERT INTO target_part_thresholds (id, pass_score, confirming_score, full_part_
 (6, 45.0, 30.0, 20.0, 1, 6, NOW(), NOW()),
 (7, 40.0, 25.0, 15.0, 1, 7, NOW(), NOW()),
 
+-- Profile 5: AIM 550 (Ngưỡng sơ trung cấp)
+(29, 65.0, 50.0, 30.0, 5, 1, NOW(), NOW()),
+(30, 60.0, 45.0, 25.0, 5, 2, NOW(), NOW()),
+(31, 55.0, 40.0, 25.0, 5, 3, NOW(), NOW()),
+(32, 55.0, 40.0, 25.0, 5, 4, NOW(), NOW()),
+(33, 60.0, 45.0, 30.0, 5, 5, NOW(), NOW()),
+(34, 55.0, 40.0, 25.0, 5, 6, NOW(), NOW()),
+(35, 50.0, 35.0, 20.0, 5, 7, NOW(), NOW()),
+
 -- Profile 2: AIM 650 (Ngưỡng trung cấp chuẩn tốt nghiệp)
 (8, 75.0, 60.0, 35.0, 2, 1, NOW(), NOW()),
 (9, 70.0, 55.0, 30.0, 2, 2, NOW(), NOW()),
@@ -102,6 +113,15 @@ INSERT INTO target_part_thresholds (id, pass_score, confirming_score, full_part_
 (12, 70.0, 55.0, 35.0, 2, 5, NOW(), NOW()),
 (13, 65.0, 50.0, 30.0, 2, 6, NOW(), NOW()),
 (14, 60.0, 45.0, 25.0, 2, 7, NOW(), NOW()),
+
+-- Profile 6: AIM 750 (Ngưỡng thành thạo)
+(36, 82.0, 68.0, 40.0, 6, 1, NOW(), NOW()),
+(37, 78.0, 62.0, 35.0, 6, 2, NOW(), NOW()),
+(38, 72.0, 58.0, 35.0, 6, 3, NOW(), NOW()),
+(39, 72.0, 58.0, 35.0, 6, 4, NOW(), NOW()),
+(40, 78.0, 62.0, 40.0, 6, 5, NOW(), NOW()),
+(41, 72.0, 58.0, 35.0, 6, 6, NOW(), NOW()),
+(42, 68.0, 52.0, 30.0, 6, 7, NOW(), NOW()),
 
 -- Profile 3: AIM 800 (Ngưỡng nâng cao)
 (15, 88.0, 75.0, 50.0, 3, 1, NOW(), NOW()),
@@ -181,14 +201,28 @@ INSERT INTO module_abilities (id, module_id, ability_id) VALUES
 (16, 10, 10), (17, 10, 11), (18, 10, 12);
 
 -- Điểm đỗ cá nhân hóa từng Module theo AIM (ModuleTargetThresholds)
+-- Đầy đủ 100% Ma trận: 10 Modules x 6 AIMs = 60 ô cấu hình
 INSERT INTO module_target_thresholds (id, pass_score, module_id, target_profile_id, created_at, updated_at) VALUES
-(1, 60, 1, 1, NOW(), NOW()), (2, 75, 1, 2, NOW(), NOW()), (3, 85, 1, 3, NOW(), NOW()),
-(4, 60, 2, 1, NOW(), NOW()), (5, 70, 2, 2, NOW(), NOW()), (6, 85, 2, 3, NOW(), NOW()),
-(7, 60, 3, 1, NOW(), NOW()), (8, 70, 3, 2, NOW(), NOW()), (9, 80, 3, 3, NOW(), NOW()),
-(10, 65, 5, 1, NOW(), NOW()), (11, 75, 5, 2, NOW(), NOW()), (12, 85, 5, 3, NOW(), NOW()),
-(13, 65, 6, 1, NOW(), NOW()), (14, 75, 6, 2, NOW(), NOW()), (15, 85, 6, 3, NOW(), NOW()),
-(16, 60, 7, 1, NOW(), NOW()), (17, 75, 7, 2, NOW(), NOW()), (18, 85, 7, 3, NOW(), NOW()),
-(19, 65, 8, 1, NOW(), NOW()), (20, 75, 8, 2, NOW(), NOW()), (21, 85, 8, 3, NOW(), NOW());
+-- Module 1: Chinh phục bẫy hành động và bối cảnh Part 1 (default 70)
+(1, 60, 1, 1, NOW(), NOW()), (2, 65, 1, 5, NOW(), NOW()), (3, 75, 1, 2, NOW(), NOW()), (4, 80, 1, 6, NOW(), NOW()), (5, 85, 1, 3, NOW(), NOW()), (6, 95, 1, 4, NOW(), NOW()),
+-- Module 2: Phản xạ câu hỏi Wh-Questions thần tốc Part 2 (default 70)
+(7, 60, 2, 1, NOW(), NOW()), (8, 65, 2, 5, NOW(), NOW()), (9, 70, 2, 2, NOW(), NOW()), (10, 75, 2, 6, NOW(), NOW()), (11, 85, 2, 3, NOW(), NOW()), (12, 95, 2, 4, NOW(), NOW()),
+-- Module 3: Phương pháp bắt Keyword & Ngữ điệu Part 3 (default 75)
+(13, 60, 3, 1, NOW(), NOW()), (14, 65, 3, 5, NOW(), NOW()), (15, 70, 3, 2, NOW(), NOW()), (16, 75, 3, 6, NOW(), NOW()), (17, 80, 3, 3, NOW(), NOW()), (18, 90, 3, 4, NOW(), NOW()),
+-- Module 4: Bí kíp đọc lướt câu hỏi & biểu đồ Part 4 (default 75)
+(19, 60, 4, 1, NOW(), NOW()), (20, 65, 4, 5, NOW(), NOW()), (21, 70, 4, 2, NOW(), NOW()), (22, 75, 4, 6, NOW(), NOW()), (23, 80, 4, 3, NOW(), NOW()), (24, 90, 4, 4, NOW(), NOW()),
+-- Module 5: Làm chủ 12 thì và thể bị động Part 5 (default 80)
+(25, 65, 5, 1, NOW(), NOW()), (26, 70, 5, 5, NOW(), NOW()), (27, 75, 5, 2, NOW(), NOW()), (28, 80, 5, 6, NOW(), NOW()), (29, 85, 5, 3, NOW(), NOW()), (30, 95, 5, 4, NOW(), NOW()),
+-- Module 6: Chiến thuật từ loại & Collocations công sở Part 5 (default 80)
+(31, 65, 6, 1, NOW(), NOW()), (32, 70, 6, 5, NOW(), NOW()), (33, 75, 6, 2, NOW(), NOW()), (34, 80, 6, 6, NOW(), NOW()), (35, 85, 6, 3, NOW(), NOW()), (36, 95, 6, 4, NOW(), NOW()),
+-- Module 7: Kỹ năng tư duy điền câu văn bản Part 6 (default 75)
+(37, 60, 7, 1, NOW(), NOW()), (38, 65, 7, 5, NOW(), NOW()), (39, 75, 7, 2, NOW(), NOW()), (40, 80, 7, 6, NOW(), NOW()), (41, 85, 7, 3, NOW(), NOW()), (42, 95, 7, 4, NOW(), NOW()),
+-- Module 8: Giải mã Email & Memos điều hành Part 7 (default 80)
+(43, 65, 8, 1, NOW(), NOW()), (44, 70, 8, 5, NOW(), NOW()), (45, 75, 8, 2, NOW(), NOW()), (46, 80, 8, 6, NOW(), NOW()), (47, 85, 8, 3, NOW(), NOW()), (48, 95, 8, 4, NOW(), NOW()),
+-- Module 9: Vượt bẫy văn bản đôi và ba Part 7 (default 80)
+(49, 65, 9, 1, NOW(), NOW()), (50, 70, 9, 5, NOW(), NOW()), (51, 75, 9, 2, NOW(), NOW()), (52, 80, 9, 6, NOW(), NOW()), (53, 85, 9, 3, NOW(), NOW()), (54, 95, 9, 4, NOW(), NOW()),
+-- Module 10: Tổng ôn thi vượt ải TOEIC toàn diện (default 85)
+(55, 70, 10, 1, NOW(), NOW()), (56, 75, 10, 5, NOW(), NOW()), (57, 80, 10, 2, NOW(), NOW()), (58, 85, 10, 6, NOW(), NOW()), (59, 90, 10, 3, NOW(), NOW()), (60, 98, 10, 4, NOW(), NOW());
 
 -- =====================================================================================
 -- PHẦN 8: BÀI HỌC (LESSONS, VIDEO_LESSONS, PRACTICE_LESSONS)

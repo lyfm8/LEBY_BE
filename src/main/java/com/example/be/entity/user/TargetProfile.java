@@ -49,8 +49,6 @@ public class TargetProfile extends AbstractEntity {
     }
 
     public String getName() {
-        return (this.description != null && !this.description.isBlank())
-                ? this.description
-                : "AIM " + this.targetTotalScore;
+        return "AIM " + this.targetTotalScore;
     }
 }
