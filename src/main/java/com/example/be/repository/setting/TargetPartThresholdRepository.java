@@ -12,8 +12,14 @@ import java.util.Optional;
 @Repository
 public interface TargetPartThresholdRepository extends JpaRepository<TargetPartThreshold, Long> {
 
+    /**
+     * Tìm ngưỡng điểm đánh giá Part theo TargetProfile ID và Part ID.
+     */
     Optional<TargetPartThreshold> findByTargetProfileIdAndPartId(Long targetProfileId, Long partId);
 
+    /**
+     * Lấy toàn bộ ngưỡng điểm 7 Part của một mục tiêu AIM.
+     */
     List<TargetPartThreshold> findByTargetProfileId(Long targetProfileId);
 
     @Query("SELECT t FROM TargetPartThreshold t JOIN FETCH t.part p JOIN FETCH t.targetProfile tp ORDER BY tp.targetTotalScore ASC, p.id ASC")

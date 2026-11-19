@@ -52,4 +52,16 @@ public interface QuestionRepository extends JpaRepository<Question, Long>, JpaSp
      */
     @Query("SELECT q.id FROM Question q WHERE q.parent.id = :parentId")
     List<Long> findSubQuestionIdsByParentId(@Param("parentId") Long parentId);
+
+    /**
+     * Lấy danh sách câu hỏi có thể gán vào đề thi (câu đơn lập hoặc câu con trong chùm, không lấy câu cha chỉ chứa bài đọc).
+     */
+    @Query("SELECT q FROM Question q JOIN FETCH q.part p WHERE p.id = :partId AND (q.parent IS NOT NULL OR NOT EXISTS (SELECT 1 FROM Question child WHERE child.parent = q))")
+    List<Question> findPlayableQuestionsByPartId(@Param("partId") Long partId);
+
+    /**
+     * Đếm số câu hỏi có thể làm bài theo ID của Part (1 đến 7).
+     */
+    @Query("SELECT COUNT(q) FROM Question q WHERE q.part.id = :partId AND (q.parent IS NOT NULL OR NOT EXISTS (SELECT 1 FROM Question child WHERE child.parent = q))")
+    long countPlayableQuestionsByPartId(@Param("partId") Long partId);
 }

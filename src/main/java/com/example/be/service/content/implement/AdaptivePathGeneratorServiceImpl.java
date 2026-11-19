@@ -38,7 +38,7 @@ import java.util.Map;
 /**
  * Triển khai thuật toán sinh lộ trình thích ứng cá nhân hóa (Adaptive Path Generation).
  * Tuân thủ quy chuẩn Zero-Conflict:
- * - Không hardcode bất kỳ tham số nào (đọc động từ TargetPartThreshold và AbilityEvaluationRule).
+ * - Không hardcode bất kỳ tham số nào (đọc động từ TargetPartThreshold và AbilityEvaluationRule theo AIM).
  * - Sắp xếp Module theo đúng thứ tự sư phạm Module.sequence.
  * - Triển khai Kịch bản B: Gán trực tiếp TargetProfile và DiagnosticAttempt vào LearningPath.
  */
@@ -90,18 +90,18 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
                         .findByTargetProfileIdAndPartId(targetProfileId, partId)
                         .orElseThrow(() -> new IllegalStateException("Chưa cấu hình ngưỡng cho Part " + partId + " và TargetProfile " + targetProfileId));
 
-                // Phân loại Directive tự động theo hàm nghiệp vụ trong Entity
-                EPartDirective directive = threshold.determineDirective(partScore);
+                // Phân loại Directive 3 nhánh Tầng 1 (PASS / CONFIRM / WEAK) qua hàm nghiệp vụ nội bộ Service
+                EPartDirective directive = determineDirective(threshold, partScore);
                 partResult.setDirective(directive);
 
-                // XỬ LÝ 4 NHÁNH TẦNG 1
+                // XỬ LÝ 3 NHÁNH TẦNG 1
                 switch (directive) {
                     case PASS:
                         // Nhánh 1: Đạt chuẩn AIM -> MIỄN HỌC 100% Part này (0 module)
                         break;
 
-                    case FULL_PART:
-                        // Nhánh 4: Mất gốc (< fullPartThreshold) -> Bốc toàn bộ 100% module của Part theo sequence
+                    case WEAK:
+                        // Nhánh 2: Mất gốc / Dưới chuẩn (< confirmingScore) -> Bốc toàn bộ 100% module của Part theo sequence
                         List<Module> allModulesOfPart = moduleRepo.findByPartIdOrderBySequenceAsc(partId);
                         for (Module m : allModulesOfPart) {
                             selectedModuleMap.putIfAbsent(m.getId(), new SelectedModuleEntry(m, null));
@@ -109,11 +109,8 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
                         break;
 
                     case CONFIRM:
-                    case ABILITY_DIAGNOSTIC:
-                        // Nhánh 2 & 3: Xuống Tầng 2 soi Ability vi mô
-                        // CONFIRM dùng developingThreshold (Seed Data mẫu 50%)
-                        // ABILITY_DIAGNOSTIC dùng stableThreshold (Seed Data mẫu 75%)
-                        processAbilityTier(partResult, directive, attempt, selectedModuleMap);
+                        // Nhánh 3: Cận chuẩn (confirmingScore <= score < passScore) -> Xuống Tầng 2 soi Ability vi mô
+                        processAbilityTier(partResult, targetProfileId, attempt, selectedModuleMap);
                         break;
                 }
             }
@@ -144,29 +141,20 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
 
     private void processAbilityTier(
             PartDiagnosticResult partResult,
-            EPartDirective directive,
+            Long targetProfileId,
             DiagnosticAttempt attempt,
             Map<Long, SelectedModuleEntry> selectedModuleMap) {
 
         List<AbilityScoreDTO> abilityScores = calculateAbilityScores(partResult, attempt);
 
         for (AbilityScoreDTO abilityScore : abilityScores) {
-            // ĐỌC QUY TẮC ĐỘNG TỪ BẢNG ability_evaluation_rules (KHÔNG HARDCODE)
-            AbilityEvaluationRule rule = abilityRuleRepo.findByAbilityId(abilityScore.getAbilityId())
+            // ĐỌC QUY TẮC ĐỘNG TỪ BẢNG ability_evaluation_rules THEO AIM (KHÔNG HARDCODE)
+            AbilityEvaluationRule rule = abilityRuleRepo
+                    .findByAbilityIdAndTargetProfileId(abilityScore.getAbilityId(), targetProfileId)
                     .orElse(null);
 
-            boolean isWeak;
-            if (rule != null) {
-                isWeak = rule.isWeak(abilityScore.getAccuracyRate(), directive);
-            } else {
-                // Fallback an toàn nếu chưa kịp gán rule cho Ability
-                float fallbackCutoff = (directive == EPartDirective.CONFIRM)
-                        ? 50.0f
-                        : 75.0f;
-                isWeak = abilityScore.getAccuracyRate() < fallbackCutoff;
-            }
-
-            // ĐÁNH GIÁ NHỊ PHÂN TẦNG 2: Nếu tỷ lệ đúng < ngưỡng cắt -> BỐC MODULE
+            // ĐÁNH GIÁ NHỊ PHÂN TẦNG 2: Nếu tỷ lệ đúng < stableMin -> BỐC MODULE
+            boolean isWeak = evaluateIfAbilityIsWeak(rule, abilityScore.getAccuracyRate());
             if (isWeak) {
                 List<Module> modulesForAbility = moduleRepo.findByAbilityId(abilityScore.getAbilityId());
                 for (Module m : modulesForAbility) {
@@ -176,6 +164,41 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
                 }
             }
         }
+    }
+
+    /**
+     * Xác định nhánh điều hướng Tầng 1 (Directive) cho một Part dựa trên ngưỡng điểm TargetPartThreshold.
+     * Logic nghiệp vụ được đặt tại tầng Service (tuân thủ Strict Layered Architecture).
+     *
+     * @param threshold Cấu hình ngưỡng điểm của Part theo AIM
+     * @param actualScore Điểm số phần thi chẩn đoán của học viên (thang 0% - 100%)
+     * @return EPartDirective kết quả phân loại (PASS / CONFIRM / WEAK)
+     */
+    private EPartDirective determineDirective(TargetPartThreshold threshold, float actualScore) {
+        if (threshold.getPassScore() != null && actualScore >= threshold.getPassScore()) {
+            return EPartDirective.PASS;
+        }
+        if (threshold.getConfirmingScore() != null && actualScore >= threshold.getConfirmingScore()) {
+            return EPartDirective.CONFIRM;
+        }
+        return EPartDirective.WEAK;
+    }
+
+    /**
+     * Đánh giá nhị phân Tầng 2: Kiểm tra tỷ lệ đúng của học viên có bị xem là YẾU (cần bốc Module) hay không.
+     * Logic nghiệp vụ được đặt tại tầng Service (tuân thủ Strict Layered Architecture).
+     *
+     * @param rule Quy tắc đánh giá năng lực theo AIM (nếu có)
+     * @param accuracyRate Tỷ lệ trả lời đúng của học viên ở Ability này (0 - 100%)
+     * @return true nếu tỷ lệ đúng < stableMin (hoặc fallback 75.0f nếu chưa có rule)
+     */
+    private boolean evaluateIfAbilityIsWeak(AbilityEvaluationRule rule, float accuracyRate) {
+        if (rule != null && rule.getStableMin() != null) {
+            return accuracyRate < rule.getStableMin();
+        }
+        // Fallback an toàn nếu chưa cấu hình rule cho Ability này ở AIM này
+        float fallbackCutoff = 75.0f;
+        return accuracyRate < fallbackCutoff;
     }
 
     /**

@@ -43,7 +43,6 @@ public class PendingMediaCleanupScheduler {
             return;
         }
 
-        log.info("Bắt đầu dọn dẹp {} tệp tin media PENDING hết hạn...", expiredMedias.size());
         int deletedCount = 0;
 
         for (Media media : expiredMedias) {
@@ -57,11 +56,7 @@ public class PendingMediaCleanupScheduler {
             if (deletedOnCloud) {
                 mediaRepository.delete(media);
                 deletedCount++;
-            } else {
-                log.warn("Bỏ qua việc xóa DB cho mediaId={} vì không xóa được trên Cloudinary", media.getId());
             }
         }
-
-        log.info("Hoàn tất dọn dẹp media: đã xóa thành công {}/{} bản ghi", deletedCount, expiredMedias.size());
     }
 }
