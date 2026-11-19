@@ -7,6 +7,7 @@ import com.example.be.dto.response.setting.TargetPartThresholdResponse;
 import com.example.be.service.setting.service.TargetPartThresholdService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -43,6 +45,7 @@ public class AdminTargetPartThresholdController {
     }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<TargetPartThresholdResponse> createThreshold(
             @Valid @RequestBody CreateTargetPartThresholdRequest request) {
         return new ApiResponse<>(true, "Tạo mới cấu hình ngưỡng điểm Part thành công", thresholdService.createThreshold(request));
