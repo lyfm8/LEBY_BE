@@ -53,7 +53,31 @@ public class AbilityEvaluationRule extends AbstractEntity {
     /**
      * Quy tắc này áp dụng cho Mục tiêu (AIM / TargetProfile) nào.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "target_profile_id", nullable = false)
-    private TargetProfile targetProfile;
+    public boolean isWeak(float accuracyRate, EPartDirective directive) {
+        float cutoff = (directive == EPartDirective.CONFIRM)
+                ? this.developingThreshold
+                : this.stableThreshold;
+        return accuracyRate < cutoff;
+    }
+
+    // Các helper aliases phục vụ tương thích ngữ nghĩa API và DTO
+    public Float getStableMin() {
+        return this.stableThreshold;
+    }
+
+    public void setStableMin(Float stableMin) {
+        this.stableThreshold = stableMin;
+    }
+
+    public Float getWeakMax() {
+        return this.developingThreshold;
+    }
+
+    public void setWeakMax(Float weakMax) {
+        this.developingThreshold = weakMax;
+    }
+
+    public Float getDevelopingMax() {
+        return this.stableThreshold;
+    }
 }

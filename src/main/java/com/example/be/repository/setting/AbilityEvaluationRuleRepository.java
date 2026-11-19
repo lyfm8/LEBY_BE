@@ -2,6 +2,8 @@ package com.example.be.repository.setting;
 
 import com.example.be.entity.setting.AbilityEvaluationRule;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -10,18 +12,15 @@ import java.util.Optional;
 @Repository
 public interface AbilityEvaluationRuleRepository extends JpaRepository<AbilityEvaluationRule, Long> {
 
-    /**
-     * Tìm quy tắc đánh giá năng lực theo Ability ID và TargetProfile ID.
-     */
-    Optional<AbilityEvaluationRule> findByAbilityIdAndTargetProfileId(Long abilityId, Long targetProfileId);
+    Optional<AbilityEvaluationRule> findByAbilityId(Long abilityId);
 
-    /**
-     * Lấy toàn bộ danh sách quy tắc đánh giá năng lực của một mục tiêu AIM.
-     */
-    List<AbilityEvaluationRule> findByTargetProfileId(Long targetProfileId);
+    @Query("SELECT r FROM AbilityEvaluationRule r JOIN FETCH r.ability a LEFT JOIN FETCH a.part p ORDER BY a.id ASC")
+    List<AbilityEvaluationRule> findAllWithDetails();
 
-    /**
-     * Xóa toàn bộ quy tắc của một mục tiêu AIM (dùng khi reset/ghi đè).
-     */
-    void deleteByTargetProfileId(Long targetProfileId);
+    @Query("SELECT r FROM AbilityEvaluationRule r JOIN FETCH r.ability a LEFT JOIN FETCH a.part p WHERE r.id = :id")
+    Optional<AbilityEvaluationRule> findByIdWithDetails(@Param("id") Long id);
+
+    boolean existsByAbilityId(Long abilityId);
+
+    boolean existsByAbilityIdAndIdNot(Long abilityId, Long id);
 }

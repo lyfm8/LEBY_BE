@@ -42,4 +42,15 @@ public class TargetProfile extends AbstractEntity {
 
     @Column(length = 500)
     private String description;
+
+    // Helper getter aliases để thống nhất giao tiếp DTO và UI
+    public Integer getScore() {
+        return this.targetTotalScore;
+    }
+
+    public String getName() {
+        return (this.description != null && !this.description.isBlank())
+                ? this.description
+                : "AIM " + this.targetTotalScore;
+    }
 }
