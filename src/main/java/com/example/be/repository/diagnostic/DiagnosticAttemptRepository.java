@@ -2,9 +2,13 @@ package com.example.be.repository.diagnostic;
 
 import com.example.be.entity.diagnostic.DiagnosticAttempt;
 import com.example.be.enums.diagnostic.EAttemptStatus;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,4 +33,15 @@ public interface DiagnosticAttemptRepository extends JpaRepository<DiagnosticAtt
      * Đếm tổng số lượt làm bài của một đề thi.
      */
     long countByDiagnosticTestId(Long testId);
+
+    long countByStatus(EAttemptStatus status);
+
+    long countByStatusAndCompletedAtBetween(EAttemptStatus status, LocalDateTime start, LocalDateTime end);
+
+    @Query("SELECT d FROM DiagnosticAttempt d " +
+           "JOIN FETCH d.user u " +
+           "JOIN FETCH d.diagnosticTest t " +
+           "WHERE d.status = :status " +
+           "ORDER BY d.completedAt DESC")
+    List<DiagnosticAttempt> findTopRecentAttempts(@Param("status") EAttemptStatus status, Pageable pageable);
 }
