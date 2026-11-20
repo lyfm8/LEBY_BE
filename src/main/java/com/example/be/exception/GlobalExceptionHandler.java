@@ -163,7 +163,7 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
 
         Map<String, String> fieldErrors = new HashMap<>();
-        ex.getAllValidationResults().forEach(result -> {
+        ex.getParameterValidationResults().forEach(result -> {
             String paramName = result.getMethodParameter().getParameterName();
             result.getResolvableErrors().forEach(error ->
                 fieldErrors.put(paramName != null ? paramName : "parameter", error.getDefaultMessage())
