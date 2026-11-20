@@ -14,4 +14,6 @@ public interface LearningPathRepository extends JpaRepository<LearningPath, Long
     List<LearningPath> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     Optional<LearningPath> findByUserIdAndStatus(Long userId, ELearningPathStatus status);
+
+    long countByStatus(ELearningPathStatus status);
 }
