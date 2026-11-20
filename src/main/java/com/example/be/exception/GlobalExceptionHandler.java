@@ -11,6 +11,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -139,6 +140,37 @@ public class GlobalExceptionHandler {
         }
 
         log.warn("[400] {} - Constraint violation: {}", request.getRequestURI(), fieldErrors);
+
+        ErrorResponse body = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(HttpStatus.BAD_REQUEST.name())
+                .code("VALIDATION_FAILED")
+                .message("Validation failed")
+                .path(request.getRequestURI())
+                .errors(fieldErrors)
+                .build();
+
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    /**
+     * Xử lý lỗi validate tham số phương thức Controller trong Spring 6 / Spring Boot 3+.
+     */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ErrorResponse> handleHandlerMethodValidation(
+            HandlerMethodValidationException ex,
+            HttpServletRequest request) {
+
+        Map<String, String> fieldErrors = new HashMap<>();
+        ex.getAllValidationResults().forEach(result -> {
+            String paramName = result.getMethodParameter().getParameterName();
+            result.getResolvableErrors().forEach(error ->
+                fieldErrors.put(paramName != null ? paramName : "parameter", error.getDefaultMessage())
+            );
+        });
+
+        log.warn("[400] {} - Handler method validation failed: {}", request.getRequestURI(), fieldErrors);
 
         ErrorResponse body = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
