@@ -8,6 +8,7 @@ import com.example.be.dto.response.content.UserModuleTestInfoResponse;
 import com.example.be.entity.content.LearningPath;
 import com.example.be.entity.content.LearningPathItem;
 import com.example.be.entity.content.Lesson;
+import com.example.be.entity.content.LessonProgress;
 import com.example.be.entity.content.Module;
 import com.example.be.entity.content.ModuleTestAttempt;
 import com.example.be.entity.setting.ModuleTargetThreshold;
@@ -23,6 +24,7 @@ import com.example.be.exception.ErrorCode;
 import com.example.be.mapper.content.UserRoadmapMapper;
 import com.example.be.repository.content.LearningPathItemRepository;
 import com.example.be.repository.content.LearningPathRepository;
+import com.example.be.repository.content.LessonProgressRepository;
 import com.example.be.repository.content.LessonRepository;
 import com.example.be.repository.content.ModuleTestAttemptRepository;
 import com.example.be.repository.question.ModuleTestQuestionRepository;
@@ -36,10 +38,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Triển khai nghiệp vụ Lộ trình học cá nhân (UC09) và Xem chi tiết Module (UC10) cho học viên.
@@ -67,6 +71,7 @@ public class UserRoadmapServiceImpl implements UserRoadmapService {
     private final LearningPathRepository learningPathRepository;
     private final LearningPathItemRepository learningPathItemRepository;
     private final LessonRepository lessonRepository;
+    private final LessonProgressRepository lessonProgressRepository;
     private final ModuleTargetThresholdRepository moduleTargetThresholdRepository;
     private final ModuleTestQuestionRepository moduleTestQuestionRepository;
     private final ModuleTestAttemptRepository moduleTestAttemptRepository;
@@ -111,13 +116,16 @@ public class UserRoadmapServiceImpl implements UserRoadmapService {
                 .toList();
 
         Map<Long, Integer> totalLessonsMap = loadPublishedLessonCountByModuleIds(moduleIds);
+        // Nạp số bài học đã hoàn thành thực tế từ bảng lesson_progress trong 1 câu GROUP BY (chống N+1)
+        Map<Long, Integer> completedLessonsMap = loadCompletedLessonCountByModuleIds(userId, moduleIds);
 
-        // Bước 5: Map từng LearningPathItem sang DTO kèm số lượng bài học và tiến độ hoàn thành
+        // Bước 5: Map từng LearningPathItem sang DTO kèm số lượng bài học và tiến độ hoàn thành thực tế
         List<RoadmapModuleItemResponse> moduleResponses = items.stream()
                 .map(item -> {
                     Long moduleId = item.getModule() != null ? item.getModule().getId() : null;
                     int totalLessons = moduleId != null ? totalLessonsMap.getOrDefault(moduleId, 0) : 0;
-                    int completedLessons = estimateCompletedLessons(item, totalLessons);
+                    int actualCompleted = moduleId != null ? completedLessonsMap.getOrDefault(moduleId, 0) : 0;
+                    int completedLessons = resolveCompletedLessons(item, totalLessons, actualCompleted);
                     return userRoadmapMapper.toRoadmapModuleItemResponse(item, totalLessons, completedLessons);
                 })
                 .toList();
@@ -173,8 +181,9 @@ public class UserRoadmapServiceImpl implements UserRoadmapService {
         // Bước 5: Đếm số câu hỏi gắn trong practice_questions cho cả bài VIDEO (ôn tập) và PRACTICE (luyện tập) bằng 1 câu GROUP BY
         Map<Long, Integer> questionCountMap = loadPracticeQuestionCounts(publishedLessons);
 
-        // Bước 6: Tính trạng thái hoàn thành của từng bài học và thống kê riêng cho bài giảng Video (phục vụ BR03)
+        // Bước 6: Nạp tiến độ hoàn thành thật từ bảng lesson_progress (1 query IN) và thống kê riêng cho bài giảng Video (BR03)
         boolean allLessonsInheritedOrDone = isAllModuleLessonsCompleted(pathItem);
+        Set<Long> completedLessonIds = loadCompletedLessonIds(userId, publishedLessons);
         int totalVideoLessons = 0;
         int completedVideoLessons = 0;
         int completedLessons = 0;
@@ -182,7 +191,8 @@ public class UserRoadmapServiceImpl implements UserRoadmapService {
         List<UserModuleLessonResponse> lessonResponses = new ArrayList<>(publishedLessons.size());
         for (Lesson lesson : publishedLessons) {
             boolean isVideo = lesson.getLessonType() == ELessonType.VIDEO;
-            boolean isCompleted = allLessonsInheritedOrDone;
+            // Một bài học được xem là hoàn thành nếu đã đạt chuẩn trong lesson_progress hoặc được bảo lưu 100% theo BR06
+            boolean isCompleted = allLessonsInheritedOrDone || completedLessonIds.contains(lesson.getId());
 
             if (isVideo) {
                 totalVideoLessons++;
@@ -391,15 +401,63 @@ public class UserRoadmapServiceImpl implements UserRoadmapService {
     }
 
     /**
-     * Tính số bài học đã hoàn thành dựa trên tiến độ hiện tại của LearningPathItem.
-     * NOTE: Khi triển khai UC11 (bảng lesson_progress), chỉ cần thay nguồn đọc tại hàm này bằng LessonProgressRepository.
+     * Nạp số lượng bài học đã hoàn thành của học viên theo từng Module từ bảng lesson_progress trong 1 query GROUP BY.
      */
-    private int estimateCompletedLessons(LearningPathItem item, int totalLessons) {
+    private Map<Long, Integer> loadCompletedLessonCountByModuleIds(Long userId, List<Long> moduleIds) {
+        if (moduleIds == null || moduleIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Object[]> rows = lessonProgressRepository.countCompletedLessonsGroupedByModuleId(
+                userId,
+                moduleIds,
+                EModuleStatus.PUBLISHED
+        );
+        return toCountMap(rows);
+    }
+
+    /**
+     * Nạp tập hợp ID các bài học đã hoàn thành của học viên trong Module từ bảng lesson_progress bằng 1 query IN.
+     */
+    private Set<Long> loadCompletedLessonIds(Long userId, List<Lesson> lessons) {
+        if (lessons == null || lessons.isEmpty()) {
+            return Collections.emptySet();
+        }
+        List<Long> lessonIds = lessons.stream()
+                .map(Lesson::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (lessonIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        List<LessonProgress> progressList = lessonProgressRepository.findByUserIdAndLessonIdIn(userId, lessonIds);
+        if (progressList == null || progressList.isEmpty()) {
+            return Collections.emptySet();
+        }
+        Set<Long> completedIds = new HashSet<>();
+        for (LessonProgress progress : progressList) {
+            if (Boolean.TRUE.equals(progress.getIsCompleted())
+                    && progress.getLesson() != null
+                    && progress.getLesson().getId() != null) {
+                completedIds.add(progress.getLesson().getId());
+            }
+        }
+        return completedIds;
+    }
+
+    /**
+     * Xác định số bài học đã hoàn thành hiển thị trên thẻ Module (UC09):
+     * - Nếu chặng đã bảo lưu BR06 (COMPLETED hoặc 100%) -> trả về toàn bộ totalLessons.
+     * - Ngược lại sử dụng số lượng thật đếm từ bảng lesson_progress (fallback an toàn theo progressPercent nếu chưa có bản ghi).
+     */
+    private int resolveCompletedLessons(LearningPathItem item, int totalLessons, int actualCompletedFromDb) {
         if (totalLessons <= 0) {
             return 0;
         }
         if (isAllModuleLessonsCompleted(item)) {
             return totalLessons;
+        }
+        if (actualCompletedFromDb > 0) {
+            return Math.min(totalLessons, actualCompletedFromDb);
         }
         int progress = item.getProgressPercent() != null ? item.getProgressPercent() : 0;
         if (progress <= 0) {
