@@ -1,14 +1,15 @@
 package com.example.be.service.auth.service;
 
-import com.example.be.dto.request.auth.SendOtpRequest;
-import com.example.be.dto.request.auth.RegisterRequest;
 import com.example.be.dto.request.auth.LoginRequest;
+import com.example.be.dto.request.auth.RegisterRequest;
+import com.example.be.dto.request.auth.ResetPasswordRequest;
+import com.example.be.dto.request.auth.SendOtpRequest;
 import com.example.be.dto.response.auth.AuthResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Interface định nghĩa contract cho AuthService.
+ * Interface định nghĩa contract cho nghiệp vụ Xác thực (UC01 - UC04).
  */
 public interface AuthService {
 
@@ -17,6 +18,8 @@ public interface AuthService {
     AuthResponse register(RegisterRequest request, HttpServletResponse response);
 
     AuthResponse login(LoginRequest request, HttpServletResponse response);
+
+    void resetPassword(ResetPasswordRequest request);
 
     void refresh(HttpServletRequest request, HttpServletResponse response);
 
