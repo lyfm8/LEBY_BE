@@ -85,6 +85,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 throw new BaseException(ErrorCode.TOKEN_VERSION_MISMATCH);
             }
 
+            // SECURITY: Chặn ngay lập tức nếu tài khoản đã bị Admin khóa (isActive = false) trong lúc token vẫn còn hạn
+            if (!Boolean.TRUE.equals(user.getIsActive())) {
+                throw new BaseException(ErrorCode.USER_IS_LOCKED, "Tài khoản của bạn đã bị khóa");
+            }
+
             // Tạo Authority từ role claim. ROLE_ prefix theo chuẩn Spring Security.
             // Lưu ý: Khi ADMIN thay đổi role của user, phải tăng tokenVersion để
             // vô hiệu hóa token cũ còn chứa role cũ — tránh leo thang quyền.
@@ -98,6 +103,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
         } catch (BaseException ex) {
+            // Với riêng endpoint /api/auth/logout, không chặn 401 khi Access Token đã hết hạn/lỗi
+            // để AuthController vẫn xóa sạch HTTP-Only Cookie và thu hồi phiên qua Refresh Token.
+            if ("/api/auth/logout".equals(request.getRequestURI())) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             // Ghi log và trả lỗi 401 trực tiếp từ Filter.
             // Không thể dùng GlobalExceptionHandler ở đây vì nằm ngoài DispatcherServlet.
             log.warn("[AUTH FILTER] {} - {}: {}", request.getRequestURI(), ex.getErrorCode().getCode(), ex.getMessage());

@@ -286,6 +286,24 @@ public enum ErrorCode {
             HttpStatus.FORBIDDEN,
             "FORBIDDEN_ACTIVATE_EXAM",
             "Chỉ Quản trị viên (Admin) mới có quyền kích hoạt hoặc lưu trữ đề thi"
+    ),
+
+    /**
+     * HTTP 404 - Không tìm thấy lượt làm bài chẩn đoán.
+     */
+    DIAGNOSTIC_ATTEMPT_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "DIAGNOSTIC_ATTEMPT_NOT_FOUND",
+            "Không tìm thấy lượt làm bài chẩn đoán"
+    ),
+
+    /**
+     * HTTP 409 - Lượt thi đã được nộp trước đó, không thể nộp lại.
+     */
+    DIAGNOSTIC_ALREADY_SUBMITTED(
+            HttpStatus.CONFLICT,
+            "DIAGNOSTIC_ALREADY_SUBMITTED",
+            "Lượt thi này đã được nộp hoặc đã hết hạn"
     );
 
     // -----------------------------------------------------------------------

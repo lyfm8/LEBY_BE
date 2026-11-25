@@ -64,4 +64,17 @@ public interface QuestionRepository extends JpaRepository<Question, Long>, JpaSp
      */
     @Query("SELECT COUNT(q) FROM Question q WHERE q.part.id = :partId AND (q.parent IS NOT NULL OR NOT EXISTS (SELECT 1 FROM Question child WHERE child.parent = q))")
     long countPlayableQuestionsByPartId(@Param("partId") Long partId);
+
+    /**
+     * Load câu hỏi theo danh sách ID kèm Ability để tránh N+1 khi chấm điểm Tầng 2.
+     *
+     * @param ids Danh sách ID câu hỏi cần load
+     * @return Danh sách Question đã nạp sẵn questionAbilities và part
+     */
+    @Query("SELECT DISTINCT q FROM Question q " +
+           "LEFT JOIN FETCH q.questionAbilities qa " +
+           "LEFT JOIN FETCH qa.ability a " +
+           "LEFT JOIN FETCH q.part p " +
+           "WHERE q.id IN :ids")
+    List<Question> findAllWithAbilitiesByIdIn(@Param("ids") List<Long> ids);
 }

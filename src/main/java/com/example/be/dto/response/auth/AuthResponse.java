@@ -1,6 +1,5 @@
 package com.example.be.dto.response.auth;
 
-import com.example.be.entity.user.User;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
