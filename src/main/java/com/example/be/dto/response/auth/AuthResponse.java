@@ -1,5 +1,6 @@
 package com.example.be.dto.response.auth;
 
+import com.example.be.enums.user.ELearnerType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +19,7 @@ public class AuthResponse {
     private LocalDate dob;
     private String avatar;
     private String role;
+    private ELearnerType learnerType;
     private boolean hasSelectedTarget;
     private Long targetProfileId;
     private Integer targetTotalScore;

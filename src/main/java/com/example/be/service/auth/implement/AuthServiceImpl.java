@@ -126,10 +126,12 @@ public class AuthServiceImpl implements AuthService {
             throw new BaseException(ErrorCode.EMAIL_ALREADY_EXISTS, "Email này đã được đăng ký trong hệ thống");
         }
 
-        // Bước 4: Tạo tài khoản mới với vai trò mặc định STUDENT (chống leo thang quyền từ client)
+        // Bước 4: Tạo tài khoản mới kèm thông tin cá nhân và vai trò mặc định STUDENT (chống leo thang quyền từ client)
         User user = new User();
         user.setEmail(email);
         user.setFullName(request.getFullName().trim());
+        user.setDob(request.getDob());
+        user.setLearnerType(request.getLearnerType());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(ERole.STUDENT);
         user.setIsActive(true);

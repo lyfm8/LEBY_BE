@@ -3,6 +3,7 @@ package com.example.be.mapper.auth;
 import com.example.be.dto.response.auth.AuthResponse;
 import com.example.be.entity.user.TargetProfile;
 import com.example.be.entity.user.User;
+import com.example.be.enums.user.ELearnerType;
 import org.springframework.stereotype.Component;
 
 /**
@@ -31,6 +32,7 @@ public class AuthMapper {
                 .dob(user.getDob())
                 .avatar(user.getAvatar())
                 .role(roleName)
+                .learnerType(user.getLearnerType())
                 .hasSelectedTarget(targetProfile != null)
                 .targetProfileId(targetProfile != null ? targetProfile.getId() : null)
                 .targetTotalScore(targetProfile != null ? targetProfile.getTargetTotalScore() : null)
