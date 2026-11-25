@@ -38,4 +38,9 @@ public class MediaUploadSignatureResponse {
      * Thời gian hiệu lực của chữ ký (tính bằng giây).
      */
     private Integer expiresIn;
+
+    /**
+     * Thư mục gốc lưu trữ trên Cloudinary (VD: leby).
+     */
+    private String folder;
 }

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -43,16 +44,16 @@ public class SaveMediaRequest {
     @Positive(message = "bytes phải lớn hơn 0")
     private Long bytes;
 
-    @Positive(message = "width phải lớn hơn 0")
+    @PositiveOrZero(message = "width không được nhỏ hơn 0")
     private Integer width;
 
-    @Positive(message = "height phải lớn hơn 0")
+    @PositiveOrZero(message = "height không được nhỏ hơn 0")
     private Integer height;
 
     @JsonProperty("original_filename")
     @Size(max = 255, message = "original_filename không được vượt quá 255 ký tự")
     private String originalFilename;
 
-    @Positive(message = "duration phải lớn hơn 0")
+    @PositiveOrZero(message = "duration không được nhỏ hơn 0")
     private Double duration;
 }

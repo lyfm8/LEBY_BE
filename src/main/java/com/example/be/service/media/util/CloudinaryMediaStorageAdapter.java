@@ -24,6 +24,7 @@ import java.util.Map;
 public class CloudinaryMediaStorageAdapter implements MediaStorageAdapter {
 
     private static final String TEMPORARY_TAG = "tmp";
+    private static final String DEFAULT_FOLDER = "leby";
     private static final String CLOUDINARY_RESULT_OK = "ok";
     private static final String CLOUDINARY_RESULT_NOT_FOUND = "not found";
 
@@ -44,6 +45,7 @@ public class CloudinaryMediaStorageAdapter implements MediaStorageAdapter {
         Map<String, Object> parametersToSign = new HashMap<>();
         parametersToSign.put("timestamp", timestamp);
         parametersToSign.put("tags", TEMPORARY_TAG);
+        parametersToSign.put("folder", DEFAULT_FOLDER);
 
         String signature = cloudinary.apiSignRequest(parametersToSign, cloudinaryProperties.getApiSecret());
 
@@ -53,6 +55,7 @@ public class CloudinaryMediaStorageAdapter implements MediaStorageAdapter {
                 .apiKey(cloudinaryProperties.getApiKey())
                 .cloudName(cloudinaryProperties.getCloudName())
                 .expiresIn(cloudinaryProperties.getSignatureExpiresIn())
+                .folder(DEFAULT_FOLDER)
                 .build();
     }
 
