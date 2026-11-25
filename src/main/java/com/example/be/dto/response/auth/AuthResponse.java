@@ -18,4 +18,7 @@ public class AuthResponse {
     private LocalDate dob;
     private String avatar;
     private String role;
+    private boolean hasSelectedTarget;
+    private Long targetProfileId;
+    private Integer targetTotalScore;
 }

@@ -28,7 +28,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
                                   @Param("isActive") Boolean isActive, 
                                   Pageable pageable);
 
+    @EntityGraph(attributePaths = {"targetProfile"})
     Optional<User> findByEmail(String email);
+
+    /**
+     * Nạp User theo ID kèm sẵn TargetProfile để tránh LazyInitializationException ngoài Session.
+     */
+    @EntityGraph(attributePaths = {"targetProfile"})
+    Optional<User> findWithTargetProfileById(Long id);
 
     boolean existsByEmail(String email);
 

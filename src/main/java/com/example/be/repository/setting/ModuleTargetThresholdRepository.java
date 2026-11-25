@@ -15,6 +15,11 @@ public interface ModuleTargetThresholdRepository extends JpaRepository<ModuleTar
 
     Optional<ModuleTargetThreshold> findByModuleIdAndTargetProfileId(Long moduleId, Long targetProfileId);
 
+    /**
+     * Lấy toàn bộ ngưỡng điểm đỗ tùy chỉnh của các Module theo một TargetProfile cụ thể.
+     */
+    List<ModuleTargetThreshold> findByTargetProfileId(Long targetProfileId);
+
     @Query("SELECT m FROM ModuleTargetThreshold m JOIN FETCH m.module mod JOIN FETCH m.targetProfile tp")
     List<ModuleTargetThreshold> findAllWithDetails();
 

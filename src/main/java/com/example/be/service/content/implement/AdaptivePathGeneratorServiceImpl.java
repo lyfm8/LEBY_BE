@@ -11,15 +11,21 @@ import com.example.be.entity.diagnostic.PartDiagnosticResult;
 import com.example.be.entity.question.Question;
 import com.example.be.entity.question.QuestionAbility;
 import com.example.be.entity.setting.AbilityEvaluationRule;
+import com.example.be.entity.setting.ModuleTargetThreshold;
 import com.example.be.entity.setting.TargetPartThreshold;
 import com.example.be.entity.user.TargetProfile;
 import com.example.be.enums.content.ELearningPathStatus;
 import com.example.be.enums.content.ELessonStatus;
 import com.example.be.enums.diagnostic.EPartDirective;
+import com.example.be.enums.diagnostic.ETestResult;
+import com.example.be.exception.BaseException;
+import com.example.be.exception.ErrorCode;
 import com.example.be.repository.content.LearningPathItemRepository;
 import com.example.be.repository.content.LearningPathRepository;
 import com.example.be.repository.content.ModuleRepository;
+import com.example.be.repository.content.ModuleTestAttemptRepository;
 import com.example.be.repository.setting.AbilityEvaluationRuleRepository;
+import com.example.be.repository.setting.ModuleTargetThresholdRepository;
 import com.example.be.repository.setting.TargetPartThresholdRepository;
 import com.example.be.repository.user.TargetProfileRepository;
 import com.example.be.service.content.AdaptivePathGeneratorService;
@@ -34,18 +40,23 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Triển khai thuật toán sinh lộ trình thích ứng cá nhân hóa (Adaptive Path Generation).
  * Tuân thủ quy chuẩn Zero-Conflict:
- * - Không hardcode bất kỳ tham số nào (đọc động từ TargetPartThreshold và AbilityEvaluationRule).
+ * - Không hardcode bất kỳ tham số nào (đọc động từ TargetPartThreshold, AbilityEvaluationRule, ModuleTargetThreshold).
  * - Sắp xếp Module theo đúng thứ tự sư phạm Module.sequence.
- * - Triển khai Kịch bản B: Gán trực tiếp TargetProfile và DiagnosticAttempt vào LearningPath.
+ * - Hỗ trợ BR02 & BR06 khi đổi AIM: tính version tăng dần, lưu trữ lộ trình cũ và bảo lưu phần bài học / kết quả thi đỗ.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorService {
+
+    private static final int FULL_PROGRESS_PERCENT = 100;
+    private static final int ZERO_PROGRESS_PERCENT = 0;
 
     private final TargetPartThresholdRepository targetPartThresholdRepo;
     private final AbilityEvaluationRuleRepository abilityRuleRepo;
@@ -53,93 +64,242 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
     private final LearningPathRepository learningPathRepo;
     private final LearningPathItemRepository learningPathItemRepo;
     private final TargetProfileRepository targetProfileRepo;
+    private final ModuleTestAttemptRepository moduleTestAttemptRepo;
+    private final ModuleTargetThresholdRepository moduleTargetThresholdRepo;
 
     @Override
     @Transactional
     public LearningPath generateAdaptivePath(DiagnosticAttempt attempt, Long targetProfileId) {
+        // Bước 1: Kiểm tra tồn tại mốc mục tiêu AIM mới
         TargetProfile targetProfile = targetProfileRepo.findById(targetProfileId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy TargetProfile với ID: " + targetProfileId));
+                .orElseThrow(() -> new BaseException(ErrorCode.TARGET_NOT_FOUND, "Không tìm thấy TargetProfile với ID: " + targetProfileId));
 
-        // Lưu trữ các lộ trình cũ sang trạng thái ARCHIVED nếu có
-        learningPathRepo.findByUserIdAndStatus(attempt.getUser().getId(), ELearningPathStatus.ACTIVE)
-                .ifPresent(oldPath -> {
-                    oldPath.setStatus(ELearningPathStatus.ARCHIVED);
-                    learningPathRepo.save(oldPath);
-                });
+        Long userId = attempt.getUser().getId();
 
-        // Khởi tạo Lộ trình mới 
+        // Bước 2: Lưu trữ toàn bộ lộ trình ACTIVE cũ (BR06), đồng thời xác định AIM trước đó & version tiếp theo
+        PathHistoryMetadata historyMeta = resolveHistoryAndArchiveOldPaths(userId);
+
+        // Bước 3: Khởi tạo và lưu bản ghi LearningPath mới
         LearningPath learningPath = new LearningPath();
         learningPath.setUser(attempt.getUser());
         learningPath.setTargetProfile(targetProfile);
         learningPath.setDiagnosticAttempt(attempt);
         learningPath.setStatus(ELearningPathStatus.ACTIVE);
-        learningPath.setVersion(1);
+        learningPath.setVersion(historyMeta.nextVersion);
         learningPath = learningPathRepo.save(learningPath);
 
-        // Map lưu trữ Module đã chọn và Ability liên quan (Khử trùng lặp qua Module ID)
-        Map<Long, SelectedModuleEntry> selectedModuleMap = new LinkedHashMap<>();
+        // Bước 4: Quét 7 Part trong kết quả chẩn đoán, phân nhánh Tầng 1 & soi Ability Tầng 2
+        Map<Long, SelectedModuleEntry> selectedModuleMap = evaluateModulesFromDiagnostic(attempt, targetProfileId);
 
-        // Quét từng Part trong kết quả thi chẩn đoán (7 Part TOEIC)
-        if (attempt.getPartResults() != null) {
-            for (PartDiagnosticResult partResult : attempt.getPartResults()) {
-                Long partId = partResult.getPart().getId();
-                float partScore = partResult.getScore();
-
-                // ĐỌC NGƯỠNG ĐỘNG TỪ DATABASE THEO AIM ĐÃ CHỌN (KHÔNG HARDCODE)
-                TargetPartThreshold threshold = targetPartThresholdRepo
-                        .findByTargetProfileIdAndPartId(targetProfileId, partId)
-                        .orElseThrow(() -> new IllegalStateException("Chưa cấu hình ngưỡng cho Part " + partId + " và TargetProfile " + targetProfileId));
-
-                // Phân loại Directive tự động theo hàm nghiệp vụ trong Entity
-                EPartDirective directive = threshold.determineDirective(partScore);
-                partResult.setDirective(directive);
-
-                // XỬ LÝ 4 NHÁNH TẦNG 1
-                switch (directive) {
-                    case PASS:
-                        // Nhánh 1: Đạt chuẩn AIM -> MIỄN HỌC 100% Part này (0 module)
-                        break;
-
-                    case FULL_PART:
-                        // Nhánh 4: Mất gốc (< fullPartThreshold) -> Bốc toàn bộ 100% module của Part theo sequence
-                        List<Module> allModulesOfPart = moduleRepo.findByPartIdOrderBySequenceAsc(partId);
-                        for (Module m : allModulesOfPart) {
-                            selectedModuleMap.putIfAbsent(m.getId(), new SelectedModuleEntry(m, null));
-                        }
-                        break;
-
-                    case CONFIRM:
-                    case ABILITY_DIAGNOSTIC:
-                        // Nhánh 2 & 3: Xuống Tầng 2 soi Ability vi mô
-                        // CONFIRM dùng developingThreshold (Seed Data mẫu 50%)
-                        // ABILITY_DIAGNOSTIC dùng stableThreshold (Seed Data mẫu 75%)
-                        processAbilityTier(partResult, directive, attempt, selectedModuleMap);
-                        break;
-                }
-            }
-        }
-
-        // BƯỚC SẮP XẾP SƯ PHẠM BẤT DI BẤT DỊCH: Sắp xếp theo Module.sequence
+        // Bước 5: Sắp xếp cố định theo thứ tự sư phạm Module.sequence
         List<SelectedModuleEntry> finalEntries = new ArrayList<>(selectedModuleMap.values());
         finalEntries.sort(Comparator.comparing(entry -> entry.module.getSequence()));
 
-        // TẠO CÁC BẢN GHI LEARNING PATH ITEMS (Gán orderNo tăng dần: 1, 2, 3...)
+        // Bước 6: Tạo các LearningPathItem kèm logic bảo lưu tiến độ bài học / vượt ải (BR06)
+        createAndSavePathItems(learningPath, finalEntries, targetProfile, historyMeta.previousTargetScore);
+
+        return learningPath;
+    }
+
+    /**
+     * Đọc lịch sử lộ trình của học viên, xác định điểm AIM gần nhất & version kế tiếp,
+     * sau đó chuyển toàn bộ lộ trình đang ACTIVE sang trạng thái ARCHIVED.
+     */
+    private PathHistoryMetadata resolveHistoryAndArchiveOldPaths(Long userId) {
+        List<LearningPath> existingPaths = learningPathRepo.findWithTargetProfileByUserIdOrderByCreatedAtDesc(userId);
+
+        Integer previousTargetScore = existingPaths.stream()
+                .filter(lp -> lp.getStatus() == ELearningPathStatus.ACTIVE)
+                .findFirst()
+                .or(() -> existingPaths.stream().findFirst())
+                .map(LearningPath::getTargetProfile)
+                .map(TargetProfile::getTargetTotalScore)
+                .orElse(null);
+
+        int nextVersion = existingPaths.stream()
+                .map(LearningPath::getVersion)
+                .filter(Objects::nonNull)
+                .max(Integer::compareTo)
+                .orElse(0) + 1;
+
+        List<LearningPath> activePaths = existingPaths.stream()
+                .filter(lp -> lp.getStatus() == ELearningPathStatus.ACTIVE)
+                .peek(lp -> lp.setStatus(ELearningPathStatus.ARCHIVED))
+                .toList();
+
+        if (!activePaths.isEmpty()) {
+            learningPathRepo.saveAll(activePaths);
+        }
+
+        return new PathHistoryMetadata(previousTargetScore, nextVersion);
+    }
+
+    /**
+     * Đánh giá 2 tầng trên toàn bộ Part của lượt thi chẩn đoán để chọn tập Module cần học theo AIM mới.
+     */
+    private Map<Long, SelectedModuleEntry> evaluateModulesFromDiagnostic(DiagnosticAttempt attempt, Long targetProfileId) {
+        Map<Long, SelectedModuleEntry> selectedModuleMap = new LinkedHashMap<>();
+
+        if (attempt.getPartResults() == null) {
+            return selectedModuleMap;
+        }
+
+        for (PartDiagnosticResult partResult : attempt.getPartResults()) {
+            Long partId = partResult.getPart().getId();
+            float partScore = partResult.getScore();
+
+            // ĐỌC NGƯỠNG ĐỘNG TỪ DATABASE THEO AIM ĐÃ CHỌN (KHÔNG HARDCODE)
+            TargetPartThreshold threshold = targetPartThresholdRepo
+                    .findByTargetProfileIdAndPartId(targetProfileId, partId)
+                    .orElseThrow(() -> new BaseException(
+                            ErrorCode.BAD_REQUEST,
+                            "Chưa cấu hình ngưỡng cho Part " + partId + " và TargetProfile " + targetProfileId
+                    ));
+
+            EPartDirective directive = threshold.determineDirective(partScore);
+            partResult.setDirective(directive);
+
+            switch (directive) {
+                case PASS -> {
+                    // Đạt chuẩn AIM -> Miễn học 100% Part này
+                }
+                case FULL_PART -> {
+                    // Mất gốc -> Bốc toàn bộ module của Part theo thứ tự sequence
+                    List<Module> allModulesOfPart = moduleRepo.findByPartIdOrderBySequenceAsc(partId);
+                    for (Module m : allModulesOfPart) {
+                        selectedModuleMap.putIfAbsent(m.getId(), new SelectedModuleEntry(m, null));
+                    }
+                }
+                case CONFIRM, ABILITY_DIAGNOSTIC -> processAbilityTier(partResult, directive, attempt, selectedModuleMap);
+            }
+        }
+
+        return selectedModuleMap;
+    }
+
+    /**
+     * Khởi tạo và lưu hàng loạt các LearningPathItem cho lộ trình mới, áp dụng quy tắc bảo lưu BR06:
+     * - Nếu module đã từng thi vượt ải thành công (PASS) ở quá khứ:
+     *   + Khi tăng AIM lên mốc cao hơn (hoặc điểm cũ thấp hơn ngưỡng mới): giữ tiến độ bài giảng 100%
+     *     (không phải học lại lesson), nhưng yêu cầu làm lại bài kiểm tra vượt ải (isCorrect = false).
+     *   + Khi hạ/giữ nguyên AIM và điểm đạt chuẩn ngưỡng mới: bảo lưu hoàn toàn COMPLETED.
+     * - Mở khóa (IN_PROGRESS) cho module đầu tiên chưa COMPLETED trong danh sách.
+     */
+    private void createAndSavePathItems(
+            LearningPath learningPath,
+            List<SelectedModuleEntry> finalEntries,
+            TargetProfile newProfile,
+            Integer previousTargetScore
+    ) {
+        if (finalEntries.isEmpty()) {
+            return;
+        }
+
+        Long userId = learningPath.getUser().getId();
+        Map<Long, Integer> passedModuleBestScores = loadPassedModuleBestScores(userId);
+        Map<Long, Integer> newModulePassScores = loadModulePassScoresForTarget(newProfile.getId());
+
+        boolean isHigherAim = previousTargetScore != null
+                && newProfile.getTargetTotalScore() != null
+                && newProfile.getTargetTotalScore() > previousTargetScore;
+
+        List<LearningPathItem> itemsToSave = new ArrayList<>();
         int order = 1;
+
         for (SelectedModuleEntry entry : finalEntries) {
             LearningPathItem item = new LearningPathItem();
             item.setLearningPath(learningPath);
             item.setModule(entry.module);
             item.setAbility(entry.ability);
-            item.setOrderNo(order);
-            item.setProgressPercent(0);
-            item.setIsCorrect(false);
-            // Module đầu tiên mở khóa sẵn (IN_PROGRESS), các module sau bị khóa (LOCKED)
-            item.setStatus(order == 1 ? ELessonStatus.IN_PROGRESS : ELessonStatus.LOCKED);
-            learningPathItemRepo.save(item);
-            order++;
+            item.setOrderNo(order++);
+
+            Long moduleId = entry.module.getId();
+            if (passedModuleBestScores.containsKey(moduleId)) {
+                applyInheritedModuleState(item, entry.module, passedModuleBestScores.get(moduleId), newModulePassScores, isHigherAim);
+            } else {
+                item.setProgressPercent(ZERO_PROGRESS_PERCENT);
+                item.setIsCorrect(false);
+                item.setStatus(ELessonStatus.LOCKED);
+            }
+
+            itemsToSave.add(item);
         }
 
-        return learningPath;
+        // Mở khóa module đầu tiên chưa hoàn thành để học viên bắt đầu ngay
+        itemsToSave.stream()
+                .filter(i -> i.getStatus() != ELessonStatus.COMPLETED)
+                .findFirst()
+                .ifPresent(i -> i.setStatus(ELessonStatus.IN_PROGRESS));
+
+        learningPathItemRepo.saveAll(itemsToSave);
+    }
+
+    /**
+     * Áp dụng trạng thái kế thừa BR06 cho một Module mà học viên đã từng PASS trong quá khứ.
+     */
+    private void applyInheritedModuleState(
+            LearningPathItem item,
+            Module module,
+            Integer bestPreviousScore,
+            Map<Long, Integer> newModulePassScores,
+            boolean isHigherAim
+    ) {
+        Integer configuredThreshold = newModulePassScores.get(module.getId());
+        int requiredPassScore = configuredThreshold != null
+                ? configuredThreshold
+                : (module.getDefaultPassScore() != null ? module.getDefaultPassScore() : 0);
+
+        // Nếu không phải nâng AIM lên cao hơn VÀ điểm cũ đạt ngưỡng AIM mới -> bảo lưu COMPLETED toàn phần
+        if (!isHigherAim && bestPreviousScore != null && bestPreviousScore >= requiredPassScore) {
+            item.setProgressPercent(FULL_PROGRESS_PERCENT);
+            item.setIsCorrect(true);
+            item.setStatus(ELessonStatus.COMPLETED);
+            item.setReason("Đã bảo lưu kết quả vượt ải từ lộ trình trước");
+            return;
+        }
+
+        // Trường hợp đổi lên AIM cao hơn (hoặc điểm cũ chưa đủ chuẩn mới):
+        // Bảo lưu 100% bài học (không cần học lại lesson), nhưng bắt buộc làm lại bài Module Test theo ngưỡng AIM mới
+        item.setProgressPercent(FULL_PROGRESS_PERCENT);
+        item.setIsCorrect(false);
+        item.setStatus(ELessonStatus.LOCKED);
+        item.setReason("Đã hoàn thành bài học — cần làm lại bài kiểm tra vượt ải theo ngưỡng AIM mới");
+    }
+
+    /**
+     * Truy vấn điểm cao nhất của từng Module mà học viên đã từng PASS trước đó.
+     */
+    private Map<Long, Integer> loadPassedModuleBestScores(Long userId) {
+        List<Object[]> rows = moduleTestAttemptRepo.findPassedModuleMaxScoresByUserId(userId, ETestResult.PASS);
+        Map<Long, Integer> result = new HashMap<>();
+        if (rows == null) {
+            return result;
+        }
+        for (Object[] row : rows) {
+            if (row != null && row.length >= 2 && row[0] != null) {
+                Long moduleId = ((Number) row[0]).longValue();
+                Integer maxScore = row[1] != null ? ((Number) row[1]).intValue() : null;
+                result.put(moduleId, maxScore);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Nạp map ngưỡng passScore tùy chỉnh của các Module theo TargetProfile mới (đọc động từ DB).
+     */
+    private Map<Long, Integer> loadModulePassScoresForTarget(Long targetProfileId) {
+        List<ModuleTargetThreshold> thresholds = moduleTargetThresholdRepo.findByTargetProfileId(targetProfileId);
+        if (thresholds == null || thresholds.isEmpty()) {
+            return new HashMap<>();
+        }
+        return thresholds.stream()
+                .filter(t -> t.getModule() != null && t.getPassScore() != null)
+                .collect(Collectors.toMap(
+                        t -> t.getModule().getId(),
+                        ModuleTargetThreshold::getPassScore,
+                        (first, second) -> first
+                ));
     }
 
     private void processAbilityTier(
@@ -225,6 +385,9 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
         }
 
         return dtoList;
+    }
+
+    private record PathHistoryMetadata(Integer previousTargetScore, int nextVersion) {
     }
 
     private static class AbilityStat {

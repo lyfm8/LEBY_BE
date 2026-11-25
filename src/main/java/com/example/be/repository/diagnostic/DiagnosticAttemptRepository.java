@@ -20,6 +20,11 @@ public interface DiagnosticAttemptRepository extends JpaRepository<DiagnosticAtt
     Optional<DiagnosticAttempt> findTopByUserIdOrderByStartedAtDesc(Long userId);
 
     /**
+     * Lấy lượt thi chẩn đoán đã hoàn thành gần nhất của học viên (phục vụ BR02 khi đổi AIM).
+     */
+    Optional<DiagnosticAttempt> findTopByUserIdAndStatusOrderByCompletedAtDesc(Long userId, EAttemptStatus status);
+
+    /**
      * Kiểm tra xem đề thi đã có lượt làm bài nào hay chưa (bất kỳ trạng thái nào).
      */
     boolean existsByDiagnosticTestId(Long testId);

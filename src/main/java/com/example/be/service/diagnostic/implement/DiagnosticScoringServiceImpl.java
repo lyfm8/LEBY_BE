@@ -16,6 +16,7 @@ import com.example.be.entity.question.Question;
 import com.example.be.entity.question.QuestionAbility;
 import com.example.be.entity.setting.AbilityEvaluationRule;
 import com.example.be.entity.setting.TargetPartThreshold;
+import com.example.be.entity.user.TargetProfile;
 import com.example.be.entity.user.User;
 import com.example.be.enums.ability.EAbilityStatus;
 import com.example.be.enums.diagnostic.EAttemptStatus;
@@ -160,6 +161,7 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
         // Bước 6: Gọi thuật toán sinh lộ trình thích ứng ngay trong cùng Transaction
         // (đảm bảo nếu sinh lộ trình lỗi thì toàn bộ quá trình nộp bài được rollback đồng nhất)
         LearningPath learningPath = adaptivePathGeneratorService.generateAdaptivePath(attempt, request.getTargetProfileId());
+        syncUserTargetProfile(attempt.getUser(), learningPath.getTargetProfile());
         log.info("Sinh lộ trình thành công cho user={}, learningPathId={}", userId, learningPath.getId());
 
         // Bước 7: Tổng hợp kết quả trả về cho trang Báo cáo chẩn đoán (totalQuestions lấy theo tổng câu của đề, không lấy theo answers.size)
@@ -445,6 +447,20 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
             }
         }
         return statMap;
+    }
+
+    /**
+     * Đồng bộ cập nhật mục tiêu AIM của học viên nếu chưa có hoặc có thay đổi khi nộp bài chẩn đoán.
+     */
+    private void syncUserTargetProfile(User user, TargetProfile targetProfile) {
+        if (user == null || targetProfile == null) {
+            return;
+        }
+        if (user.getTargetProfile() == null
+                || !targetProfile.getId().equals(user.getTargetProfile().getId())) {
+            user.setTargetProfile(targetProfile);
+            userRepo.save(user);
+        }
     }
 
     /**
