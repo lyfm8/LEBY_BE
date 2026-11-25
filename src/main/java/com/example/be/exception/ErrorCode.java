@@ -226,6 +226,24 @@ public enum ErrorCode {
     ),
 
     /**
+     * HTTP 400 - Chưa có đề thi chẩn đoán nào được kích hoạt bởi Quản trị viên (UC06 - Luồng 2a).
+     */
+    EXAM_NOT_ACTIVE(
+            HttpStatus.BAD_REQUEST,
+            "EXAM_NOT_ACTIVE",
+            "Đề thi chẩn đoán hiện đang được ban chuyên môn chuẩn bị. Vui lòng quay lại sau ít phút hoặc liên hệ quản trị viên"
+    ),
+
+    /**
+     * HTTP 409 - Học viên đã hoàn thành bài thi chẩn đoán cho mục tiêu AIM hiện tại (UC06 - BR02, Luồng 1a).
+     */
+    DIAGNOSTIC_ALREADY_COMPLETED(
+            HttpStatus.CONFLICT,
+            "DIAGNOSTIC_ALREADY_COMPLETED",
+            "Bạn đã hoàn thành bài thi chẩn đoán cho mục tiêu này. Vui lòng xem lại báo cáo hoặc tiến hành học theo lộ trình"
+    ),
+
+    /**
      * HTTP 409 - Đề thi đã có lượt làm bài, không thể xóa hoặc sửa câu hỏi.
      */
     EXAM_IN_USE(

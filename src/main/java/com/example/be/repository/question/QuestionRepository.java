@@ -77,4 +77,32 @@ public interface QuestionRepository extends JpaRepository<Question, Long>, JpaSp
            "LEFT JOIN FETCH q.part p " +
            "WHERE q.id IN :ids")
     List<Question> findAllWithAbilitiesByIdIn(@Param("ids") List<Long> ids);
+
+    /**
+     * Load câu hỏi kèm Part, câu hỏi cha (Parent) và Media để render phòng thi không bị N+1 Query.
+     * Lưu ý: Không JOIN FETCH cùng lúc 2 collection List để tránh MultipleBagFetchException của Hibernate.
+     *
+     * @param ids Danh sách ID câu hỏi cần load
+     * @return Danh sách Question kèm Part, Parent và QuestionMedias
+     */
+    @Query("SELECT DISTINCT q FROM Question q " +
+           "LEFT JOIN FETCH q.part p " +
+           "LEFT JOIN FETCH q.parent parent " +
+           "LEFT JOIN FETCH parent.part pp " +
+           "LEFT JOIN FETCH q.questionMedias qm " +
+           "LEFT JOIN FETCH qm.media m " +
+           "WHERE q.id IN :ids")
+    List<Question> findAllWithMediasAndParentByIdIn(@Param("ids") Collection<Long> ids);
+
+    /**
+     * Load danh sách câu hỏi cha kèm tệp Media dùng chung (audio Part 3/4 hoặc ảnh bài đọc Part 6/7).
+     *
+     * @param parentIds Danh sách ID câu hỏi cha
+     * @return Danh sách Question cha đã nạp sẵn questionMedias và media
+     */
+    @Query("SELECT DISTINCT q FROM Question q " +
+           "LEFT JOIN FETCH q.questionMedias qm " +
+           "LEFT JOIN FETCH qm.media m " +
+           "WHERE q.id IN :parentIds")
+    List<Question> findAllParentsWithMediasByIdIn(@Param("parentIds") Collection<Long> parentIds);
 }

@@ -3,6 +3,7 @@ package com.example.be.repository.diagnostic;
 import com.example.be.entity.diagnostic.DiagnosticAttempt;
 import com.example.be.enums.diagnostic.EAttemptStatus;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,9 +21,53 @@ public interface DiagnosticAttemptRepository extends JpaRepository<DiagnosticAtt
     Optional<DiagnosticAttempt> findTopByUserIdOrderByStartedAtDesc(Long userId);
 
     /**
-     * Lấy lượt thi chẩn đoán đã hoàn thành gần nhất của học viên (phục vụ BR02 khi đổi AIM).
+     * Lấy lượt thi chẩn đoán đã hoàn thành gần nhất của học viên (phục vụ BR02 khi đổi AIM & UC07 Luồng 1a).
      */
     Optional<DiagnosticAttempt> findTopByUserIdAndStatusOrderByCompletedAtDesc(Long userId, EAttemptStatus status);
+
+    /**
+     * Lấy lượt thi gần nhất theo userId và trạng thái bất kỳ (sắp xếp theo startedAt mới nhất — dùng cho /resume).
+     */
+    @EntityGraph(attributePaths = {"diagnosticTest", "targetProfile"})
+    Optional<DiagnosticAttempt> findTopByUserIdAndStatusOrderByStartedAtDesc(Long userId, EAttemptStatus status);
+
+    /**
+     * Kiểm tra lượt thi đã hoàn thành theo đúng mục tiêu AIM cụ thể (phục vụ BR02 cho phép thi lại khi đổi AIM).
+     */
+    Optional<DiagnosticAttempt> findTopByUserIdAndTargetProfileIdAndStatusOrderByCompletedAtDesc(
+            Long userId,
+            Long targetProfileId,
+            EAttemptStatus status
+    );
+
+    /**
+     * Tìm phiên làm bài đang diễn ra (IN_PROGRESS) cho cùng đề thi và mục tiêu AIM nhằm tránh tạo trùng lượt thi.
+     */
+    Optional<DiagnosticAttempt> findTopByUserIdAndDiagnosticTestIdAndTargetProfileIdAndStatusOrderByStartedAtDesc(
+            Long userId,
+            Long diagnosticTestId,
+            Long targetProfileId,
+            EAttemptStatus status
+    );
+
+    /**
+     * Tìm phiên làm bài đang diễn ra (IN_PROGRESS) khi targetProfile chưa được gán.
+     */
+    Optional<DiagnosticAttempt> findTopByUserIdAndDiagnosticTestIdAndStatusOrderByStartedAtDesc(
+            Long userId,
+            Long diagnosticTestId,
+            EAttemptStatus status
+    );
+
+    /**
+     * Nạp lượt thi kèm Đề thi, Người dùng và Mục tiêu AIM để tránh N+1 Query khi mở phòng thi hoặc xem báo cáo.
+     */
+    @Query("SELECT d FROM DiagnosticAttempt d " +
+           "JOIN FETCH d.user u " +
+           "JOIN FETCH d.diagnosticTest t " +
+           "LEFT JOIN FETCH d.targetProfile tp " +
+           "WHERE d.id = :attemptId")
+    Optional<DiagnosticAttempt> findByIdWithContext(@Param("attemptId") Long attemptId);
 
     /**
      * Kiểm tra xem đề thi đã có lượt làm bài nào hay chưa (bất kỳ trạng thái nào).

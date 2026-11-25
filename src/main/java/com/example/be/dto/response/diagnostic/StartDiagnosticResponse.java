@@ -15,6 +15,8 @@ public class StartDiagnosticResponse {
     private Long attemptId;
     /** ID đề thi chẩn đoán đang thực hiện. */
     private Long diagnosticTestId;
+    /** ID mục tiêu AIM gắn với lượt thi này. */
+    private Long targetProfileId;
     /** Thời điểm bắt đầu làm bài trên server (dùng đồng bộ đồng hồ đếm ngược). */
     private LocalDateTime startedAt;
     /** Thời lượng giới hạn của đề thi (tính bằng phút, đọc động từ DiagnosticTest). */
