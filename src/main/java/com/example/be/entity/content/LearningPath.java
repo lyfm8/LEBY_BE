@@ -14,7 +14,6 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -63,8 +62,10 @@ public class LearningPath extends AbstractEntity {
 
     /**
      * Lượt thi chẩn đoán (DiagnosticAttempt) đầu vào làm căn cứ sinh ra lộ trình này.
+     * NOTE: Dùng @ManyToOne vì BR02 cho phép tái sử dụng cùng một DiagnosticAttempt cho nhiều
+     * LearningPath khác nhau khi học viên đổi mục tiêu AIM.
      */
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "diagnostic_attempt_id", nullable = true)
     private DiagnosticAttempt diagnosticAttempt;
 

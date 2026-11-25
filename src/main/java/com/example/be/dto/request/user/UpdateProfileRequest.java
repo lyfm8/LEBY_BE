@@ -2,6 +2,7 @@ package com.example.be.dto.request.user;
 
 import com.example.be.enums.user.ELearnerType;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,6 +24,7 @@ public class UpdateProfileRequest {
     @Size(min = 2, max = 150, message = "Họ và tên phải có độ dài từ 2 đến 150 ký tự")
     private String fullName;
 
+    @Past(message = "Ngày sinh phải là ngày trong quá khứ")
     private LocalDate dob;
 
     private String avatar;

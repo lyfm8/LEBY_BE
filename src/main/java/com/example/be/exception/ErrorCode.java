@@ -304,6 +304,33 @@ public enum ErrorCode {
             HttpStatus.CONFLICT,
             "DIAGNOSTIC_ALREADY_SUBMITTED",
             "Lượt thi này đã được nộp hoặc đã hết hạn"
+    ),
+
+    /**
+     * HTTP 404 - Không tìm thấy mục tiêu học tập (TargetProfile) trong hệ thống.
+     */
+    TARGET_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "TARGET_NOT_FOUND",
+            "Mục tiêu học tập không tồn tại trong hệ thống"
+    ),
+
+    /**
+     * HTTP 400 - Học viên chọn lại đúng mục tiêu AIM đang theo học hiện tại (UC05 - Luồng 3a).
+     */
+    TARGET_ALREADY_ACTIVE(
+            HttpStatus.BAD_REQUEST,
+            "TARGET_ALREADY_ACTIVE",
+            "Bạn hiện đang học tập với mục tiêu này. Vui lòng chọn một mốc mục tiêu khác nếu muốn nâng cao điểm số"
+    ),
+
+    /**
+     * HTTP 400 - Mục tiêu học tập đã bị tạm ẩn/ngừng kích hoạt.
+     */
+    TARGET_PROFILE_INACTIVE(
+            HttpStatus.BAD_REQUEST,
+            "TARGET_PROFILE_INACTIVE",
+            "Mục tiêu học tập này hiện không khả dụng"
     );
 
     // -----------------------------------------------------------------------

@@ -10,4 +10,11 @@ import java.util.List;
 public interface TargetProfileRepository extends JpaRepository<TargetProfile, Long> {
 
     List<TargetProfile> findAllByOrderByTargetTotalScoreAsc();
+
+    /**
+     * Lấy danh sách các mốc mục tiêu AIM đang kích hoạt, sắp xếp điểm tăng dần (UC05).
+     *
+     * @return Danh sách TargetProfile đang hoạt động
+     */
+    List<TargetProfile> findByStatusTrueOrderByTargetTotalScoreAsc();
 }

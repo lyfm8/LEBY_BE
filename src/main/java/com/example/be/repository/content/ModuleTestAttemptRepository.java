@@ -50,4 +50,16 @@ public interface ModuleTestAttemptRepository extends JpaRepository<ModuleTestAtt
            "HAVING SUM(CASE WHEN a.result = :failResult THEN 1 ELSE 0 END) > 0 " +
            "ORDER BY (SUM(CASE WHEN a.result = :failResult THEN 1.0 ELSE 0.0 END) / COUNT(a.id)) DESC")
     List<Object[]> findTopDifficultModules(@Param("failResult") ETestResult failResult, Pageable pageable);
+
+    /**
+     * Lấy danh sách moduleId và điểm số cao nhất mà học viên từng thi vượt ải thành công (BR06).
+     *
+     * @param userId ID học viên
+     * @param passResult Trạng thái đạt chuẩn (ETestResult.PASS)
+     * @return Danh sách cặp [moduleId, maxScore]
+     */
+    @Query("SELECT a.module.id, MAX(a.score) FROM ModuleTestAttempt a " +
+           "WHERE a.user.id = :userId AND a.isSubmitted = true AND a.result = :passResult " +
+           "GROUP BY a.module.id")
+    List<Object[]> findPassedModuleMaxScoresByUserId(@Param("userId") Long userId, @Param("passResult") ETestResult passResult);
 }

@@ -5,6 +5,7 @@ import com.example.be.dto.response.user.TargetProfileResponse;
 import com.example.be.entity.user.TargetProfile;
 import com.example.be.exception.BaseException;
 import com.example.be.exception.ErrorCode;
+import com.example.be.mapper.user.TargetProfileMapper;
 import com.example.be.repository.user.TargetProfileRepository;
 import com.example.be.repository.user.UserRepository;
 import com.example.be.service.user.service.TargetProfileService;
@@ -21,11 +22,15 @@ public class TargetProfileServiceImpl implements TargetProfileService {
 
     private final TargetProfileRepository targetProfileRepository;
     private final UserRepository userRepository;
+    private final TargetProfileMapper targetProfileMapper;
 
     @Override
     public List<TargetProfileResponse> getAllProfiles() {
-        return targetProfileRepository.findAll().stream()
-                .map(this::mapToResponse)
+        return targetProfileRepository.findAllByOrderByTargetTotalScoreAsc().stream()
+                .map(profile -> targetProfileMapper.toAdminResponse(
+                        profile,
+                        userRepository.countByTargetProfileId(profile.getId())
+                ))
                 .collect(Collectors.toList());
     }
 
@@ -38,27 +43,28 @@ public class TargetProfileServiceImpl implements TargetProfileService {
         profile.setStatus(true);
 
         profile = targetProfileRepository.save(profile);
-        return mapToResponse(profile);
+        return targetProfileMapper.toAdminResponse(profile, 0L);
     }
 
     @Override
     @Transactional
     public TargetProfileResponse updateProfile(Long id, TargetProfileRequest request) {
         TargetProfile profile = targetProfileRepository.findById(id)
-                .orElseThrow(() -> new BaseException(ErrorCode.RESOURCE_NOT_FOUND, "Target Profile not found"));
+                .orElseThrow(() -> new BaseException(ErrorCode.TARGET_NOT_FOUND, "Target Profile not found"));
 
         profile.setTargetTotalScore(request.getAimScore());
         profile.setDescription(request.getDescription());
 
         profile = targetProfileRepository.save(profile);
-        return mapToResponse(profile);
+        long totalUsers = userRepository.countByTargetProfileId(profile.getId());
+        return targetProfileMapper.toAdminResponse(profile, totalUsers);
     }
 
     @Override
     @Transactional
     public void deleteProfile(Long id) {
         TargetProfile profile = targetProfileRepository.findById(id)
-                .orElseThrow(() -> new BaseException(ErrorCode.RESOURCE_NOT_FOUND, "Target Profile not found"));
+                .orElseThrow(() -> new BaseException(ErrorCode.TARGET_NOT_FOUND, "Target Profile not found"));
 
         long userCount = userRepository.countByTargetProfileId(id);
         if (userCount > 0) {
@@ -66,15 +72,5 @@ public class TargetProfileServiceImpl implements TargetProfileService {
         }
 
         targetProfileRepository.delete(profile);
-    }
-
-    private TargetProfileResponse mapToResponse(TargetProfile profile) {
-        long totalUsers = userRepository.countByTargetProfileId(profile.getId());
-        return TargetProfileResponse.builder()
-                .id(profile.getId())
-                .aimScore(profile.getTargetTotalScore())
-                .description(profile.getDescription())
-                .totalUsers(totalUsers)
-                .build();
     }
 }

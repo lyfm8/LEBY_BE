@@ -76,9 +76,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Integer tokenVersion = jwtTokenProvider.getVersion(claims);
             String role = jwtTokenProvider.getRole(claims);
 
-            // Query DB chỉ để verify tokenVersion — không dùng user.getRole().
-            // Role được đọc trực tiếp từ claim để tránh thêm query DB cho phân quyền.
-            User user = userRepository.findById(userId)
+            // Nạp User kèm TargetProfile để @AuthenticationPrincipal có sẵn dữ liệu mục tiêu AIM (tránh LazyInitializationException)
+            User user = userRepository.findWithTargetProfileById(userId)
                     .orElseThrow(() -> new BaseException(ErrorCode.TOKEN_INVALID));
 
             if (!user.getTokenVersion().equals(tokenVersion)) {
