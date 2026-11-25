@@ -23,5 +23,5 @@ public interface AuthService {
 
     void refresh(HttpServletRequest request, HttpServletResponse response);
 
-    void logout(Long userId, HttpServletResponse response);
+    void logout(Long userId, HttpServletRequest request, HttpServletResponse response);
 }

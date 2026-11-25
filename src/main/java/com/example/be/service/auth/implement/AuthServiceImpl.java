@@ -264,25 +264,48 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // -----------------------------------------------------------------------
-    // Logout
+    // Logout (UC03 - Áp dụng cho mọi vai trò: STUDENT, TEACHER, ADMIN)
     // -----------------------------------------------------------------------
 
     /**
-     * Đăng xuất: tăng tokenVersion trong DB, xóa cả 2 Cookie.
-     * Toàn bộ JWT cũ bị vô hiệu hóa ngay lập tức.
+     * Đăng xuất an toàn cho mọi vai trò (STUDENT, TEACHER, ADMIN):
+     * - Bước 1: Xác định userId từ SecurityContext (nếu Access Token còn hạn) hoặc fallback đọc từ Refresh Token Cookie.
+     * - Bước 2: Tăng tokenVersion trong DB để vô hiệu hóa toàn bộ Access & Refresh Token cũ trên mọi thiết bị.
+     * - Bước 3: Luôn xóa sạch cả 2 HTTP-Only Cookie (accessToken, refreshToken) trên trình duyệt.
      *
-     * @param userId   ID của user đang đăng nhập (lấy từ SecurityContext trong Controller).
-     * @param response HTTP response để xóa Cookie.
+     * @param userId   ID của user đang đăng nhập (có thể null nếu Access Token vừa hết hạn).
+     * @param request  HTTP request để fallback đọc Refresh Token Cookie khi Access Token hết hạn.
+     * @param response HTTP response để gắn header xóa Cookie.
      */
     @Override
     @Transactional
-    public void logout(Long userId, HttpServletResponse response) {
-        userRepository.incrementTokenVersion(userId);
+    public void logout(Long userId, HttpServletRequest request, HttpServletResponse response) {
+        Long targetUserId = userId;
 
+        // Fallback: Nếu Access Token đã hết hạn nên currentUser == null, thử lấy userId từ Refresh Token Cookie
+        if (targetUserId == null && request != null) {
+            String refreshToken = extractCookie(request, cookieProperties.getRefreshTokenName());
+            if (refreshToken != null) {
+                try {
+                    Claims claims = jwtTokenProvider.parseRefreshToken(refreshToken);
+                    targetUserId = jwtTokenProvider.getUserId(claims);
+                } catch (BaseException ex) {
+                    // Refresh Token cũng không hợp lệ/hết hạn → bỏ qua bước tăng tokenVersion nhưng vẫn xóa sạch Cookie bên dưới
+                    log.debug("[AUTH] Skip tokenVersion increment on logout due to invalid refresh token: {}", ex.getMessage());
+                }
+            }
+        }
+
+        if (targetUserId != null) {
+            userRepository.incrementTokenVersion(targetUserId);
+            log.info("[AUTH] User logged out & tokens revoked: id={}", targetUserId);
+        } else {
+            log.info("[AUTH] Anonymous/expired logout request — clearing cookies");
+        }
+
+        // Luôn gửi Set-Cookie Max-Age=0 để dọn sạch phiên trên trình duyệt
         response.addHeader(HttpHeaders.SET_COOKIE, jwtTokenProvider.clearAccessTokenCookie().toString());
         response.addHeader(HttpHeaders.SET_COOKIE, jwtTokenProvider.clearRefreshTokenCookie().toString());
-
-        log.info("[AUTH] User logged out: id={}", userId);
     }
 
     // -----------------------------------------------------------------------

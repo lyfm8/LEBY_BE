@@ -103,11 +103,13 @@ public class SecurityConfig {
                 // Phân quyền theo role được thực hiện ở method-level bằng @PreAuthorize(Roles.*).
                 .authorizeHttpRequests(auth -> auth
 
-                        // Public endpoints — không cần token (UC01 Đăng ký, UC02 Đăng nhập, UC04 Quên mật khẩu, Refresh).
+                        // Public endpoints — không cần token (UC01 Đăng ký, UC02 Đăng nhập, UC03 Đăng xuất, UC04 Quên mật khẩu, Refresh).
+                        // Logout được permitAll để ngay cả khi Access Token đã hết hạn, BE vẫn xóa sạch HTTP-Only Cookie và thu hồi Refresh Token.
                         .requestMatchers(HttpMethod.POST, "/api/auth/send-otp").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/register/send-otp").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
 

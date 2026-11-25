@@ -119,19 +119,20 @@ public class AuthController {
     }
 
     /**
-     * Đăng xuất.
-     * Tăng tokenVersion trong DB → vô hiệu hóa toàn bộ token cũ.
-     * Xóa cả accessToken và refreshToken Cookie.
-     * Yêu cầu xác thực (phải có accessToken Cookie hợp lệ).
+     * Đăng xuất cho tất cả vai trò (STUDENT, TEACHER, ADMIN) — UC03.
+     * Tăng tokenVersion trong DB để vô hiệu hóa toàn bộ token cũ và xóa cả accessToken lẫn refreshToken Cookie.
+     * Cho phép gọi ngay cả khi Access Token vừa hết hạn để đảm bảo không bị kẹt Cookie cũ.
      */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
             @AuthenticationPrincipal User currentUser,
+            HttpServletRequest request,
             HttpServletResponse response
     ) {
-        authService.logout(currentUser.getId(), response);
+        Long userId = currentUser != null ? currentUser.getId() : null;
+        authService.logout(userId, request, response);
         return ResponseEntity.ok(
-                new ApiResponse<>(true, "Logged out successfully")
+                new ApiResponse<>(true, "Đăng xuất thành công")
         );
     }
 
