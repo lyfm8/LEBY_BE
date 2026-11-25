@@ -45,5 +45,8 @@ public class SubmitDiagnosticRequest {
 
         /** Đáp án học viên chọn, dạng JSON string, ví dụ: {\"selected\":\"A\"}. */
         private String userAnswer;
+
+        /** Cờ đánh dấu câu hỏi xem lại do học viên chọn trong phòng thi. */
+        private Boolean isFlagged;
     }
 }

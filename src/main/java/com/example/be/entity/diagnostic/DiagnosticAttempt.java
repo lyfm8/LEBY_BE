@@ -1,6 +1,7 @@
 package com.example.be.entity.diagnostic;
 
 import com.example.be.entity.base.AbstractEntity;
+import com.example.be.entity.user.TargetProfile;
 import com.example.be.entity.user.User;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -60,6 +61,14 @@ public class DiagnosticAttempt extends AbstractEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "diagnostic_test_id", nullable = false)
     private DiagnosticTest diagnosticTest;
+
+    /**
+     * Mục tiêu AIM tại thời điểm học viên thực hiện bài thi chẩn đoán này.
+     * Phục vụ kiểm tra BR02: không thi lại trên cùng một mốc AIM, chỉ cho phép làm lại khi đổi sang AIM mới.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "target_profile_id")
+    private TargetProfile targetProfile;
 
     /**
      * Kết quả điểm của từng Part (7 bản ghi) sau khi bộ máy chấm điểm hoàn tất.
