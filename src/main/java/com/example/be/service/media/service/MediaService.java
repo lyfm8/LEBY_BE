@@ -6,6 +6,8 @@ import com.example.be.dto.response.media.SavedMediaResponse;
 import com.example.be.entity.media.Media;
 import com.example.be.entity.user.User;
 import com.example.be.enums.media.EMediaResourceType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -74,4 +76,12 @@ public interface MediaService {
      * @return Media Đối tượng entity Media
      */
     Media findByPublicId(String publicId);
+
+    /**
+     * Lấy danh sách lịch sử tệp media đã tải lên có phân trang.
+     *
+     * @param pageable Thông tin phân trang (mặc định 5 mục mỗi trang)
+     * @return Trang dữ liệu SavedMediaResponse
+     */
+    Page<SavedMediaResponse> getMedias(Pageable pageable);
 }

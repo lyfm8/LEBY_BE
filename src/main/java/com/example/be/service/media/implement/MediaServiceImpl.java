@@ -15,6 +15,8 @@ import com.example.be.service.media.service.MediaService;
 import com.example.be.service.media.util.MediaStorageAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -189,6 +191,19 @@ public class MediaServiceImpl implements MediaService {
                         ErrorCode.MEDIA_NOT_FOUND,
                         "Không tìm thấy bản ghi media với publicId: " + publicId
                 ));
+    }
+
+    /**
+     * Lấy danh sách lịch sử media đã tải lên có phân trang (mới nhất trước).
+     *
+     * @param pageable Thông tin phân trang
+     * @return Trang dữ liệu SavedMediaResponse
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SavedMediaResponse> getMedias(Pageable pageable) {
+        return mediaRepository.findAllByOrderByCreatedAtDescIdDesc(pageable)
+                .map(mediaMapper::toSavedMediaResponse);
     }
 
     private Media buildPendingMedia(SaveMediaRequest request, User user, LocalDateTime expireTime) {

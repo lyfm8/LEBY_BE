@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
@@ -261,6 +262,28 @@ public class GlobalExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    /**
+     * Xử lý trường hợp tệp tin tải lên vượt quá giới hạn dung lượng Multipart (tối đa 20MB).
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(
+            MaxUploadSizeExceededException ex,
+            HttpServletRequest request) {
+
+        log.warn("[400] {} - Upload file size exceeded: {}", request.getRequestURI(), ex.getMessage());
+
+        ErrorResponse body = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(HttpStatus.BAD_REQUEST.name())
+                .code("FILE_TOO_LARGE")
+                .message("Dung lượng tệp tải lên vượt quá giới hạn tối đa 20MB")
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.badRequest().body(body);
     }
 
     /**

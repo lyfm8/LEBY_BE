@@ -21,6 +21,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Collections;
 import java.util.List;
@@ -199,5 +203,31 @@ class MediaServiceTest {
         );
 
         assertEquals(ErrorCode.MEDIA_NOT_FOUND, exception.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("Lấy danh sách lịch sử media phân trang 5 mục/trang thành công")
+    void testGetMedias_Success() {
+        Media audio = Media.builder()
+                .publicId("leby/audio_1")
+                .secureUrl("https://res.cloudinary.com/leby/video/upload/audio_1.mp3")
+                .resourceType(EMediaResourceType.VIDEO)
+                .format("mp3")
+                .bytes(204800L)
+                .originalFilename("part1_audio.mp3")
+                .status(EMediaStatus.ACTIVE)
+                .build();
+        audio.setId(55L);
+
+        Pageable pageable = PageRequest.of(0, 5);
+        when(mediaRepository.findAllByOrderByCreatedAtDescIdDesc(pageable))
+                .thenReturn(new PageImpl<>(List.of(audio), pageable, 1));
+
+        Page<SavedMediaResponse> result = mediaService.getMedias(pageable);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(55L, result.getContent().get(0).getId());
+        assertEquals("AUDIO", result.getContent().get(0).getKind());
     }
 }

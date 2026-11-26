@@ -2,6 +2,8 @@ package com.example.be.repository.media;
 
 import com.example.be.entity.media.Media;
 import com.example.be.enums.media.EMediaStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -51,4 +53,12 @@ public interface MediaRepository extends JpaRepository<Media, Long> {
             EMediaStatus status,
             LocalDateTime now
     );
+
+    /**
+     * Lấy danh sách lịch sử media có phân trang, sắp xếp mới nhất lên đầu.
+     *
+     * @param pageable Thông tin phân trang
+     * @return Trang dữ liệu Media
+     */
+    Page<Media> findAllByOrderByCreatedAtDescIdDesc(Pageable pageable);
 }

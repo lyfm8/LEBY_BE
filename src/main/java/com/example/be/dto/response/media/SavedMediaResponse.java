@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 /**
  * Phản hồi chi tiết sau khi bản ghi media được lưu trữ trong hệ thống LEBY.
  */
@@ -18,6 +20,7 @@ public class SavedMediaResponse {
     private String publicId;
     private String url;
     private String resourceType;
+    private String kind;
     private String format;
     private Long bytes;
     private Integer width;
@@ -25,4 +28,5 @@ public class SavedMediaResponse {
     private String originalFilename;
     private Double duration;
     private String status;
+    private LocalDateTime createdAt;
 }
