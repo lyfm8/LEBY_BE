@@ -94,4 +94,24 @@ public interface DiagnosticAttemptRepository extends JpaRepository<DiagnosticAtt
            "WHERE d.status = :status " +
            "ORDER BY d.completedAt DESC")
     List<DiagnosticAttempt> findTopRecentAttempts(@Param("status") EAttemptStatus status, Pageable pageable);
+
+    /**
+     * Kiểm tra học viên có lượt thi chẩn đoán hoặc thi thử đang diễn ra (IN_PROGRESS) hay không.
+     */
+    boolean existsByUserIdAndStatus(Long userId, EAttemptStatus status);
+
+    /**
+     * Lấy danh sách toàn bộ lượt thi đang IN_PROGRESS của người dùng để tự động hủy (ABANDONED) khi khóa tài khoản.
+     */
+    List<DiagnosticAttempt> findAllByUserIdAndStatus(Long userId, EAttemptStatus status);
+
+    /**
+     * Truy vấn lịch sử các lượt làm bài chẩn đoán và thi thử của học viên kèm đề thi và AIM (tránh N+1).
+     */
+    @Query("SELECT d FROM DiagnosticAttempt d " +
+           "JOIN FETCH d.diagnosticTest t " +
+           "LEFT JOIN FETCH d.targetProfile tp " +
+           "WHERE d.user.id = :userId " +
+           "ORDER BY COALESCE(d.startedAt, d.createdAt) DESC")
+    List<DiagnosticAttempt> findAllByUserIdWithContextOrderByRecent(@Param("userId") Long userId);
 }

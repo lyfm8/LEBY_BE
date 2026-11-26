@@ -74,6 +74,7 @@ public class SecurityConfig {
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("Content-Disposition"));
         config.setAllowCredentials(true); // Bắt buộc khi FE dùng withCredentials: true
         config.setMaxAge(3600L);          // Cache preflight 1 giờ
 

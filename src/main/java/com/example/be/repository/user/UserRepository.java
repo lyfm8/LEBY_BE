@@ -4,6 +4,7 @@ import com.example.be.enums.user.ERole;
 import com.example.be.entity.user.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -19,14 +20,43 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    @Query("SELECT u FROM User u WHERE " +
+    /**
+     * Lọc danh sách người dùng theo từ khóa (email/họ tên), vai trò, trạng thái và mốc AIM.
+     * Dùng LEFT JOIN + EntityGraph để giữ cả user chưa chọn AIM và triệt tiêu lỗi N+1 Query.
+     */
+    @EntityGraph(attributePaths = {"targetProfile"})
+    @Query(
+            value = "SELECT u FROM User u LEFT JOIN u.targetProfile tp WHERE " +
+                    "(:keyword IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+                    "AND (:role IS NULL OR u.role = :role) " +
+                    "AND (:isActive IS NULL OR u.isActive = :isActive) " +
+                    "AND (:aimScore IS NULL OR tp.targetTotalScore = :aimScore)",
+            countQuery = "SELECT COUNT(u) FROM User u LEFT JOIN u.targetProfile tp WHERE " +
+                    "(:keyword IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+                    "AND (:role IS NULL OR u.role = :role) " +
+                    "AND (:isActive IS NULL OR u.isActive = :isActive) " +
+                    "AND (:aimScore IS NULL OR tp.targetTotalScore = :aimScore)"
+    )
+    Page<User> findUsersByFilters(@Param("keyword") String keyword,
+                                  @Param("role") ERole role,
+                                  @Param("isActive") Boolean isActive,
+                                  @Param("aimScore") Integer aimScore,
+                                  Pageable pageable);
+
+    /**
+     * Truy vấn toàn bộ người dùng khớp bộ lọc hiện tại phục vụ xuất tệp Excel (UC A02 - Luồng 3a).
+     */
+    @EntityGraph(attributePaths = {"targetProfile"})
+    @Query("SELECT u FROM User u LEFT JOIN u.targetProfile tp WHERE " +
            "(:keyword IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
            "AND (:role IS NULL OR u.role = :role) " +
-           "AND (:isActive IS NULL OR u.isActive = :isActive)")
-    Page<User> findUsersByFilters(@Param("keyword") String keyword, 
-                                  @Param("role") ERole role, 
-                                  @Param("isActive") Boolean isActive, 
-                                  Pageable pageable);
+           "AND (:isActive IS NULL OR u.isActive = :isActive) " +
+           "AND (:aimScore IS NULL OR tp.targetTotalScore = :aimScore)")
+    List<User> findAllUsersForExport(@Param("keyword") String keyword,
+                                     @Param("role") ERole role,
+                                     @Param("isActive") Boolean isActive,
+                                     @Param("aimScore") Integer aimScore,
+                                     Sort sort);
 
     @EntityGraph(attributePaths = {"targetProfile"})
     Optional<User> findByEmail(String email);

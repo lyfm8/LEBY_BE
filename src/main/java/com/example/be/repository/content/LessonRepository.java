@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,5 +40,12 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
      * @return Số lượng bài học
      */
     long countByModuleId(Long moduleId);
+
+    /**
+     * Đếm tổng số bài học cho nhiều Module trong 1 query duy nhất nhằm tránh N+1 query.
+     * Trả về [moduleId, totalLessons].
+     */
+    @Query("SELECT l.module.id, COUNT(l.id) FROM Lesson l WHERE l.module.id IN :moduleIds GROUP BY l.module.id")
+    List<Object[]> countByModuleIdIn(@Param("moduleIds") Collection<Long> moduleIds);
 }
 

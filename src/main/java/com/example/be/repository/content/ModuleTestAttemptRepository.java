@@ -62,4 +62,19 @@ public interface ModuleTestAttemptRepository extends JpaRepository<ModuleTestAtt
            "WHERE a.user.id = :userId AND a.isSubmitted = true AND a.result = :passResult " +
            "GROUP BY a.module.id")
     List<Object[]> findPassedModuleMaxScoresByUserId(@Param("userId") Long userId, @Param("passResult") ETestResult passResult);
+
+    /**
+     * Kiểm tra học viên có lượt thi vượt ải mô-đun đang làm dở (chưa nộp) hay không.
+     */
+    boolean existsByUserIdAndIsSubmittedFalse(Long userId);
+
+    /**
+     * Lấy lịch sử thi vượt ải mô-đun của một học viên kèm Module và Part (tránh N+1 query).
+     */
+    @Query("SELECT a FROM ModuleTestAttempt a " +
+           "JOIN FETCH a.module m " +
+           "LEFT JOIN FETCH m.part p " +
+           "WHERE a.user.id = :userId " +
+           "ORDER BY COALESCE(a.submittedAt, a.createdAt) DESC")
+    List<ModuleTestAttempt> findAllByUserIdWithModuleOrderByRecent(@Param("userId") Long userId);
 }

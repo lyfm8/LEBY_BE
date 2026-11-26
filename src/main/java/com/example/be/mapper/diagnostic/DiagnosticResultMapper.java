@@ -158,7 +158,6 @@ public class DiagnosticResultMapper {
                     .maxScore(MAX_PART_SCORE_PERCENT)
                     .directive(pr.getDirective().name())
                     .directiveLabel(resolveDirectiveLabel(pr.getDirective()))
-                    .aiFeedback(buildPartFeedback(partName, scorePercent, pr.getDirective()))
                     .abilities(partAbilities)
                     .build());
 
@@ -377,30 +376,6 @@ public class DiagnosticResultMapper {
             case CONFIRM -> "Cận chuẩn";
             case ABILITY_DIAGNOSTIC -> "Dưới chuẩn";
             case FULL_PART -> "Mất gốc";
-        };
-    }
-
-    private String buildPartFeedback(String partName, int scorePercent, EPartDirective directive) {
-        if (directive == null) {
-            return "Hệ thống đã ghi nhận kết quả của bạn ở " + partName + ".";
-        }
-        return switch (directive) {
-            case PASS -> String.format(
-                    "%s đạt %d%% — Đạt chuẩn mục tiêu AIM. Bạn được miễn học phần này để dồn thời gian cho các kỹ năng yếu.",
-                    partName, scorePercent
-            );
-            case CONFIRM -> String.format(
-                    "%s đạt %d%% — Cận chuẩn mục tiêu. Hệ thống chỉ lọc ra các năng lực nhỏ còn chưa ổn định để bạn ôn tập trọng tâm.",
-                    partName, scorePercent
-            );
-            case ABILITY_DIAGNOSTIC -> String.format(
-                    "%s đạt %d%% — Dưới chuẩn yêu cầu. Lộ trình ưu tiên rèn luyện các năng lực cốt lõi chưa vững trong phần này.",
-                    partName, scorePercent
-            );
-            case FULL_PART -> String.format(
-                    "%s đạt %d%% — Cần xây dựng lại nền tảng toàn phần. Hệ thống đã đưa toàn bộ mô-đun của phần này vào lộ trình học.",
-                    partName, scorePercent
-            );
         };
     }
 

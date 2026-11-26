@@ -349,6 +349,24 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST,
             "TARGET_PROFILE_INACTIVE",
             "Mục tiêu học tập này hiện không khả dụng"
+    ),
+
+    /**
+     * HTTP 409 - Học viên đang có phiên thi trực tuyến diễn ra khi Quản trị viên thao tác khóa tài khoản (UC A02 - Luồng 7d).
+     */
+    USER_IN_ACTIVE_EXAM(
+            HttpStatus.CONFLICT,
+            "USER_IN_ACTIVE_EXAM",
+            "Học viên này đang có một phiên thi trực tuyến đang diễn ra. Việc khóa tài khoản sẽ thu hồi quyền làm bài ngay lập tức. Bạn có chắc chắn muốn tiếp tục?"
+    ),
+
+    /**
+     * HTTP 500 - Gửi email thông báo cho người dùng thất bại.
+     */
+    MAIL_SEND_FAILED(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "MAIL_SEND_FAILED",
+            "Không thể gửi email thông báo cho người dùng. Thao tác đã được hủy bỏ"
     );
 
     // -----------------------------------------------------------------------

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,4 +32,15 @@ public interface DiagnosticAnswerRepository extends JpaRepository<DiagnosticAnsw
     List<DiagnosticAnswer> findByDiagnosticAttemptIdAndIsCorrectFalse(Long diagnosticAttemptId);
 
     long countByDiagnosticAttemptIdAndIsCorrectTrue(Long diagnosticAttemptId);
+
+    /**
+     * Batch projection phục vụ tổng hợp số câu đúng theo Section/Part cho nhiều lượt thi trong 1 câu query duy nhất.
+     * Trả về [attemptId, partSections, partName, isCorrect].
+     */
+    @Query("SELECT a.diagnosticAttempt.id, p.sections, p.name, a.isCorrect " +
+           "FROM DiagnosticAnswer a " +
+           "JOIN a.question q " +
+           "LEFT JOIN q.part p " +
+           "WHERE a.diagnosticAttempt.id IN :attemptIds")
+    List<Object[]> findAnswerStatsByAttemptIds(@Param("attemptIds") Collection<Long> attemptIds);
 }
