@@ -3,12 +3,15 @@ package com.example.be.controller.admin;
 import com.example.be.common.ApiResponse;
 import com.example.be.dto.request.question.CreateQuestionGroupRequest;
 import com.example.be.dto.request.question.CreateStandaloneQuestionRequest;
+import com.example.be.dto.request.question.ExportImportErrorsRequest;
 import com.example.be.dto.request.question.UpdateQuestionGroupRequest;
 import com.example.be.dto.request.question.UpdateStandaloneQuestionRequest;
 import com.example.be.dto.response.question.QuestionDetailResponse;
+import com.example.be.dto.response.question.QuestionImportResultResponse;
 import com.example.be.dto.response.question.QuestionListItemResponse;
 import com.example.be.enums.ability.ESection;
 import com.example.be.security.Roles;
+import com.example.be.service.question.service.QuestionImportService;
 import com.example.be.service.question.service.QuestionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +19,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -28,7 +33,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -43,7 +50,13 @@ import java.util.List;
 @PreAuthorize(Roles.TEACHER_OR_ADMIN)
 public class AdminQuestionController {
 
+    private static final String EXCEL_CONTENT_TYPE =
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    private static final String TEMPLATE_FILENAME = "mau-import-cau-hoi-leby.xlsx";
+    private static final String ERROR_REPORT_FILENAME = "bao-cao-loi-import-cau-hoi.xlsx";
+
     private final QuestionService questionService;
+    private final QuestionImportService questionImportService;
 
     /**
      * Lấy danh sách câu hỏi gốc có phân trang và bộ lọc đa tiêu chí.
@@ -202,6 +215,61 @@ public class AdminQuestionController {
                 .success(true)
                 .message("Xóa câu hỏi thành công")
                 .build());
+    }
+
+    /**
+     * Tải xuống tệp Excel mẫu (.xlsx) kèm bảng tra cứu Part và Ability thực tế trong hệ thống.
+     *
+     * @return File .xlsx mẫu
+     */
+    @GetMapping("/import/template")
+    public ResponseEntity<byte[]> downloadImportTemplate() {
+        byte[] templateBytes = questionImportService.generateImportTemplate();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + TEMPLATE_FILENAME + "\"")
+                .contentType(MediaType.parseMediaType(EXCEL_CONTENT_TYPE))
+                .contentLength(templateBytes.length)
+                .body(templateBytes);
+    }
+
+    /**
+     * Nhập hàng loạt câu hỏi đơn và chùm câu hỏi từ tệp Excel (.xlsx).
+     *
+     * @param file Tệp .xlsx tối đa 20MB
+     * @return Kết quả đối soát và số lượng câu hỏi đã nạp (hoặc danh sách lỗi theo từng dòng)
+     */
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<QuestionImportResultResponse>> importQuestions(
+            @RequestPart("file") MultipartFile file
+    ) {
+        QuestionImportResultResponse result = questionImportService.importFromExcel(file);
+        String message = result.isImported()
+                ? "Import thành công " + result.getSuccessCount() + " mục câu hỏi vào ngân hàng"
+                : "Phát hiện " + result.getFailCount() + " dòng lỗi trong tệp Excel. Vui lòng kiểm tra báo cáo chi tiết";
+
+        return ResponseEntity.ok(ApiResponse.<QuestionImportResultResponse>builder()
+                .success(true)
+                .message(message)
+                .data(result)
+                .build());
+    }
+
+    /**
+     * Xuất bảng báo cáo các dòng lỗi khi import ra tệp Excel (.xlsx) để quản trị viên tải về chỉnh sửa.
+     *
+     * @param request Danh sách lỗi cần xuất báo cáo
+     * @return File .xlsx báo cáo lỗi
+     */
+    @PostMapping("/import/error-report")
+    public ResponseEntity<byte[]> exportImportErrorReport(
+            @Valid @RequestBody ExportImportErrorsRequest request
+    ) {
+        byte[] reportBytes = questionImportService.exportErrorReport(request.getErrors());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + ERROR_REPORT_FILENAME + "\"")
+                .contentType(MediaType.parseMediaType(EXCEL_CONTENT_TYPE))
+                .contentLength(reportBytes.length)
+                .body(reportBytes);
     }
 }
 

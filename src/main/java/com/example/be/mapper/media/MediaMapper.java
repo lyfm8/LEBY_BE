@@ -3,6 +3,7 @@ package com.example.be.mapper.media;
 import com.example.be.dto.request.media.SaveMediaRequest;
 import com.example.be.dto.response.media.SavedMediaResponse;
 import com.example.be.entity.media.Media;
+import com.example.be.service.question.util.MediaKindResolver;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -53,6 +54,7 @@ public class MediaMapper {
                 .publicId(media.getPublicId())
                 .url(media.getSecureUrl())
                 .resourceType(media.getResourceType() != null ? media.getResourceType().name() : null)
+                .kind(MediaKindResolver.resolve(media).name())
                 .format(media.getFormat())
                 .bytes(media.getBytes())
                 .width(media.getWidth())
@@ -60,6 +62,7 @@ public class MediaMapper {
                 .originalFilename(media.getOriginalFilename())
                 .duration(media.getDuration())
                 .status(media.getStatus() != null ? media.getStatus().name() : null)
+                .createdAt(media.getCreatedAt())
                 .build();
     }
 

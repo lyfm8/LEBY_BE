@@ -11,6 +11,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -34,7 +38,43 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MediaController {
 
+    private static final int DEFAULT_PAGE_SIZE = 5;
+    private static final int MAX_PAGE_SIZE = 50;
+
     private final MediaService mediaService;
+
+    /**
+     * Lấy danh sách lịch sử các tệp media đã tải lên hệ thống có phân trang (mặc định 5 mục/trang).
+     *
+     * @param page Số trang (bắt đầu từ 0)
+     * @param size Số mục mỗi trang (mặc định 5, tối đa 50)
+     * @return ResponseEntity bọc ApiResponse chứa danh sách media và thông tin phân trang
+     */
+    @GetMapping
+    @PreAuthorize(Roles.TEACHER_OR_ADMIN)
+    public ResponseEntity<ApiResponse<List<SavedMediaResponse>>> getMedias(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size
+    ) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size > 0 ? size : DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+
+        Page<SavedMediaResponse> result = mediaService.getMedias(pageable);
+        ApiResponse.Pagination pagination = ApiResponse.Pagination.builder()
+                .page(result.getNumber())
+                .pageSize(result.getSize())
+                .totalItems((int) result.getTotalElements())
+                .totalPages(result.getTotalPages())
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.<List<SavedMediaResponse>>builder()
+                .success(true)
+                .message("Lấy lịch sử tệp media thành công")
+                .data(result.getContent())
+                .pagination(pagination)
+                .build());
+    }
 
     /**
      * Cung cấp chữ ký bảo mật để Frontend có thể upload tệp tin trực tiếp lên Cloudinary.
