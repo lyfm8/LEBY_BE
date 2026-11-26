@@ -43,6 +43,7 @@ import com.example.be.repository.setting.AbilityEvaluationRuleRepository;
 import com.example.be.repository.setting.TargetPartThresholdRepository;
 import com.example.be.repository.user.TargetProfileRepository;
 import com.example.be.repository.user.UserRepository;
+import com.example.be.service.content.AdaptivePathGeneratorService;
 import com.example.be.service.diagnostic.implement.DiagnosticScoringServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -90,6 +91,7 @@ class DiagnosticScoringServiceImplTest {
     @Mock private TargetProfileRepository targetProfileRepo;
     @Mock private PartRepository partRepo;
     @Mock private LearningPathRepository learningPathRepo;
+    @Mock private AdaptivePathGeneratorService adaptivePathGeneratorService;
 
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
     @Spy private DiagnosticRoomMapper diagnosticRoomMapper = new DiagnosticRoomMapper(new ObjectMapper());

@@ -11,6 +11,8 @@ import com.example.be.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,16 +53,29 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void toggleUserStatus(Long id) {
+        // Bước 1: Tìm tài khoản cần khóa/mở khóa trong cơ sở dữ liệu
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BaseException(ErrorCode.RESOURCE_NOT_FOUND, "User not found"));
-        
+
+        // Bước 2: Kiểm tra quy tắc BR11 — chặn Admin tự khóa tài khoản của chính mình để tránh mất quyền quản trị
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof User currentUser) {
+            boolean isSelfLocking = currentUser.getId() != null
+                    && currentUser.getId().equals(id)
+                    && Boolean.TRUE.equals(user.getIsActive());
+            if (isSelfLocking) {
+                throw new BaseException(ErrorCode.BAD_REQUEST, "Không thể tự khóa tài khoản của chính mình");
+            }
+        }
+
+        // Bước 3: Đảo trạng thái kích hoạt của tài khoản
         user.setIsActive(!user.getIsActive());
-        
-        // Khi khóa tài khoản, tăng tokenVersion để vô hiệu hóa toàn bộ token hiện tại của user đó
+
+        // Bước 4: Khi khóa tài khoản, tăng tokenVersion để vô hiệu hóa toàn bộ JWT hiện tại của user đó
         if (!user.getIsActive()) {
             user.setTokenVersion(user.getTokenVersion() + 1);
         }
-        
+
         userRepository.save(user);
     }
 }

@@ -95,7 +95,21 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
         List<SelectedModuleEntry> finalEntries = new ArrayList<>(selectedModuleMap.values());
         finalEntries.sort(Comparator.comparing(entry -> entry.module.getSequence()));
 
-        // Bước 6: Tạo các LearningPathItem kèm logic bảo lưu tiến độ bài học / vượt ải (BR06)
+        // Bước 6: Xử lý trường hợp biên học viên PASS 100% cả 7 Part (UC09 - Luồng 4a)
+        // Kiểm tra danh sách Module cần học (finalEntries): nếu rỗng nghĩa là cả 7 Part đều đạt ngưỡng PASS, không cần bổ trợ thêm Module nào
+        if (finalEntries.isEmpty()) {
+            // Chuyển trạng thái lộ trình từ ACTIVE sang COMPLETED ngay lập tức để hệ thống mở khóa quyền làm bài thi thử Mock Test 200 câu
+            learningPath.setStatus(ELearningPathStatus.COMPLETED);
+            // Lưu lại trạng thái COMPLETED mới cập nhật xuống DB và gán lại biến learningPath để lấy bản ghi mới nhất sau khi persist
+            learningPath = learningPathRepo.save(learningPath);
+            // Ghi log mức INFO phục vụ theo dõi nghiệp vụ (ghi rõ userId, điểm mục tiêu AIM và learningPathId vừa chốt)
+            log.info("Học viên userId={} đã PASS 100% 7 Part ở mục tiêu AIM {}, đánh dấu learningPathId={} là COMPLETED",
+                    userId, targetProfile.getTargetTotalScore(), learningPath.getId());
+            // Kết thúc sớm hàm tại đây (Early Return), bỏ qua Bước 7 tạo LearningPathItem vì lộ trình này không có Module con
+            return learningPath;
+        }
+
+        // Bước 7: Tạo các LearningPathItem kèm logic bảo lưu tiến độ bài học / vượt ải (BR06) và lý do gợi ý (reason)
         createAndSavePathItems(learningPath, finalEntries, targetProfile, historyMeta.previousTargetScore);
 
         return learningPath;
@@ -222,6 +236,11 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
                 item.setStatus(ELessonStatus.LOCKED);
             }
 
+            // Gán lý do gợi ý rõ ràng cho từng chặng học nếu chưa có lý do bảo lưu riêng từ BR06
+            if (item.getReason() == null || item.getReason().isBlank()) {
+                item.setReason(buildItemReason(entry));
+            }
+
             itemsToSave.add(item);
         }
 
@@ -232,6 +251,24 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
                 .ifPresent(i -> i.setStatus(ELessonStatus.IN_PROGRESS));
 
         learningPathItemRepo.saveAll(itemsToSave);
+    }
+
+    /**
+     * Sinh chuỗi lý do gợi ý sư phạm giải thích tại sao Module này được đưa vào lộ trình học của học viên.
+     *
+     * @param entry Cặp Module và Ability yếu tương ứng (ability == null nếu thuộc nhánh FULL_PART)
+     * @return Thông điệp Tiếng Việt ngắn gọn hiển thị trực tiếp trên giao diện Lộ trình (UC09)
+     */
+    private String buildItemReason(SelectedModuleEntry entry) {
+        String partLabel = entry.module.getPart() != null
+                ? entry.module.getPart().getName()
+                : entry.module.getTitle();
+        // Nếu bốc theo nhánh Tầng 2 (có Ability yếu cụ thể) -> nêu rõ tên kỹ năng cần khắc phục
+        if (entry.ability != null) {
+            return "Bổ trợ năng lực " + entry.ability.getName() + " (" + partLabel + ") theo kết quả chẩn đoán đầu vào";
+        }
+        // Nếu bốc theo nhánh Tầng 1 FULL_PART -> thông báo ôn luyện toàn diện Part đó
+        return "Ôn luyện nền tảng toàn phần " + partLabel + " do điểm đầu vào dưới ngưỡng tối thiểu";
     }
 
     /**

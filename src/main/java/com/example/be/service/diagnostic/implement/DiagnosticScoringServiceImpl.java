@@ -43,6 +43,7 @@ import com.example.be.repository.setting.AbilityEvaluationRuleRepository;
 import com.example.be.repository.setting.TargetPartThresholdRepository;
 import com.example.be.repository.user.TargetProfileRepository;
 import com.example.be.repository.user.UserRepository;
+import com.example.be.service.content.AdaptivePathGeneratorService;
 import com.example.be.service.diagnostic.service.DiagnosticScoringService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -105,6 +106,7 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
     private final LearningPathRepository learningPathRepo;
     private final DiagnosticRoomMapper diagnosticRoomMapper;
     private final DiagnosticResultMapper diagnosticResultMapper;
+    private final AdaptivePathGeneratorService adaptivePathGeneratorService;
     private final ObjectMapper objectMapper;
 
     // =========================================================================
@@ -286,9 +288,17 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
         // áp dụng đánh giá nhị phân 2 mốc cắt (developingThreshold 50% vs stableThreshold 75%) và lưu UserAbility
         evaluateAndSaveUserAbilities(attempt, partResults, targetProfileId, answers, questionMap);
 
-        // Bước 6: Đồng bộ mục tiêu AIM của học viên theo lượt thi (chưa kích hoạt xếp lộ trình ở phạm vi UC06/UC07 hiện tại)
+        // Bước 6: Đồng bộ mục tiêu AIM của học viên theo lượt thi và kích hoạt sinh lộ trình thích ứng (UC06 → UC09)
         syncUserTargetProfile(attempt.getUser(), resolvedTargetProfile);
-        log.info("Hoàn tất chấm bài chẩn đoán attemptId={} cho user={} (chưa sinh lộ trình)", attempt.getId(), userId);
+        Long generatedLearningPathId = null;
+        // Chỉ gọi thuật toán sinh lộ trình khi lượt thi có gắn mục tiêu AIM hợp lệ
+        if (targetProfileId != null) {
+            LearningPath generatedPath = adaptivePathGeneratorService.generateAdaptivePath(attempt, targetProfileId);
+            // Lấy ID lộ trình vừa sinh để FE điều hướng thẳng từ trang Báo cáo chẩn đoán sang Lộ trình học
+            generatedLearningPathId = generatedPath != null ? generatedPath.getId() : null;
+        }
+        log.info("Hoàn tất chấm bài chẩn đoán attemptId={} cho user={}, learningPathId={}",
+                attempt.getId(), userId, generatedLearningPathId);
 
         // Bước 7: Tổng hợp kết quả trả về cho trang Báo cáo chẩn đoán (totalQuestions lấy theo tổng câu của đề, không lấy theo answers.size)
         int totalCorrect = (int) answers.stream().filter(a -> Boolean.TRUE.equals(a.getIsCorrect())).count();
@@ -306,7 +316,7 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
                 .totalCorrect(totalCorrect)
                 .totalQuestions(questionMap.size())
                 .partResults(partResultResponses)
-                .learningPathId(null)
+                .learningPathId(generatedLearningPathId)
                 .build();
     }
 
