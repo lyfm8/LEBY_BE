@@ -3,6 +3,7 @@ package com.example.be.mapper.diagnostic;
 import com.example.be.dto.response.diagnostic.DiagnosticOptionResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticQuestionResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticRoomResponse;
+import com.example.be.dto.response.diagnostic.StartDiagnosticResponse;
 import com.example.be.entity.content.Part;
 import com.example.be.entity.diagnostic.DiagnosticAttempt;
 import com.example.be.entity.diagnostic.DiagnosticTest;
@@ -40,6 +41,28 @@ public class DiagnosticRoomMapper {
     private static final int PART_READING_PASSAGE_START = 6;
 
     private final ObjectMapper objectMapper;
+
+    /**
+     * Ánh xạ thông tin lượt làm bài chẩn đoán vừa khởi tạo hoặc khôi phục sang {@link StartDiagnosticResponse}.
+     *
+     * @param attempt         Lượt làm bài chẩn đoán
+     * @param test            Đề thi chẩn đoán tương ứng
+     * @param targetProfileId ID mục tiêu AIM áp dụng cho lượt thi
+     * @return {@link StartDiagnosticResponse}
+     */
+    public StartDiagnosticResponse toStartResponse(
+            DiagnosticAttempt attempt,
+            DiagnosticTest test,
+            Long targetProfileId
+    ) {
+        return StartDiagnosticResponse.builder()
+                .attemptId(attempt.getId())
+                .diagnosticTestId(test.getId())
+                .targetProfileId(targetProfileId)
+                .startedAt(attempt.getStartedAt())
+                .durationMinutes(test.getDurationMinutes())
+                .build();
+    }
 
     /**
      * Ánh xạ lượt làm bài chẩn đoán và danh sách câu hỏi đã nạp chi tiết sang DTO phòng thi.

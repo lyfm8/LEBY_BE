@@ -2,6 +2,8 @@ package com.example.be.repository.content;
 
 import com.example.be.entity.content.LearningPathItem;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -13,6 +15,17 @@ import java.util.List;
 public interface LearningPathItemRepository extends JpaRepository<LearningPathItem, Long> {
 
     List<LearningPathItem> findByLearningPathIdOrderByOrderNoAsc(Long learningPathId);
+
+    /**
+     * Nạp danh sách chặng học của lộ trình kèm sẵn Module, Part và Ability trong 1 query để triệt tiêu N+1.
+     */
+    @Query("SELECT i FROM LearningPathItem i " +
+           "JOIN FETCH i.module m " +
+           "LEFT JOIN FETCH m.part p " +
+           "LEFT JOIN FETCH i.ability a " +
+           "WHERE i.learningPath.id = :learningPathId " +
+           "ORDER BY i.orderNo ASC")
+    List<LearningPathItem> findByLearningPathIdWithDetailsOrderByOrderNoAsc(@Param("learningPathId") Long learningPathId);
 
     /**
      * Kiểm tra xem Module có đang được gán vào bất kỳ lộ trình học nào của học viên hay không.

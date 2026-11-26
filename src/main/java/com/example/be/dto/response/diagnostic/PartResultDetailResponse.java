@@ -29,8 +29,6 @@ public class PartResultDetailResponse {
     private String directive;
     /** Nhãn tiếng Việt hiển thị cho trạng thái phân nhánh Tầng 1. */
     private String directiveLabel;
-    /** Nhận xét sư phạm dành riêng cho Part này. */
-    private String aiFeedback;
     /** Danh sách chi tiết các Năng lực con (Ability) thuộc Part này (UC07 Luồng 5a). */
     private List<PartAbilityBreakdownResponse> abilities;
 }

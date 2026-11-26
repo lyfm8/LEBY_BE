@@ -49,6 +49,12 @@ public class DiagnosticAttempt extends AbstractEntity {
     private Integer durationSeconds;
 
     /**
+     * Thời gian làm bài còn lại được đồng bộ gần nhất trên máy chủ (tính bằng giây).
+     * Giúp đồng hồ ngưng đọng khi học viên tạm dừng, crash trình duyệt hoặc thoát ngang.
+     */
+    private Integer remainingSeconds;
+
+    /**
      * DiagnosticAttempt * ---- 1 User.
      */
     @ManyToOne(fetch = FetchType.LAZY)

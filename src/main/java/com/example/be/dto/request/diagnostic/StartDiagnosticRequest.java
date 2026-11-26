@@ -19,4 +19,7 @@ public class StartDiagnosticRequest {
 
     /** ID mục tiêu AIM của học viên tại thời điểm bắt đầu làm bài (phục vụ kiểm tra BR02). */
     private Long targetProfileId;
+
+    /** Cho phép tạo lượt thi chẩn đoán mới kể cả khi học viên đã hoàn thành bài chẩn đoán ở mốc AIM hiện tại. */
+    private Boolean forceRetake;
 }

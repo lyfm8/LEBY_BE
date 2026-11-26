@@ -38,5 +38,17 @@ public interface DiagnosticTestQuestionRepository extends JpaRepository<Diagnost
     List<DiagnosticTestQuestion> findAllByDiagnosticTestIdOrderByOrderNoAsc(
             @Param("diagnosticTestId") Long diagnosticTestId
     );
+
+    /**
+     * Batch đếm tổng số câu hỏi theo từng đề và section (Listening / Reading) để tránh N+1 query.
+     * Trả về [diagnosticTestId, partSections, partName, questionCount].
+     */
+    @Query("SELECT dtq.diagnosticTest.id, p.sections, p.name, COUNT(dtq.id) " +
+           "FROM DiagnosticTestQuestion dtq " +
+           "JOIN dtq.question q " +
+           "LEFT JOIN q.part p " +
+           "WHERE dtq.diagnosticTest.id IN :testIds " +
+           "GROUP BY dtq.diagnosticTest.id, p.sections, p.name")
+    List<Object[]> countQuestionsByTestIdsAndSection(@Param("testIds") Collection<Long> testIds);
 }
 

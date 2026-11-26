@@ -3,6 +3,7 @@ package com.example.be.controller.user;
 import com.example.be.common.ApiResponse;
 import com.example.be.dto.request.diagnostic.StartDiagnosticRequest;
 import com.example.be.dto.request.diagnostic.SubmitDiagnosticRequest;
+import com.example.be.dto.request.diagnostic.SyncDiagnosticTimerRequest;
 import com.example.be.dto.response.diagnostic.DiagnosticResultDetailResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticResultResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticRoomResponse;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <pre>
  *   POST /api/users/diagnostic/start              — Bắt đầu bài chẩn đoán, tạo DiagnosticAttempt
  *   GET  /api/users/diagnostic/resume             — Khôi phục phiên làm bài đang diễn ra (nếu có)
+ *   POST /api/users/diagnostic/timer/sync         — Đồng bộ số giây làm bài còn lại để ngưng đọng khi thoát/tạm dừng
  *   GET  /api/users/diagnostic/exam/{attemptId}   — Tải danh sách câu hỏi phòng thi cho lượt thi
  *   POST /api/users/diagnostic/submit             — Nộp bài, chấm điểm 2 tầng, sinh lộ trình thích ứng
  *   GET  /api/users/diagnostic/results/latest     — Xem báo cáo kết quả chẩn đoán gần nhất (UC07)
@@ -87,6 +89,27 @@ public class UserDiagnosticController {
                 .success(true)
                 .message(message)
                 .data(response)
+                .build());
+    }
+
+    /**
+     * Đồng bộ số giây làm bài còn lại lên máy chủ để ngưng đọng thời gian khi tạm dừng hoặc thoát ngang (Luồng 4b & 5a).
+     *
+     * @param currentUser Học viên đang đăng nhập
+     * @param request     Thông tin attemptId và remainingSeconds hiện tại
+     * @return Số giây còn lại hợp lệ đã lưu trên máy chủ
+     */
+    @PostMapping("/timer/sync")
+    @PreAuthorize(Roles.ANY_AUTHENTICATED)
+    public ResponseEntity<ApiResponse<Long>> syncTimer(
+            @AuthenticationPrincipal User currentUser,
+            @Valid @RequestBody SyncDiagnosticTimerRequest request
+    ) {
+        long remainingSeconds = diagnosticScoringService.syncRemainingTime(currentUser.getId(), request);
+        return ResponseEntity.ok(ApiResponse.<Long>builder()
+                .success(true)
+                .message("Đồng bộ thời gian làm bài thành công")
+                .data(remainingSeconds)
                 .build());
     }
 

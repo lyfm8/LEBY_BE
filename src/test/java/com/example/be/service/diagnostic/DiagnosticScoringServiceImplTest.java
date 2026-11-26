@@ -2,6 +2,7 @@ package com.example.be.service.diagnostic;
 
 import com.example.be.dto.request.diagnostic.StartDiagnosticRequest;
 import com.example.be.dto.request.diagnostic.SubmitDiagnosticRequest;
+import com.example.be.dto.request.diagnostic.SyncDiagnosticTimerRequest;
 import com.example.be.dto.response.diagnostic.DiagnosticResultDetailResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticResultResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticRoomResponse;
@@ -239,6 +240,31 @@ class DiagnosticScoringServiceImplTest {
     }
 
     @Test
+    void startDiagnostic_forceRetakeSameAim_createsNewAttemptWithInitialRemainingSeconds() {
+        when(userRepo.findWithTargetProfileById(1L)).thenReturn(Optional.of(student));
+        when(diagnosticTestRepo.findById(100L)).thenReturn(Optional.of(diagnosticTest));
+        when(diagnosticAttemptRepo.save(any())).thenAnswer(invocation -> {
+            DiagnosticAttempt saved = invocation.getArgument(0);
+            if (saved.getId() == null) {
+                saved.setId(300L);
+            }
+            return saved;
+        });
+
+        StartDiagnosticRequest req = new StartDiagnosticRequest();
+        req.setDiagnosticTestId(100L);
+        req.setForceRetake(true);
+
+        StartDiagnosticResponse resp = service.startDiagnostic(1L, req);
+
+        assertThat(resp.getAttemptId()).isEqualTo(300L);
+        verify(diagnosticAttemptRepo).save(attemptCaptor.capture());
+        assertThat(attemptCaptor.getValue().getRemainingSeconds()).isEqualTo(3600);
+        verify(diagnosticAttemptRepo, never()).findTopByUserIdAndTargetProfileIdAndStatusOrderByCompletedAtDesc(
+                anyLong(), anyLong(), any());
+    }
+
+    @Test
     void startDiagnostic_changedAim_allowsRetake() {
         TargetProfile target750 = new TargetProfile();
         target750.setId(6L);
@@ -305,6 +331,50 @@ class DiagnosticScoringServiceImplTest {
         assertThat(resp).isNull();
         verify(diagnosticAttemptRepo).save(attemptCaptor.capture());
         assertThat(attemptCaptor.getValue().getStatus()).isEqualTo(EAttemptStatus.ABANDONED);
+    }
+
+    @Test
+    void getExamForAttempt_usesFrozenRemainingSecondsWhenPresent() {
+        attempt.setStartedAt(LocalDateTime.now().minusMinutes(120)); // vượt quá 60 phút nếu tính theo đồng hồ thực
+        attempt.setRemainingSeconds(1920); // nhưng server đã ngưng đọng ở mức 1920s
+
+        DiagnosticTestQuestion link = new DiagnosticTestQuestion();
+        link.setOrderNo(1);
+        link.setQuestion(question);
+        question.setQuestionData("{\"text\":\"Sample\",\"options\":[{\"key\":\"A\",\"text\":\"Opt\"}]}");
+
+        when(diagnosticAttemptRepo.findByIdWithContext(200L)).thenReturn(Optional.of(attempt));
+        when(diagnosticTestQuestionRepo.findAllByDiagnosticTestIdOrderByOrderNoAsc(100L)).thenReturn(List.of(link));
+        when(questionRepo.findAllWithMediasAndParentByIdIn(List.of(1L))).thenReturn(List.of(question));
+
+        DiagnosticRoomResponse room = service.getExamForAttempt(1L, 200L);
+
+        assertThat(room.getRemainingSeconds()).isEqualTo(1920L);
+    }
+
+    @Test
+    void syncRemainingTime_clampsNeverToExceedStoredSecondsAndBlocksWrongUser() {
+        attempt.setRemainingSeconds(2000);
+        when(diagnosticAttemptRepo.findByIdWithContext(200L)).thenReturn(Optional.of(attempt));
+        when(diagnosticAttemptRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Client cố gửi số giây lớn hơn (3500 > 2000) -> server giữ nguyên 2000
+        SyncDiagnosticTimerRequest cheatReq = new SyncDiagnosticTimerRequest();
+        cheatReq.setAttemptId(200L);
+        cheatReq.setRemainingSeconds(3500);
+        assertThat(service.syncRemainingTime(1L, cheatReq)).isEqualTo(2000L);
+
+        // Client gửi số giây giảm hợp lệ (1850 <= 2000) -> cập nhật 1850
+        SyncDiagnosticTimerRequest validReq = new SyncDiagnosticTimerRequest();
+        validReq.setAttemptId(200L);
+        validReq.setRemainingSeconds(1850);
+        assertThat(service.syncRemainingTime(1L, validReq)).isEqualTo(1850L);
+
+        // User khác gọi vào attempt của user 1 -> chặn FORBIDDEN (anti-IDOR)
+        assertThatThrownBy(() -> service.syncRemainingTime(999L, validReq))
+                .isInstanceOf(BaseException.class)
+                .extracting(e -> ((BaseException) e).getErrorCode())
+                .isEqualTo(ErrorCode.FORBIDDEN);
     }
 
     // =========================================================================
