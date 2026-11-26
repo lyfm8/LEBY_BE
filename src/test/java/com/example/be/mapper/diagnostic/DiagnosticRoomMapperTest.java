@@ -2,6 +2,7 @@ package com.example.be.mapper.diagnostic;
 
 import com.example.be.dto.response.diagnostic.DiagnosticQuestionResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticRoomResponse;
+import com.example.be.dto.response.diagnostic.StartDiagnosticResponse;
 import com.example.be.entity.content.Part;
 import com.example.be.entity.diagnostic.DiagnosticAttempt;
 import com.example.be.entity.diagnostic.DiagnosticTest;
@@ -151,5 +152,25 @@ class DiagnosticRoomMapperTest {
         assertThat(res3.getOrderNo()).isEqualTo(3);
         assertThat(res3.getPartNo()).isEqualTo(7);
         assertThat(res3.getPassage()).isEqualTo("GLOBAL LOGISTICS NOTICE...");
+    }
+
+    @Test
+    void toStartResponse_mapsAttemptAndTestFieldsCleanly() {
+        DiagnosticTest test = new DiagnosticTest();
+        test.setId(8L);
+        test.setDurationMinutes(45);
+
+        LocalDateTime startedAt = LocalDateTime.of(2026, 11, 26, 18, 0, 0);
+        DiagnosticAttempt attempt = new DiagnosticAttempt();
+        attempt.setId(99L);
+        attempt.setStartedAt(startedAt);
+
+        StartDiagnosticResponse response = mapper.toStartResponse(attempt, test, 4L);
+
+        assertThat(response.getAttemptId()).isEqualTo(99L);
+        assertThat(response.getDiagnosticTestId()).isEqualTo(8L);
+        assertThat(response.getTargetProfileId()).isEqualTo(4L);
+        assertThat(response.getStartedAt()).isEqualTo(startedAt);
+        assertThat(response.getDurationMinutes()).isEqualTo(45);
     }
 }

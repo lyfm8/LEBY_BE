@@ -2,6 +2,7 @@ package com.example.be.controller.user;
 
 import com.example.be.common.ApiResponse;
 import com.example.be.dto.request.diagnostic.StartDiagnosticRequest;
+import com.example.be.dto.request.diagnostic.SyncDiagnosticTimerRequest;
 import com.example.be.dto.response.diagnostic.DiagnosticResultDetailResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticRoomResponse;
 import com.example.be.dto.response.diagnostic.StartDiagnosticResponse;
@@ -86,5 +87,25 @@ class UserDiagnosticControllerTest {
         verify(diagnosticScoringService).getExamForAttempt(7L, 12L);
         verify(diagnosticScoringService).getLatestResultDetail(7L);
         verify(diagnosticScoringService).getResultDetail(7L, 12L);
+    }
+
+    @Test
+    void syncTimer_delegatesToServiceAndReturnsClampedSeconds() {
+        User user = new User();
+        user.setId(7L);
+
+        SyncDiagnosticTimerRequest request = new SyncDiagnosticTimerRequest();
+        request.setAttemptId(12L);
+        request.setRemainingSeconds(1450);
+
+        when(diagnosticScoringService.syncRemainingTime(7L, request)).thenReturn(1450L);
+
+        ResponseEntity<ApiResponse<Long>> response = controller.syncTimer(user, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().isSuccess()).isTrue();
+        assertThat(response.getBody().getData()).isEqualTo(1450L);
+        verify(diagnosticScoringService).syncRemainingTime(7L, request);
     }
 }

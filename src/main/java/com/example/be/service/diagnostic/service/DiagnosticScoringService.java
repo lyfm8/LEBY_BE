@@ -2,6 +2,7 @@ package com.example.be.service.diagnostic.service;
 
 import com.example.be.dto.request.diagnostic.StartDiagnosticRequest;
 import com.example.be.dto.request.diagnostic.SubmitDiagnosticRequest;
+import com.example.be.dto.request.diagnostic.SyncDiagnosticTimerRequest;
 import com.example.be.dto.response.diagnostic.DiagnosticResultDetailResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticResultResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticRoomResponse;
@@ -39,6 +40,15 @@ public interface DiagnosticScoringService {
      * @return {@link DiagnosticRoomResponse} nếu có phiên dang dở, hoặc {@code null} nếu không có
      */
     DiagnosticRoomResponse getActiveSession(Long userId);
+
+    /**
+     * Đồng bộ số giây làm bài còn lại từ phòng thi lên máy chủ để ngưng đọng đồng hồ khi tạm dừng hoặc mất kết nối (Luồng 4b & 5a).
+     *
+     * @param userId  ID học viên đang đăng nhập (chống IDOR)
+     * @param request Thông tin lượt thi và số giây còn lại từ client
+     * @return Số giây còn lại hợp lệ đã được lưu trên máy chủ
+     */
+    long syncRemainingTime(Long userId, SyncDiagnosticTimerRequest request);
 
     /**
      * Nộp bài và thực hiện chấm điểm 2 tầng hoàn chỉnh.

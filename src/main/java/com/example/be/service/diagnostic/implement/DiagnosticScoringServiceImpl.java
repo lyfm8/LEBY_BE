@@ -2,6 +2,7 @@ package com.example.be.service.diagnostic.implement;
 
 import com.example.be.dto.request.diagnostic.StartDiagnosticRequest;
 import com.example.be.dto.request.diagnostic.SubmitDiagnosticRequest;
+import com.example.be.dto.request.diagnostic.SyncDiagnosticTimerRequest;
 import com.example.be.dto.response.diagnostic.DiagnosticResultDetailResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticResultResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticRoomResponse;
@@ -141,44 +142,40 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
             throw new BaseException(ErrorCode.EXAM_NOT_ACTIVE);
         }
 
-        // Bước 3: Kiểm tra xem đã có phiên làm bài IN_PROGRESS cho cùng đề và AIM hay chưa để tránh tạo bản ghi trùng
+        boolean isForceRetake = request != null && Boolean.TRUE.equals(request.getForceRetake());
+
+        // Bước 3: Xử lý phiên làm bài IN_PROGRESS hiện có (khôi phục nếu đang làm tiếp, hoặc đóng phiên cũ nếu chủ động làm lại)
         Optional<DiagnosticAttempt> inProgressOpt = findExistingInProgressAttempt(userId, test.getId(), targetProfileId);
         if (inProgressOpt.isPresent()) {
             DiagnosticAttempt existing = inProgressOpt.get();
-            return StartDiagnosticResponse.builder()
-                    .attemptId(existing.getId())
-                    .diagnosticTestId(test.getId())
-                    .targetProfileId(targetProfileId)
-                    .startedAt(existing.getStartedAt())
-                    .durationMinutes(test.getDurationMinutes())
-                    .build();
+            if (!isForceRetake) {
+                return diagnosticRoomMapper.toStartResponse(existing, test, targetProfileId);
+            }
+            // Đánh dấu lượt dang dở cũ thành ABANDONED trước khi tạo lượt làm lại mới
+            existing.setStatus(EAttemptStatus.ABANDONED);
+            diagnosticAttemptRepo.save(existing);
         }
 
-        // Bước 4: Kiểm tra BR02 (Ngoại lệ 1a) — không cho thi lại nếu đã hoàn thành cho chính mốc AIM này,
-        // chỉ cho phép làm lại khi học viên đã đổi sang một mốc AIM mới.
-        if (targetProfileId != null && hasCompletedDiagnosticForTarget(userId, targetProfileId)) {
+        // Bước 4: Kiểm tra BR02 (Ngoại lệ 1a) — chỉ chặn khi không có cờ forceRetake và chưa đổi sang mốc AIM mới
+        if (!isForceRetake && targetProfileId != null && hasCompletedDiagnosticForTarget(userId, targetProfileId)) {
             throw new BaseException(ErrorCode.DIAGNOSTIC_ALREADY_COMPLETED);
         }
 
-        // Bước 5: Khởi tạo bản ghi DiagnosticAttempt mới ở trạng thái IN_PROGRESS
+        // Bước 5: Khởi tạo bản ghi DiagnosticAttempt mới ở trạng thái IN_PROGRESS kèm bộ đếm giây ban đầu
+        int initialDurationSeconds = resolveTotalDurationSeconds(test);
         DiagnosticAttempt attempt = new DiagnosticAttempt();
         attempt.setUser(user);
         attempt.setDiagnosticTest(test);
         attempt.setTargetProfile(targetProfile);
         attempt.setStatus(EAttemptStatus.IN_PROGRESS);
         attempt.setStartedAt(LocalDateTime.now());
+        attempt.setRemainingSeconds(initialDurationSeconds);
         attempt = diagnosticAttemptRepo.save(attempt);
 
-        log.info("Khởi tạo lượt thi chẩn đoán attemptId={} cho userId={}, targetProfileId={}",
-                attempt.getId(), userId, targetProfileId);
+        log.info("Khởi tạo lượt thi chẩn đoán attemptId={} cho userId={}, targetProfileId={}, forceRetake={}",
+                attempt.getId(), userId, targetProfileId, isForceRetake);
 
-        return StartDiagnosticResponse.builder()
-                .attemptId(attempt.getId())
-                .diagnosticTestId(test.getId())
-                .targetProfileId(targetProfileId)
-                .startedAt(attempt.getStartedAt())
-                .durationMinutes(test.getDurationMinutes())
-                .build();
+        return diagnosticRoomMapper.toStartResponse(attempt, test, targetProfileId);
     }
 
     /**
@@ -228,6 +225,39 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
         }
 
         return buildDiagnosticRoomResponse(attempt);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public long syncRemainingTime(Long userId, SyncDiagnosticTimerRequest request) {
+        // Bước 1: Tải lượt thi kèm thông tin đề thi gốc để xác định thời lượng tối đa hợp lệ
+        DiagnosticAttempt attempt = diagnosticAttemptRepo.findByIdWithContext(request.getAttemptId())
+                .or(() -> diagnosticAttemptRepo.findById(request.getAttemptId()))
+                .orElseThrow(() -> new BaseException(ErrorCode.DIAGNOSTIC_ATTEMPT_NOT_FOUND));
+
+        // Bước 2: Kiểm tra quyền sở hữu (chống IDOR) và bảo đảm lượt thi vẫn đang mở (IN_PROGRESS)
+        if (!attempt.getUser().getId().equals(userId)) {
+            throw new BaseException(ErrorCode.FORBIDDEN, "Bạn không có quyền cập nhật thời gian lượt thi này");
+        }
+        if (attempt.getStatus() != EAttemptStatus.IN_PROGRESS) {
+            throw new BaseException(ErrorCode.DIAGNOSTIC_ALREADY_SUBMITTED);
+        }
+
+        // Bước 3: Clamp thời gian còn lại — chỉ cho phép giữ nguyên hoặc giảm dần, ngăn client sửa tăng thời gian
+        int totalDurationSeconds = resolveTotalDurationSeconds(attempt.getDiagnosticTest());
+        int currentStored = attempt.getRemainingSeconds() != null
+                ? Math.min(attempt.getRemainingSeconds(), totalDurationSeconds)
+                : totalDurationSeconds;
+        int requestedSeconds = Math.max(0, request.getRemainingSeconds());
+        int clampedSeconds = Math.min(currentStored, requestedSeconds);
+
+        // Bước 4: Lưu số giây còn lại mới nhất để ngưng đọng đồng hồ nếu học viên tạm dừng hoặc thoát ngang
+        attempt.setRemainingSeconds(clampedSeconds);
+        diagnosticAttemptRepo.save(attempt);
+        return clampedSeconds;
     }
 
     /**
@@ -472,12 +502,18 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
 
         Map<Long, Question> detailedQuestionMap = loadDetailedQuestionsForRoom(orderedQuestions);
 
-        int durationMinutes = test.getDurationMinutes() != null ? test.getDurationMinutes() : DEFAULT_DURATION_MINUTES;
-        long totalDurationSeconds = durationMinutes * SECONDS_PER_MINUTE;
-        long elapsedSeconds = attempt.getStartedAt() != null
-                ? Math.max(0L, ChronoUnit.SECONDS.between(attempt.getStartedAt(), LocalDateTime.now()))
-                : 0L;
-        long remainingSeconds = Math.max(0L, totalDurationSeconds - elapsedSeconds);
+        long totalDurationSeconds = resolveTotalDurationSeconds(test);
+        long remainingSeconds;
+        if (attempt.getRemainingSeconds() != null) {
+            // Ưu tiên số giây đã đồng bộ trên máy chủ để giữ nguyên thời gian khi crash/thoát ngang/tạm dừng
+            remainingSeconds = Math.max(0L, Math.min(totalDurationSeconds, attempt.getRemainingSeconds()));
+        } else {
+            // Fallback cho dữ liệu lượt thi cũ chưa có cột remaining_seconds
+            long elapsedSeconds = attempt.getStartedAt() != null
+                    ? Math.max(0L, ChronoUnit.SECONDS.between(attempt.getStartedAt(), LocalDateTime.now()))
+                    : 0L;
+            remainingSeconds = Math.max(0L, totalDurationSeconds - elapsedSeconds);
+        }
 
         return diagnosticRoomMapper.toRoomResponse(
                 test,
@@ -486,6 +522,13 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
                 detailedQuestionMap,
                 remainingSeconds
         );
+    }
+
+    private int resolveTotalDurationSeconds(DiagnosticTest test) {
+        int durationMinutes = (test != null && test.getDurationMinutes() != null)
+                ? test.getDurationMinutes()
+                : DEFAULT_DURATION_MINUTES;
+        return Math.max(0, durationMinutes * (int) SECONDS_PER_MINUTE);
     }
 
     private Map<Long, Question> loadDetailedQuestionsForRoom(List<DiagnosticTestQuestion> orderedQuestions) {
