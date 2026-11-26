@@ -1,6 +1,5 @@
 package com.example.be.entity.ability;
 
-import com.example.be.entity.content.Part;
 import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.content.Part;
 import com.example.be.enums.ability.ESection;
@@ -32,7 +31,7 @@ import java.util.List;
 @NoArgsConstructor
 public class Ability extends AbstractEntity {
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 150)
     private String name;
 
     @Column(nullable = false, columnDefinition = "TEXT")

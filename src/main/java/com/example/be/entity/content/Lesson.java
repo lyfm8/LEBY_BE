@@ -2,6 +2,7 @@ package com.example.be.entity.content;
 
 import com.example.be.entity.ability.Ability;
 import com.example.be.entity.base.AbstractEntity;
+import com.example.be.entity.question.PracticeQuestion;
 import com.example.be.enums.content.ELessonType;
 import com.example.be.enums.content.EModuleStatus;
 import jakarta.persistence.CascadeType;
@@ -13,6 +14,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -107,4 +109,17 @@ public class Lesson extends AbstractEntity {
             fetch = FetchType.LAZY
     )
     private List<LessonScript> scripts = new ArrayList<>();
+
+    /**
+     * Danh sách các câu hỏi luyện tập (PracticeQuestion) được gắn vào bài học loại PRACTICE.
+     * Tự động sắp xếp tăng dần theo thứ tự hiển thị orderNo.
+     */
+    @OneToMany(
+            mappedBy = "lesson",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    @OrderBy("orderNo ASC")
+    private List<PracticeQuestion> practiceQuestions = new ArrayList<>();
 }

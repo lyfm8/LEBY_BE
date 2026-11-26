@@ -30,7 +30,7 @@ import java.util.List;
 @NoArgsConstructor
 public class DiagnosticTest extends AbstractEntity {
 
-    @Column(nullable = false, length = 150)
+    @Column(nullable = false, length = 200)
     private String title;
 
     @Column(columnDefinition = "TEXT")

@@ -44,8 +44,9 @@ public class LearningPathItem extends AbstractEntity {
     private Integer progressPercent = 0;
 
     /**
-     * reason: String - lý do trạng thái (optional)
+     * reason: String - lý do trạng thái hoặc gợi ý năng lực yếu cần bổ trợ (tối đa 500 ký tự).
      */
+    @Column(length = 500)
     private String reason;
 
     @Enumerated(EnumType.STRING)
