@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,6 +40,16 @@ public interface DiagnosticAttemptRepository extends JpaRepository<DiagnosticAtt
             Long targetProfileId,
             EAttemptStatus status
     );
+
+    /**
+     * Kiểm tra học viên đã hoàn thành ít nhất một lượt thi chẩn đoán nào chưa (không phân biệt đề hay AIM).
+     */
+    boolean existsByUserIdAndStatusIn(Long userId, Collection<EAttemptStatus> statuses);
+
+    /**
+     * Kiểm tra học viên đã từng mở xem đáp án chi tiết (Review) của bài thi chẩn đoán hay chưa.
+     */
+    boolean existsByUserIdAndHasViewedReviewTrue(Long userId);
 
     /**
      * Tìm phiên làm bài đang diễn ra (IN_PROGRESS) cho cùng đề thi và mục tiêu AIM nhằm tránh tạo trùng lượt thi.

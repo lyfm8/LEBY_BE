@@ -240,7 +240,16 @@ public enum ErrorCode {
     DIAGNOSTIC_ALREADY_COMPLETED(
             HttpStatus.CONFLICT,
             "DIAGNOSTIC_ALREADY_COMPLETED",
-            "Bạn đã hoàn thành bài thi chẩn đoán cho mục tiêu này. Vui lòng xem lại báo cáo hoặc tiến hành học theo lộ trình"
+            "Bạn đã hoàn thành bài thi chẩn đoán. Hệ thống tự động cập nhật lộ trình từ kết quả hiện có."
+    ),
+
+    /**
+     * HTTP 409 - Học viên đã xem đáp án chi tiết (Review), không thể làm lại bài thi chẩn đoán.
+     */
+    DIAGNOSTIC_RETAKE_LOCKED_AFTER_REVIEW(
+            HttpStatus.CONFLICT,
+            "DIAGNOSTIC_RETAKE_LOCKED_AFTER_REVIEW",
+            "Bạn đã xem đáp án chi tiết của bài thi chẩn đoán nên không thể làm lại bài thi."
     ),
 
     /**

@@ -69,6 +69,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -222,17 +224,13 @@ class DiagnosticScoringServiceImplTest {
     }
 
     @Test
-    void startDiagnostic_alreadyCompletedSameAim_throwsBr02Conflict() {
-        DiagnosticAttempt submittedForSameAim = new DiagnosticAttempt();
-        submittedForSameAim.setId(199L);
-        submittedForSameAim.setStatus(EAttemptStatus.SUBMITTED);
-        submittedForSameAim.setTargetProfile(target650);
-
+    void startDiagnostic_alreadyCompletedBefore_throwsBr02Conflict() {
         when(userRepo.findWithTargetProfileById(1L)).thenReturn(Optional.of(student));
         when(diagnosticTestRepo.findById(100L)).thenReturn(Optional.of(diagnosticTest));
-        when(diagnosticAttemptRepo.findTopByUserIdAndTargetProfileIdAndStatusOrderByCompletedAtDesc(
-                1L, 5L, EAttemptStatus.SUBMITTED))
-                .thenReturn(Optional.of(submittedForSameAim));
+        when(diagnosticAttemptRepo.existsByUserIdAndStatusIn(
+                eq(1L),
+                argThat(statuses -> statuses.contains(EAttemptStatus.SUBMITTED))))
+                .thenReturn(true);
 
         StartDiagnosticRequest req = new StartDiagnosticRequest();
         req.setDiagnosticTestId(100L);
@@ -244,9 +242,10 @@ class DiagnosticScoringServiceImplTest {
     }
 
     @Test
-    void startDiagnostic_forceRetakeSameAim_createsNewAttemptWithInitialRemainingSeconds() {
+    void startDiagnostic_forceRetakeBeforeViewingReview_createsNewAttemptWithInitialRemainingSeconds() {
         when(userRepo.findWithTargetProfileById(1L)).thenReturn(Optional.of(student));
         when(diagnosticTestRepo.findById(100L)).thenReturn(Optional.of(diagnosticTest));
+        when(diagnosticAttemptRepo.existsByUserIdAndHasViewedReviewTrue(1L)).thenReturn(false);
         when(diagnosticAttemptRepo.save(any())).thenAnswer(invocation -> {
             DiagnosticAttempt saved = invocation.getArgument(0);
             if (saved.getId() == null) {
@@ -264,35 +263,53 @@ class DiagnosticScoringServiceImplTest {
         assertThat(resp.getAttemptId()).isEqualTo(300L);
         verify(diagnosticAttemptRepo).save(attemptCaptor.capture());
         assertThat(attemptCaptor.getValue().getRemainingSeconds()).isEqualTo(3600);
-        verify(diagnosticAttemptRepo, never()).findTopByUserIdAndTargetProfileIdAndStatusOrderByCompletedAtDesc(
-                anyLong(), anyLong(), any());
+        verify(diagnosticAttemptRepo, never()).existsByUserIdAndStatusIn(anyLong(), any());
     }
 
     @Test
-    void startDiagnostic_changedAim_allowsRetake() {
+    void startDiagnostic_forceRetakeAfterViewingReview_throwsRetakeLocked() {
+        when(userRepo.findWithTargetProfileById(1L)).thenReturn(Optional.of(student));
+        when(diagnosticTestRepo.findById(100L)).thenReturn(Optional.of(diagnosticTest));
+        when(diagnosticAttemptRepo.existsByUserIdAndHasViewedReviewTrue(1L)).thenReturn(true);
+
+        StartDiagnosticRequest req = new StartDiagnosticRequest();
+        req.setDiagnosticTestId(100L);
+        req.setForceRetake(true);
+
+        assertThatThrownBy(() -> service.startDiagnostic(1L, req))
+                .isInstanceOf(BaseException.class)
+                .extracting(e -> ((BaseException) e).getErrorCode())
+                .isEqualTo(ErrorCode.DIAGNOSTIC_RETAKE_LOCKED_AFTER_REVIEW);
+        verify(diagnosticAttemptRepo, never()).save(any());
+    }
+
+    @Test
+    void startDiagnostic_changedAimOrDifferentTestAfterCompletion_blocksRetake() {
         TargetProfile target750 = new TargetProfile();
         target750.setId(6L);
         target750.setTargetTotalScore(750);
         target750.setStatus(true);
         student.setTargetProfile(target750);
 
-        DiagnosticAttempt attemptFor750 = new DiagnosticAttempt();
-        attemptFor750.setId(205L);
-        attemptFor750.setTargetProfile(target750);
-        attemptFor750.setStatus(EAttemptStatus.IN_PROGRESS);
+        DiagnosticTest anotherDiagnosticTest = new DiagnosticTest();
+        anotherDiagnosticTest.setId(202L);
+        anotherDiagnosticTest.setTitle("Diagnostic 202");
+        anotherDiagnosticTest.setTestType(ETestType.DIAGNOSTIC);
+        anotherDiagnosticTest.setExamStatus(EExamStatus.ACTIVE);
+        anotherDiagnosticTest.setDurationMinutes(60);
 
         when(userRepo.findWithTargetProfileById(1L)).thenReturn(Optional.of(student));
         when(diagnosticTestRepo.findFirstByTestTypeAndExamStatus(ETestType.DIAGNOSTIC, EExamStatus.ACTIVE))
-                .thenReturn(Optional.of(diagnosticTest));
-        when(diagnosticAttemptRepo.findTopByUserIdAndTargetProfileIdAndStatusOrderByCompletedAtDesc(
-                1L, 6L, EAttemptStatus.SUBMITTED))
-                .thenReturn(Optional.empty());
-        when(diagnosticAttemptRepo.save(any())).thenReturn(attemptFor750);
+                .thenReturn(Optional.of(anotherDiagnosticTest));
+        when(diagnosticAttemptRepo.existsByUserIdAndStatusIn(
+                eq(1L),
+                argThat(statuses -> statuses.contains(EAttemptStatus.SUBMITTED))))
+                .thenReturn(true);
 
-        StartDiagnosticResponse resp = service.startDiagnostic(1L, new StartDiagnosticRequest());
-
-        assertThat(resp.getAttemptId()).isEqualTo(205L);
-        assertThat(resp.getTargetProfileId()).isEqualTo(6L);
+        assertThatThrownBy(() -> service.startDiagnostic(1L, new StartDiagnosticRequest()))
+                .isInstanceOf(BaseException.class)
+                .extracting(e -> ((BaseException) e).getErrorCode())
+                .isEqualTo(ErrorCode.DIAGNOSTIC_ALREADY_COMPLETED);
     }
 
     // =========================================================================
@@ -670,6 +687,9 @@ class DiagnosticScoringServiceImplTest {
         assertThat(review.getQuestions().get(0).getIsCorrect()).isFalse();
         assertThat(review.getQuestions().get(0).getIsFlagged()).isTrue();
         assertThat(review.getQuestions().get(0).getExplanation().getClue()).isEqualTo("Clue text");
+        assertThat(attempt.getHasViewedReview()).isTrue();
+        assertThat(attempt.getReviewViewedAt()).isNotNull();
+        verify(diagnosticAttemptRepo).save(attempt);
     }
 
     // =========================================================================

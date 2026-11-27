@@ -70,6 +70,34 @@ public class DiagnosticResultMapper {
             TargetProfile targetProfile,
             LearningPath learningPath
     ) {
+        boolean hasViewed = attempt != null && Boolean.TRUE.equals(attempt.getHasViewedReview());
+        return toDetailResponse(
+                attempt,
+                partResults,
+                answers,
+                examQuestions,
+                userAbilities,
+                abilityRules,
+                targetProfile,
+                learningPath,
+                hasViewed
+        );
+    }
+
+    /**
+     * Phiên bản đầy đủ kèm cờ {@code hasAnyReviewedAttempt} cấp tài khoản để kiểm soát khóa quyền làm lại.
+     */
+    public DiagnosticResultDetailResponse toDetailResponse(
+            DiagnosticAttempt attempt,
+            List<PartDiagnosticResult> partResults,
+            List<DiagnosticAnswer> answers,
+            List<Question> examQuestions,
+            List<UserAbility> userAbilities,
+            List<AbilityEvaluationRule> abilityRules,
+            TargetProfile targetProfile,
+            LearningPath learningPath,
+            boolean hasAnyReviewedAttempt
+    ) {
         // Bước 1: Lập chỉ mục câu trả lời theo questionId để tra cứu O(1)
         Map<Long, DiagnosticAnswer> answerByQuestionId = (answers != null ? answers : Collections.<DiagnosticAnswer>emptyList())
                 .stream()
@@ -199,6 +227,8 @@ public class DiagnosticResultMapper {
                 hasGeneratedRoadmap
         );
 
+        boolean hasViewedThisAttempt = Boolean.TRUE.equals(attempt.getHasViewedReview()) || hasAnyReviewedAttempt;
+
         return DiagnosticResultDetailResponse.builder()
                 .attemptId(attempt.getId())
                 .testTitle(attempt.getDiagnosticTest() != null ? attempt.getDiagnosticTest().getTitle() : "Bài thi chẩn đoán năng lực")
@@ -215,6 +245,8 @@ public class DiagnosticResultMapper {
                 .weakAbilities(weakAbilities)
                 .passedParts(passedParts)
                 .aiRoadmapSummary(roadmapSummary)
+                .hasViewedReview(hasViewedThisAttempt)
+                .canRetakeDiagnostic(!hasAnyReviewedAttempt)
                 .build();
     }
 

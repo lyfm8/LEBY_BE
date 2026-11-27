@@ -91,6 +91,10 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
     private static final float DEFAULT_WEAK_CUTOFF = 75.0f;
     private static final int DEFAULT_DURATION_MINUTES = 45;
     private static final long SECONDS_PER_MINUTE = 60L;
+    private static final List<EAttemptStatus> COMPLETED_DIAGNOSTIC_STATUSES = List.of(
+            EAttemptStatus.SUBMITTED,
+            EAttemptStatus.TIMED_OUT
+    );
 
     private final DiagnosticTestRepository diagnosticTestRepo;
     private final DiagnosticAttemptRepository diagnosticAttemptRepo;
@@ -144,7 +148,18 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
 
         boolean isForceRetake = request != null && Boolean.TRUE.equals(request.getForceRetake());
 
-        // Bước 3: Xử lý phiên làm bài IN_PROGRESS hiện có (khôi phục nếu đang làm tiếp, hoặc đóng phiên cũ nếu chủ động làm lại)
+        // Bước 3: Kiểm tra quy tắc khóa làm lại bài chẩn đoán ở phạm vi toàn tài khoản:
+        // - Nếu chủ động làm lại (forceRetake = true) nhưng đã từng mở xem đáp án Review -> khóa vĩnh viễn.
+        // - Nếu không forceRetake -> đã hoàn thành chẩn đoán trước đó (kể cả khi vừa đổi AIM hay đổi đề) thì chặn thi lại.
+        if (isForceRetake) {
+            if (diagnosticAttemptRepo.existsByUserIdAndHasViewedReviewTrue(userId)) {
+                throw new BaseException(ErrorCode.DIAGNOSTIC_RETAKE_LOCKED_AFTER_REVIEW);
+            }
+        } else if (diagnosticAttemptRepo.existsByUserIdAndStatusIn(userId, COMPLETED_DIAGNOSTIC_STATUSES)) {
+            throw new BaseException(ErrorCode.DIAGNOSTIC_ALREADY_COMPLETED);
+        }
+
+        // Bước 4: Xử lý phiên làm bài IN_PROGRESS hiện có (khôi phục nếu đang làm tiếp, hoặc đóng phiên cũ nếu chủ động làm lại)
         Optional<DiagnosticAttempt> inProgressOpt = findExistingInProgressAttempt(userId, test.getId(), targetProfileId);
         if (inProgressOpt.isPresent()) {
             DiagnosticAttempt existing = inProgressOpt.get();
@@ -154,11 +169,6 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
             // Đánh dấu lượt dang dở cũ thành ABANDONED trước khi tạo lượt làm lại mới
             existing.setStatus(EAttemptStatus.ABANDONED);
             diagnosticAttemptRepo.save(existing);
-        }
-
-        // Bước 4: Kiểm tra BR02 (Ngoại lệ 1a) — chỉ chặn khi không có cờ forceRetake và chưa đổi sang mốc AIM mới
-        if (!isForceRetake && targetProfileId != null && hasCompletedDiagnosticForTarget(userId, targetProfileId)) {
-            throw new BaseException(ErrorCode.DIAGNOSTIC_ALREADY_COMPLETED);
         }
 
         // Bước 5: Khởi tạo bản ghi DiagnosticAttempt mới ở trạng thái IN_PROGRESS kèm bộ đếm giây ban đầu
@@ -376,6 +386,8 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
                 : attempt.getUser().getTargetProfile();
 
         LearningPath learningPath = resolveLearningPathForAttempt(userId, attemptId);
+        boolean hasAnyReviewedAttempt = Boolean.TRUE.equals(attempt.getHasViewedReview())
+                || diagnosticAttemptRepo.existsByUserIdAndHasViewedReviewTrue(userId);
 
         // Bước 3: Chuyển đổi toàn bộ sang DTO báo cáo thông qua DiagnosticResultMapper
         return diagnosticResultMapper.toDetailResponse(
@@ -386,7 +398,8 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
                 userAbilities,
                 abilityRules,
                 targetProfile,
-                learningPath
+                learningPath,
+                hasAnyReviewedAttempt
         );
     }
 
@@ -409,7 +422,7 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
      * {@inheritDoc}
      */
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public DiagnosticReviewResponse getReviewData(Long userId, Long attemptId) {
         // Bước 1: Nạp lượt thi, kiểm tra quyền sở hữu (chống IDOR) và bảo đảm lượt thi đã hoàn thành
         DiagnosticAttempt attempt = loadCompletedAttemptWithOwnership(
@@ -417,6 +430,13 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
                 attemptId,
                 "Bạn không có quyền xem lại bài thi của lượt thi này"
         );
+
+        // Đánh dấu học viên đã mở xem đáp án chi tiết để khóa quyền làm lại bài thi chẩn đoán sau này
+        if (!Boolean.TRUE.equals(attempt.getHasViewedReview())) {
+            attempt.setHasViewedReview(true);
+            attempt.setReviewViewedAt(LocalDateTime.now());
+            diagnosticAttemptRepo.save(attempt);
+        }
 
         // Bước 2: Tải danh sách câu hỏi theo đúng orderNo của đề kèm Media & câu hỏi cha (chống N+1)
         DiagnosticTest test = attempt.getDiagnosticTest();
@@ -483,43 +503,6 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
                 .findTopByUserIdAndDiagnosticTestIdAndStatusOrderByStartedAtDesc(
                         userId, testId, EAttemptStatus.IN_PROGRESS
                 );
-    }
-
-    /**
-     * Kiểm tra BR02 theo mốc AIM hiện tại:
-     * - Nếu đã có lượt thi SUBMITTED gắn trực tiếp với {@code targetProfileId} → chặn thi lại.
-     * - Đối với dữ liệu lịch sử cũ chưa lưu {@code targetProfile} trên attempt:
-     *   chỉ chặn nếu attempt đó chỉ gắn với đúng một lộ trình thuộc chính {@code targetProfileId} này.
-     */
-    private boolean hasCompletedDiagnosticForTarget(Long userId, Long targetProfileId) {
-        Optional<DiagnosticAttempt> completedForTarget = diagnosticAttemptRepo
-                .findTopByUserIdAndTargetProfileIdAndStatusOrderByCompletedAtDesc(
-                        userId, targetProfileId, EAttemptStatus.SUBMITTED
-                );
-        if (completedForTarget.isPresent()) {
-            return true;
-        }
-
-        Optional<DiagnosticAttempt> latestSubmittedOpt = diagnosticAttemptRepo
-                .findTopByUserIdAndStatusOrderByCompletedAtDesc(userId, EAttemptStatus.SUBMITTED);
-        if (latestSubmittedOpt.isEmpty()) {
-            return false;
-        }
-
-        DiagnosticAttempt latestAttempt = latestSubmittedOpt.get();
-        if (latestAttempt.getTargetProfile() != null) {
-            return false;
-        }
-
-        List<LearningPath> paths = learningPathRepo.findWithTargetProfileByUserIdOrderByCreatedAtDesc(userId);
-        List<LearningPath> pathsFromLegacyAttempt = paths.stream()
-                .filter(lp -> lp.getDiagnosticAttempt() != null
-                        && Objects.equals(lp.getDiagnosticAttempt().getId(), latestAttempt.getId()))
-                .toList();
-
-        return pathsFromLegacyAttempt.size() == 1
-                && pathsFromLegacyAttempt.get(0).getTargetProfile() != null
-                && Objects.equals(pathsFromLegacyAttempt.get(0).getTargetProfile().getId(), targetProfileId);
     }
 
     private DiagnosticAttempt loadCompletedAttemptWithOwnership(
