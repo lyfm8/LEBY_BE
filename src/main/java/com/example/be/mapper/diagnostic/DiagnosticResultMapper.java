@@ -388,9 +388,20 @@ public class DiagnosticResultMapper {
             int moduleCount,
             boolean hasGeneratedRoadmap
     ) {
-        String balanceNote = sectionScores.getListeningPercent() >= sectionScores.getReadingPercent()
-                ? String.format("Kỹ năng Nghe (%d%%) đang nhỉnh hơn Đọc (%d%%).", sectionScores.getListeningPercent(), sectionScores.getReadingPercent())
-                : String.format("Kỹ năng Đọc (%d%%) đang nhỉnh hơn Nghe (%d%%).", sectionScores.getReadingPercent(), sectionScores.getListeningPercent());
+        int listeningPercent = sectionScores.getListeningPercent();
+        int readingPercent = sectionScores.getReadingPercent();
+
+        // Tách rõ 4 trường hợp so sánh Nghe và Đọc để tránh lỗi logic khi 2 kỹ năng bằng nhau (VD: cùng 0%)
+        String balanceNote;
+        if (listeningPercent == 0 && readingPercent == 0) {
+            balanceNote = "Cả kỹ năng Nghe và Đọc hiện đều ở mức khởi đầu (0%), bạn cần củng cố lại nền tảng toàn diện.";
+        } else if (listeningPercent == readingPercent) {
+            balanceNote = String.format("Kỹ năng Nghe và Đọc hiện đang cân bằng ở mức %d%%.", listeningPercent);
+        } else if (listeningPercent > readingPercent) {
+            balanceNote = String.format("Kỹ năng Nghe (%d%%) đang nhỉnh hơn Đọc (%d%%).", listeningPercent, readingPercent);
+        } else {
+            balanceNote = String.format("Kỹ năng Đọc (%d%%) đang nhỉnh hơn Nghe (%d%%).", readingPercent, listeningPercent);
+        }
 
         String aimNote = targetScore != null
                 ? String.format(" So với mục tiêu AIM %d (hiện ước tính %d điểm), ", targetScore, predictedScore)
@@ -400,7 +411,10 @@ public class DiagnosticResultMapper {
         if (focusParts.isEmpty()) {
             actionNote = "bạn đã đạt chuẩn toàn bộ 7 Part! Hãy tiếp tục duy trì phong độ bằng các bài luyện tập tổng hợp.";
         } else {
-            String focusText = focusParts.stream().map(p -> "Part " + p).collect(Collectors.joining(", "));
+            // Rút gọn gọn gàng khi cần ôn cả 7 phần thay vì liệt kê dài Part 1, Part 2, ..., Part 7
+            String focusText = focusParts.size() == 7
+                    ? "toàn bộ 7 phần thi (Part 1 – Part 7)"
+                    : focusParts.stream().map(p -> "Part " + p).collect(Collectors.joining(", "));
             String moduleSuffix = hasGeneratedRoadmap ? String.format(" (%d mô-đun trọng tâm)", moduleCount) : "";
             String passedSuffix = passedParts.isEmpty() ? "" : " và được miễn học " + passedParts.size() + " phần đã đạt chuẩn";
             actionNote = String.format("bạn cần tập trung cải thiện %s%s%s.", focusText, moduleSuffix, passedSuffix);
