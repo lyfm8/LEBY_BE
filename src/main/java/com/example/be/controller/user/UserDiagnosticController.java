@@ -6,6 +6,7 @@ import com.example.be.dto.request.diagnostic.SubmitDiagnosticRequest;
 import com.example.be.dto.request.diagnostic.SyncDiagnosticTimerRequest;
 import com.example.be.dto.response.diagnostic.DiagnosticResultDetailResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticResultResponse;
+import com.example.be.dto.response.diagnostic.DiagnosticReviewResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticRoomResponse;
 import com.example.be.dto.response.diagnostic.StartDiagnosticResponse;
 import com.example.be.entity.user.User;
@@ -37,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
  *   POST /api/users/diagnostic/submit             — Nộp bài, chấm điểm 2 tầng, sinh lộ trình thích ứng
  *   GET  /api/users/diagnostic/results/latest     — Xem báo cáo kết quả chẩn đoán gần nhất (UC07)
  *   GET  /api/users/diagnostic/results/{attemptId}— Xem chi tiết báo cáo kết quả theo attemptId (UC07)
+ *   GET  /api/users/diagnostic/review/{attemptId} — Xem lại bài thi chẩn đoán đã nộp kèm lời giải (UC07 - BR14)
  * </pre>
  */
 @Validated
@@ -191,6 +193,27 @@ public class UserDiagnosticController {
         return ResponseEntity.ok(ApiResponse.<DiagnosticResultDetailResponse>builder()
                 .success(true)
                 .message("Tải báo cáo kết quả chẩn đoán thành công")
+                .data(response)
+                .build());
+    }
+
+    /**
+     * Lấy toàn bộ đề thi, đáp án đã chọn, đáp án đúng và giải thích để học viên xem lại bài thi (UC07 - BR14).
+     *
+     * @param currentUser Học viên đang đăng nhập (chống IDOR)
+     * @param attemptId   ID lượt thi chẩn đoán đã nộp
+     * @return Dữ liệu phòng xem lại bài thi chẩn đoán
+     */
+    @GetMapping("/review/{attemptId}")
+    @PreAuthorize(Roles.ANY_AUTHENTICATED)
+    public ResponseEntity<ApiResponse<DiagnosticReviewResponse>> getReviewData(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable Long attemptId
+    ) {
+        DiagnosticReviewResponse response = diagnosticScoringService.getReviewData(currentUser.getId(), attemptId);
+        return ResponseEntity.ok(ApiResponse.<DiagnosticReviewResponse>builder()
+                .success(true)
+                .message("Tải dữ liệu xem lại bài thi chẩn đoán thành công")
                 .data(response)
                 .build());
     }
