@@ -105,4 +105,32 @@ public interface QuestionRepository extends JpaRepository<Question, Long>, JpaSp
            "LEFT JOIN FETCH qm.media m " +
            "WHERE q.id IN :parentIds")
     List<Question> findAllParentsWithMediasByIdIn(@Param("parentIds") Collection<Long> parentIds);
+
+    /**
+     * Đếm số câu hỏi có thể làm bài (câu đơn hoặc câu con trong chùm) gắn với tập Ability chỉ định.
+     * Dùng để kiểm tra tính khả dụng của kho câu hỏi theo năng lực mô-đun (UC A07 - Luồng 6a, 6c).
+     *
+     * @param abilityIds Tập ID các Ability thuộc mô-đun
+     * @return Tổng số câu hỏi playable khớp Ability
+     */
+    @Query("SELECT COUNT(DISTINCT q.id) FROM Question q " +
+           "JOIN q.questionAbilities qa " +
+           "WHERE qa.ability.id IN :abilityIds " +
+           "AND (q.parent IS NOT NULL OR NOT EXISTS (SELECT 1 FROM Question child WHERE child.parent = q))")
+    long countPlayableQuestionsByAbilityIds(@Param("abilityIds") Collection<Long> abilityIds);
+
+    /**
+     * Lấy danh sách câu hỏi có thể làm bài (kèm Part và Parent) gắn với tập Ability chỉ định.
+     * Phục vụ chức năng tự động chọn câu hỏi ngẫu nhiên cho Bài thi vượt ải mô-đun (UC A07 - Luồng 6a).
+     *
+     * @param abilityIds Tập ID các Ability thuộc mô-đun
+     * @return Danh sách Question playable đã nạp sẵn part và parent
+     */
+    @Query("SELECT DISTINCT q FROM Question q " +
+           "JOIN q.questionAbilities qa " +
+           "LEFT JOIN FETCH q.part p " +
+           "LEFT JOIN FETCH q.parent parent " +
+           "WHERE qa.ability.id IN :abilityIds " +
+           "AND (q.parent IS NOT NULL OR NOT EXISTS (SELECT 1 FROM Question child WHERE child.parent = q))")
+    List<Question> findPlayableQuestionsByAbilityIds(@Param("abilityIds") Collection<Long> abilityIds);
 }
