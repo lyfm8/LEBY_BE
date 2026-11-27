@@ -1,6 +1,7 @@
 package com.example.be.repository.content;
 
 import com.example.be.entity.content.Lesson;
+import com.example.be.entity.question.QuestionMedia;
 import com.example.be.enums.content.EModuleStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -93,5 +94,32 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
            "WHERE pq.lesson.id IN :lessonIds " +
            "GROUP BY pq.lesson.id")
     List<Object[]> countPracticeQuestionsByLessonIdIn(@Param("lessonIds") Collection<Long> lessonIds);
+
+    /**
+     * Nạp chi tiết một bài học kèm sẵn Module, Part và Ability trong 1 câu SQL
+     * để phục vụ phòng học bài giảng Video (UC11) mà không phát sinh N+1 Query.
+     *
+     * @param lessonId ID bài học cần nạp
+     * @return Optional chứa Lesson kèm ngữ cảnh Module/Part/Ability
+     */
+    @Query("SELECT l FROM Lesson l " +
+           "JOIN FETCH l.module m " +
+           "LEFT JOIN FETCH m.part p " +
+           "LEFT JOIN FETCH l.ability a " +
+           "WHERE l.id = :lessonId")
+    Optional<Lesson> findByIdWithModulePartAndAbility(@Param("lessonId") Long lessonId);
+
+    /**
+     * Nạp hàng loạt các tệp Media gắn trên danh sách câu hỏi (bao gồm cả câu hỏi cha parent)
+     * trong 1 câu SQL duy nhất nhằm triệt tiêu lỗi N+1 Query và giữ Zero Merge Conflict với package question.
+     *
+     * @param questionIds Tập hợp ID câu hỏi cần nạp media
+     * @return Danh sách QuestionMedia đã nạp sẵn Media theo thứ tự orderNo tăng dần
+     */
+    @Query("SELECT qm FROM QuestionMedia qm " +
+           "JOIN FETCH qm.media m " +
+           "WHERE qm.question.id IN :questionIds " +
+           "ORDER BY qm.orderNo ASC")
+    List<QuestionMedia> findQuestionMediasByQuestionIdIn(@Param("questionIds") Collection<Long> questionIds);
 }
 

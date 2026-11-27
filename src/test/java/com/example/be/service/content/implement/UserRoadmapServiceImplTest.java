@@ -6,6 +6,7 @@ import com.example.be.entity.ability.Ability;
 import com.example.be.entity.content.LearningPath;
 import com.example.be.entity.content.LearningPathItem;
 import com.example.be.entity.content.Lesson;
+import com.example.be.entity.content.LessonProgress;
 import com.example.be.entity.content.Module;
 import com.example.be.entity.content.ModuleTestAttempt;
 import com.example.be.entity.content.Part;
@@ -23,6 +24,7 @@ import com.example.be.exception.ErrorCode;
 import com.example.be.mapper.content.UserRoadmapMapper;
 import com.example.be.repository.content.LearningPathItemRepository;
 import com.example.be.repository.content.LearningPathRepository;
+import com.example.be.repository.content.LessonProgressRepository;
 import com.example.be.repository.content.LessonRepository;
 import com.example.be.repository.content.ModuleTestAttemptRepository;
 import com.example.be.repository.question.ModuleTestQuestionRepository;
@@ -73,6 +75,9 @@ class UserRoadmapServiceImplTest {
     private LessonRepository lessonRepository;
 
     @Mock
+    private LessonProgressRepository lessonProgressRepository;
+
+    @Mock
     private ModuleTargetThresholdRepository moduleTargetThresholdRepository;
 
     @Mock
@@ -90,6 +95,7 @@ class UserRoadmapServiceImplTest {
                 learningPathRepository,
                 learningPathItemRepository,
                 lessonRepository,
+                lessonProgressRepository,
                 moduleTargetThresholdRepository,
                 moduleTestQuestionRepository,
                 moduleTestAttemptRepository,
@@ -145,6 +151,11 @@ class UserRoadmapServiceImplTest {
                 .thenReturn(List.of(
                         new Object[]{MODULE_ID_1, 4L},
                         new Object[]{MODULE_ID_2, 6L}
+                ));
+        when(lessonProgressRepository.countCompletedLessonsGroupedByModuleId(
+                USER_ID, List.of(MODULE_ID_1, MODULE_ID_2), EModuleStatus.PUBLISHED))
+                .thenReturn(List.<Object[]>of(
+                        new Object[]{MODULE_ID_2, 3L}
                 ));
 
         RoadmapResponse result = userRoadmapService.getCurrentUserRoadmap(USER_ID);
@@ -215,6 +226,10 @@ class UserRoadmapServiceImplTest {
         ModuleTargetThreshold customThreshold = new ModuleTargetThreshold();
         customThreshold.setPassScore(75);
 
+        LessonProgress completedVideoProgress = new LessonProgress();
+        completedVideoProgress.setLesson(videoLesson);
+        completedVideoProgress.setIsCompleted(true);
+
         when(learningPathRepository.findByUserIdAndStatusInOrderByVersionDescCreatedAtDesc(eq(USER_ID), anyCollection()))
                 .thenReturn(List.of(activePath));
         when(learningPathItemRepository.findByLearningPathIdAndModuleIdWithDetails(PATH_ID, MODULE_ID_1))
@@ -226,6 +241,8 @@ class UserRoadmapServiceImplTest {
                         new Object[]{201L, 3L},
                         new Object[]{202L, 10L}
                 ));
+        when(lessonProgressRepository.findByUserIdAndLessonIdIn(USER_ID, List.of(201L, 202L)))
+                .thenReturn(List.of(completedVideoProgress));
         when(moduleTargetThresholdRepository.findByModuleIdAndTargetProfileId(MODULE_ID_1, TARGET_ID))
                 .thenReturn(Optional.of(customThreshold));
         when(moduleTestQuestionRepository.countQuestionsGroupedByModuleIds(List.of(MODULE_ID_1)))
@@ -238,6 +255,10 @@ class UserRoadmapServiceImplTest {
         assertThat(result.getModuleId()).isEqualTo(MODULE_ID_1);
         assertThat(result.getTotalLessons()).isEqualTo(2);
         assertThat(result.getTotalVideoLessons()).isEqualTo(1);
+        assertThat(result.getCompletedVideoLessons()).isEqualTo(1);
+        assertThat(result.getCompletedLessons()).isEqualTo(1);
+        assertThat(result.getLessons().get(0).getIsCompleted()).isTrue();
+        assertThat(result.getLessons().get(1).getIsCompleted()).isFalse();
         assertThat(result.getRequiredCompletionRate()).isEqualTo(80);
         assertThat(result.getLessons().get(0).getQuestionCount()).isEqualTo(3);
         assertThat(result.getLessons().get(1).getQuestionCount()).isEqualTo(10);

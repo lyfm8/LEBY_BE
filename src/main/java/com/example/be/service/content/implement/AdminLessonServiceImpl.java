@@ -17,6 +17,7 @@ import com.example.be.entity.content.Module;
 import com.example.be.entity.media.Media;
 import com.example.be.entity.question.PracticeQuestion;
 import com.example.be.entity.question.Question;
+import com.example.be.enums.content.ELessonType;
 import com.example.be.enums.media.EMediaStatus;
 import com.example.be.exception.BaseException;
 import com.example.be.exception.ErrorCode;
@@ -103,8 +104,9 @@ public class AdminLessonServiceImpl implements AdminLessonService {
         // Bước 3: Tìm và kiểm tra Ability thuộc phạm vi Module/Part (nếu có gán)
         Ability ability = resolveAndValidateLessonAbility(module, request.getAbilityId());
 
-        // Bước 4: Chuyển đổi DTO sang Entity qua LessonMapper
+        // Bước 4: Chuyển đổi DTO sang Entity qua LessonMapper và đồng bộ thời lượng thực từ tệp video đã upload
         Lesson lesson = lessonMapper.toEntity(request, module, ability, orderNo);
+        syncAuthoritativeVideoDuration(lesson);
 
         // Bước 5: Lưu vào CSDL
         Lesson savedLesson = lessonRepository.save(lesson);
@@ -124,8 +126,9 @@ public class AdminLessonServiceImpl implements AdminLessonService {
         // Bước 2: Tìm và kiểm tra Ability thuộc phạm vi Module/Part (nếu có gán)
         Ability ability = resolveAndValidateLessonAbility(lesson.getModule(), request.getAbilityId());
 
-        // Bước 3: Cập nhật Entity thông qua LessonMapper
+        // Bước 3: Cập nhật Entity thông qua LessonMapper và đồng bộ thời lượng thực từ tệp video
         lessonMapper.updateEntity(lesson, request, ability);
+        syncAuthoritativeVideoDuration(lesson);
 
         // Bước 4: Lưu thay đổi
         lessonRepository.save(lesson);
@@ -456,6 +459,29 @@ public class AdminLessonServiceImpl implements AdminLessonService {
         }
 
         return ability;
+    }
+
+    /**
+     * Đồng bộ thời lượng bài giảng Video từ metadata chuẩn của tệp Media đã lưu trên Cloudinary.
+     * - Bài thực hành (PRACTICE) hoặc bài VIDEO chưa có đường dẫn video -> đặt thời lượng về 0.
+     * - Bài VIDEO có tệp tương ứng trong bảng medias có duration > 0 -> ghi đè đúng thời lượng thực tế
+     *   để tránh sai lệch hoặc chỉnh sửa thủ công từ phía client.
+     */
+    private void syncAuthoritativeVideoDuration(Lesson lesson) {
+        if (lesson == null) {
+            return;
+        }
+        if (lesson.getLessonType() != ELessonType.VIDEO
+                || lesson.getVideoUrl() == null
+                || lesson.getVideoUrl().isBlank()) {
+            lesson.setDurationSeconds(0);
+            return;
+        }
+        mediaRepository.findBySecureUrl(lesson.getVideoUrl()).ifPresent(media -> {
+            if (media.getDuration() != null && media.getDuration() > 0) {
+                lesson.setDurationSeconds((int) Math.round(media.getDuration()));
+            }
+        });
     }
 
     /**
