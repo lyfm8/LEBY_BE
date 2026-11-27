@@ -199,6 +199,14 @@ public class AdminModuleServiceImpl implements AdminModuleService {
             Ability ability = abilityRepository.findById(abilityId)
                     .orElseThrow(() -> new BaseException(ErrorCode.RESOURCE_NOT_FOUND,
                             "Không tìm thấy Ability với ID: " + abilityId));
+            // Siết ràng buộc phân cấp Part -> Module: Ability gắn vào Module phải thuộc đúng Part của Module đó
+            if (module.getPart() != null
+                    && (ability.getPart() == null || !module.getPart().getId().equals(ability.getPart().getId()))) {
+                throw new BaseException(
+                        ErrorCode.BAD_REQUEST,
+                        "Kỹ năng '" + ability.getName() + "' không thuộc về phần thi " + module.getPart().getName()
+                );
+            }
             ModuleAbility moduleAbility = new ModuleAbility();
             moduleAbility.setModule(module);
             moduleAbility.setAbility(ability);
