@@ -54,6 +54,7 @@ public class ExamMatrixAvailabilityResponse {
         private String section;
         private Integer partNumber;
         private Integer availableQuestionCount;
+        private Integer minEvidenceCount;
     }
 }
 

@@ -13,6 +13,7 @@ import com.example.be.entity.diagnostic.DiagnosticTest;
 import com.example.be.entity.question.DiagnosticTestQuestion;
 import com.example.be.entity.question.Question;
 import com.example.be.entity.question.QuestionAbility;
+import com.example.be.entity.setting.AbilityEvaluationRule;
 import com.example.be.enums.diagnostic.EExamStatus;
 import com.example.be.enums.diagnostic.ETestType;
 import com.example.be.exception.BaseException;
@@ -23,6 +24,7 @@ import com.example.be.repository.diagnostic.DiagnosticAttemptRepository;
 import com.example.be.repository.diagnostic.DiagnosticTestRepository;
 import com.example.be.repository.question.QuestionAbilityRepository;
 import com.example.be.repository.question.QuestionRepository;
+import com.example.be.repository.setting.AbilityEvaluationRuleRepository;
 import com.example.be.service.diagnostic.service.AdminExamService;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -34,8 +36,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -51,12 +54,25 @@ public class AdminExamServiceImpl implements AdminExamService {
 
     private static final int DEFAULT_POINTS_PER_QUESTION = 5;
     private static final int FULL_MOCK_TOTAL_QUESTIONS = 200;
+    private static final int DEFAULT_DIAGNOSTIC_TOTAL_QUESTIONS = 48;
+    private static final int DEFAULT_MIN_EVIDENCE_COUNT = 3;
+    private static final int TOTAL_TOEIC_PARTS = 7;
+    private static final Map<Integer, Integer> ETS_STANDARD_MATRIX = Map.of(
+            1, 6,
+            2, 25,
+            3, 39,
+            4, 30,
+            5, 30,
+            6, 16,
+            7, 54
+    );
 
     private final DiagnosticTestRepository diagnosticTestRepository;
     private final DiagnosticAttemptRepository diagnosticAttemptRepository;
     private final QuestionRepository questionRepository;
     private final AbilityRepository abilityRepository;
     private final QuestionAbilityRepository questionAbilityRepository;
+    private final AbilityEvaluationRuleRepository abilityEvaluationRuleRepository;
     private final ExamMapper examMapper;
 
     @Override
@@ -248,22 +264,27 @@ public class AdminExamServiceImpl implements AdminExamService {
     @Transactional(readOnly = true)
     public ExamMatrixAvailabilityResponse getMatrixAvailability() {
         Map<Integer, Integer> partCounts = new HashMap<>();
-        for (int partNo = 1; partNo <= 7; partNo++) {
+        for (int partNo = 1; partNo <= TOTAL_TOEIC_PARTS; partNo++) {
             long count = questionRepository.countPlayableQuestionsByPartId((long) partNo);
             partCounts.put(partNo, (int) count);
         }
 
-        // Lấy danh sách toàn bộ Abilities trong DB kèm số câu hỏi tương ứng
+        // Nạp ngưỡng số câu tối thiểu của từng Ability từ bảng ability_evaluation_rules
+        Map<Long, Integer> minEvidenceByAbilityId = loadMinEvidenceByAbilityId();
+
+        // Lấy danh sách toàn bộ Abilities trong DB kèm số câu hỏi và số câu tối thiểu tương ứng
         List<Ability> allAbilities = abilityRepository.findAll();
         List<ExamMatrixAvailabilityResponse.AbilityAvailabilityItem> abilityItems = allAbilities.stream()
                 .map(ab -> {
                     long qCount = questionAbilityRepository.countByAbilityId(ab.getId());
+                    int minEvidence = minEvidenceByAbilityId.getOrDefault(ab.getId(), DEFAULT_MIN_EVIDENCE_COUNT);
                     return ExamMatrixAvailabilityResponse.AbilityAvailabilityItem.builder()
                             .id(ab.getId())
                             .name(ab.getName())
                             .section(ab.getSections() != null ? ab.getSections().name() : null)
                             .partNumber(ab.getPart() != null && ab.getPart().getId() != null ? ab.getPart().getId().intValue() : null)
                             .availableQuestionCount((int) qCount)
+                            .minEvidenceCount(minEvidence)
                             .build();
                 })
                 .toList();
@@ -279,87 +300,277 @@ public class AdminExamServiceImpl implements AdminExamService {
     @Override
     @Transactional(readOnly = true)
     public AutoSelectQuestionsResponse autoSelectQuestions(AutoSelectQuestionsRequest request) {
-        List<Long> selectedIds = new ArrayList<>();
+        List<Long> selectedIds = request.getTestType() == ETestType.FULL_MOCK_TEST
+                ? selectQuestionsForMockTest(request)
+                : selectQuestionsForDiagnosticTest(request);
 
-        if (request.getTestType() == ETestType.FULL_MOCK_TEST) {
-            // Ma trận chuẩn ETS 200 câu
-            Map<Integer, Integer> standardMatrix = Map.of(
-                    1, 6,
-                    2, 25,
-                    3, 39,
-                    4, 30,
-                    5, 30,
-                    6, 16,
-                    7, 54
-            );
+        List<Question> pickedQuestions = selectedIds.isEmpty()
+                ? Collections.emptyList()
+                : questionRepository.findAllWithAbilitiesByIdIn(selectedIds);
 
-            Map<Integer, Integer> targetMatrix = request.getCustomDistribution() != null && !request.getCustomDistribution().isEmpty()
-                    ? request.getCustomDistribution()
-                    : standardMatrix;
+        // Sắp xếp câu hỏi theo thứ tự Part 1 -> Part 7, sau đó theo ID để hiển thị mạch lạc
+        List<Question> sortedQuestions = pickedQuestions.stream()
+                .sorted(Comparator
+                        .comparingInt((Question q) -> (q.getPart() != null && q.getPart().getId() != null)
+                                ? q.getPart().getId().intValue()
+                                : TOTAL_TOEIC_PARTS)
+                        .thenComparing(Question::getId))
+                .toList();
 
-            for (Map.Entry<Integer, Integer> entry : targetMatrix.entrySet()) {
-                int partNo = entry.getKey();
-                int requiredCount = entry.getValue();
-
-                List<Question> available = questionRepository.findPlayableQuestionsByPartId((long) partNo);
-                if (available.size() < requiredCount) {
-                    throw new BaseException(ErrorCode.QUESTION_BANK_NOT_ENOUGH,
-                            String.format("Part %d không đủ câu hỏi: Cần %d câu nhưng chỉ có %d câu", partNo, requiredCount, available.size()));
-                }
-
-                // Xáo trộn ngẫu nhiên để chọn
-                List<Question> shuffled = new ArrayList<>(available);
-                Collections.shuffle(shuffled);
-                for (int i = 0; i < requiredCount; i++) {
-                    selectedIds.add(shuffled.get(i).getId());
-                }
-            }
-        } else {
-            // Đề chẩn đoán DIAGNOSTIC (Gợi ý 60 câu)
-            // QUY TẮC CỐT LÕI: Phải bao phủ 100% tất cả các Ability có trong database
-            List<Ability> allAbilities = abilityRepository.findAll();
-            Set<Long> pickedQuestionIds = new HashSet<>();
-
-            // Bước 1: Với mỗi Ability, chọn ít nhất 1 câu hỏi tương ứng
-            for (Ability ability : allAbilities) {
-                List<Question> questionsWithAbility = questionRepository.findAll().stream()
-                        .filter(q -> q.getQuestionAbilities() != null && q.getQuestionAbilities().stream()
-                                .anyMatch(qa -> qa.getAbility().getId().equals(ability.getId())))
-                        .toList();
-
-                if (!questionsWithAbility.isEmpty()) {
-                    List<Question> shuffled = new ArrayList<>(questionsWithAbility);
-                    Collections.shuffle(shuffled);
-                    pickedQuestionIds.add(shuffled.get(0).getId());
-                }
-            }
-
-            // Bước 2: Bổ sung thêm các câu hỏi khác cho đủ mục tiêu (mặc định 60 câu hoặc số lượng cấu hình)
-            int targetTotal = request.getTotalQuestions() != null && request.getTotalQuestions() > 0
-                    ? request.getTotalQuestions()
-                    : 60;
-            for (int partNo = 1; partNo <= 7 && pickedQuestionIds.size() < targetTotal; partNo++) {
-                List<Question> partQuestions = questionRepository.findPlayableQuestionsByPartId((long) partNo);
-                List<Question> shuffled = new ArrayList<>(partQuestions);
-                Collections.shuffle(shuffled);
-                for (Question q : shuffled) {
-                    if (pickedQuestionIds.size() >= targetTotal) break;
-                    pickedQuestionIds.add(q.getId());
-                }
-            }
-
-            selectedIds.addAll(pickedQuestionIds);
-        }
-
-        // Lấy chi tiết các câu hỏi đã chọn qua ExamMapper
-        List<Question> pickedQuestions = questionRepository.findAllById(selectedIds);
-        List<ExamQuestionItemResponse> questionResponses = examMapper.toPlayableQuestionItemResponses(pickedQuestions);
+        List<ExamQuestionItemResponse> questionResponses = examMapper.toPlayableQuestionItemResponses(sortedQuestions);
+        List<Long> orderedIds = sortedQuestions.stream().map(Question::getId).toList();
 
         return AutoSelectQuestionsResponse.builder()
-                .totalSelected(selectedIds.size())
-                .questionIds(selectedIds)
+                .totalSelected(orderedIds.size())
+                .questionIds(orderedIds)
                 .questions(questionResponses)
                 .build();
+    }
+
+    private List<Long> selectQuestionsForMockTest(AutoSelectQuestionsRequest request) {
+        List<Long> selectedIds = new ArrayList<>();
+        Map<Integer, Integer> targetMatrix = request.getCustomDistribution() != null && !request.getCustomDistribution().isEmpty()
+                ? request.getCustomDistribution()
+                : ETS_STANDARD_MATRIX;
+
+        for (int partNo = 1; partNo <= TOTAL_TOEIC_PARTS; partNo++) {
+            int requiredCount = targetMatrix.getOrDefault(partNo, 0);
+            if (requiredCount <= 0) {
+                continue;
+            }
+
+            List<Question> available = questionRepository.findPlayableQuestionsByPartId((long) partNo);
+            if (available.size() < requiredCount) {
+                throw new BaseException(ErrorCode.QUESTION_BANK_NOT_ENOUGH,
+                        String.format("Part %d không đủ câu hỏi: Cần %d câu nhưng chỉ có %d câu", partNo, requiredCount, available.size()));
+            }
+
+            List<Question> shuffled = new ArrayList<>(available);
+            Collections.shuffle(shuffled);
+            for (int i = 0; i < requiredCount; i++) {
+                selectedIds.add(shuffled.get(i).getId());
+            }
+        }
+        return selectedIds;
+    }
+
+    /**
+     * Tự động chọn câu hỏi cho Đề thi chẩn đoán:
+     * 1. Đảm bảo mỗi Ability đạt tối thiểu minEvidenceCount câu từ ability_evaluation_rules (mặc định 48 câu).
+     * 2. Phân bổ phần câu bổ sung đều/theo tỷ lệ 7 Part cho đến khi đạt targetTotal.
+     */
+    private List<Long> selectQuestionsForDiagnosticTest(AutoSelectQuestionsRequest request) {
+        List<Ability> allAbilities = abilityRepository.findAll();
+        Map<Long, Integer> minEvidenceByAbilityId = loadMinEvidenceByAbilityId();
+
+        int minRequiredTotal = allAbilities.stream()
+                .mapToInt(ab -> minEvidenceByAbilityId.getOrDefault(ab.getId(), DEFAULT_MIN_EVIDENCE_COUNT))
+                .sum();
+        int defaultTotal = minRequiredTotal > 0 ? minRequiredTotal : DEFAULT_DIAGNOSTIC_TOTAL_QUESTIONS;
+        int targetTotal = request.getTotalQuestions() != null && request.getTotalQuestions() > 0
+                ? request.getTotalQuestions()
+                : defaultTotal;
+
+        List<Question> playableQuestions = questionRepository.findAllPlayableWithAbilitiesAndPart();
+        Map<Long, List<Question>> playableByAbilityId = new HashMap<>();
+        Map<Integer, List<Question>> playableByPart = new HashMap<>();
+
+        for (Question q : playableQuestions) {
+            int partNo = (q.getPart() != null && q.getPart().getId() != null) ? q.getPart().getId().intValue() : 1;
+            playableByPart.computeIfAbsent(partNo, k -> new ArrayList<>()).add(q);
+
+            if (q.getQuestionAbilities() != null) {
+                for (QuestionAbility qa : q.getQuestionAbilities()) {
+                    if (qa.getAbility() != null) {
+                        playableByAbilityId.computeIfAbsent(qa.getAbility().getId(), k -> new ArrayList<>()).add(q);
+                    }
+                }
+            }
+        }
+
+        Set<Long> pickedIds = new LinkedHashSet<>();
+        Map<Long, Integer> coveredCountByAbilityId = new HashMap<>();
+        Map<Integer, Integer> pickedCountByPart = new HashMap<>();
+
+        // Bước 1: Phủ tối thiểu theo Quy tắc Đánh giá Năng lực (nếu targetTotal đủ cho mức sàn; nếu nhỏ hơn thì phủ 1 câu/Ability trước)
+        boolean enforceFullMinEvidence = targetTotal >= minRequiredTotal;
+        for (Ability ability : allAbilities) {
+            int required = enforceFullMinEvidence
+                    ? minEvidenceByAbilityId.getOrDefault(ability.getId(), DEFAULT_MIN_EVIDENCE_COUNT)
+                    : 1;
+            int alreadyCovered = coveredCountByAbilityId.getOrDefault(ability.getId(), 0);
+            if (alreadyCovered >= required) {
+                continue;
+            }
+
+            List<Question> candidates = new ArrayList<>(playableByAbilityId.getOrDefault(ability.getId(), Collections.emptyList()));
+            Collections.shuffle(candidates);
+
+            for (Question candidate : candidates) {
+                if (coveredCountByAbilityId.getOrDefault(ability.getId(), 0) >= required) {
+                    break;
+                }
+                if (!enforceFullMinEvidence && pickedIds.size() >= targetTotal) {
+                    break;
+                }
+                if (!pickedIds.contains(candidate.getId())) {
+                    markQuestionPicked(candidate, pickedIds, coveredCountByAbilityId, pickedCountByPart);
+                }
+            }
+
+            int afterPick = coveredCountByAbilityId.getOrDefault(ability.getId(), 0);
+            if (enforceFullMinEvidence && afterPick < required) {
+                int partNo = (ability.getPart() != null && ability.getPart().getId() != null)
+                        ? ability.getPart().getId().intValue()
+                        : 1;
+                throw new BaseException(ErrorCode.QUESTION_BANK_NOT_ENOUGH,
+                        String.format("Kỹ năng '%s' (Part %d) không đủ câu hỏi: Cần tối thiểu %d câu nhưng chỉ có %d câu",
+                                ability.getName(), partNo, required, afterPick));
+            }
+        }
+
+        // Bước 2: Đảm bảo đủ cả 7 Part mỗi Part có ít nhất 1 câu (trường hợp có Part chưa gắn Ability)
+        for (int partNo = 1; partNo <= TOTAL_TOEIC_PARTS && pickedIds.size() < targetTotal; partNo++) {
+            if (pickedCountByPart.getOrDefault(partNo, 0) > 0) {
+                continue;
+            }
+            List<Question> partCandidates = new ArrayList<>(playableByPart.getOrDefault(partNo, Collections.emptyList()));
+            Collections.shuffle(partCandidates);
+            for (Question candidate : partCandidates) {
+                if (!pickedIds.contains(candidate.getId())) {
+                    markQuestionPicked(candidate, pickedIds, coveredCountByAbilityId, pickedCountByPart);
+                    break;
+                }
+            }
+        }
+
+        // Bước 3: Bổ sung các câu còn thiếu theo phân bổ 7 Part (ưu tiên customDistribution nếu có, ngược lại theo tỷ lệ ETS)
+        if (pickedIds.size() < targetTotal) {
+            Map<Integer, Integer> partTargets = resolveDiagnosticPartTargets(
+                    targetTotal,
+                    pickedCountByPart,
+                    request.getCustomDistribution()
+            );
+
+            for (int partNo = 1; partNo <= TOTAL_TOEIC_PARTS && pickedIds.size() < targetTotal; partNo++) {
+                int partTarget = partTargets.getOrDefault(partNo, 0);
+                if (pickedCountByPart.getOrDefault(partNo, 0) >= partTarget) {
+                    continue;
+                }
+
+                List<Question> partCandidates = new ArrayList<>(playableByPart.getOrDefault(partNo, Collections.emptyList()));
+                Collections.shuffle(partCandidates);
+                for (Question candidate : partCandidates) {
+                    if (pickedCountByPart.getOrDefault(partNo, 0) >= partTarget || pickedIds.size() >= targetTotal) {
+                        break;
+                    }
+                    if (!pickedIds.contains(candidate.getId())) {
+                        markQuestionPicked(candidate, pickedIds, coveredCountByAbilityId, pickedCountByPart);
+                    }
+                }
+            }
+
+            // Fallback vòng tròn qua 7 Part nếu Part nào đó trong ngân hàng không đủ chỉ tiêu phụ
+            boolean addedInRound = true;
+            Map<Integer, List<Question>> shuffledRemainingByPart = new HashMap<>();
+            for (int partNo = 1; partNo <= TOTAL_TOEIC_PARTS; partNo++) {
+                List<Question> remaining = playableByPart.getOrDefault(partNo, Collections.emptyList()).stream()
+                        .filter(q -> !pickedIds.contains(q.getId()))
+                        .collect(Collectors.toCollection(ArrayList::new));
+                Collections.shuffle(remaining);
+                shuffledRemainingByPart.put(partNo, remaining);
+            }
+
+            while (pickedIds.size() < targetTotal && addedInRound) {
+                addedInRound = false;
+                for (int partNo = 1; partNo <= TOTAL_TOEIC_PARTS && pickedIds.size() < targetTotal; partNo++) {
+                    List<Question> pool = shuffledRemainingByPart.get(partNo);
+                    if (pool != null && !pool.isEmpty()) {
+                        Question candidate = pool.remove(0);
+                        markQuestionPicked(candidate, pickedIds, coveredCountByAbilityId, pickedCountByPart);
+                        addedInRound = true;
+                    }
+                }
+            }
+        }
+
+        return new ArrayList<>(pickedIds);
+    }
+
+    private void markQuestionPicked(
+            Question candidate,
+            Set<Long> pickedIds,
+            Map<Long, Integer> coveredCountByAbilityId,
+            Map<Integer, Integer> pickedCountByPart
+    ) {
+        pickedIds.add(candidate.getId());
+        int partNo = (candidate.getPart() != null && candidate.getPart().getId() != null)
+                ? candidate.getPart().getId().intValue()
+                : 1;
+        pickedCountByPart.merge(partNo, 1, Integer::sum);
+
+        if (candidate.getQuestionAbilities() != null) {
+            for (QuestionAbility qa : candidate.getQuestionAbilities()) {
+                if (qa.getAbility() != null) {
+                    coveredCountByAbilityId.merge(qa.getAbility().getId(), 1, Integer::sum);
+                }
+            }
+        }
+    }
+
+    private Map<Integer, Integer> resolveDiagnosticPartTargets(
+            int targetTotal,
+            Map<Integer, Integer> currentByPart,
+            Map<Integer, Integer> customDistribution
+    ) {
+        if (customDistribution != null && !customDistribution.isEmpty()) {
+            return customDistribution;
+        }
+
+        int currentSum = currentByPart.values().stream().mapToInt(Integer::intValue).sum();
+        int extraNeeded = Math.max(0, targetTotal - currentSum);
+        Map<Integer, Integer> targets = new HashMap<>();
+        for (int partNo = 1; partNo <= TOTAL_TOEIC_PARTS; partNo++) {
+            targets.put(partNo, currentByPart.getOrDefault(partNo, 0));
+        }
+        if (extraNeeded == 0) {
+            return targets;
+        }
+
+        Map<Integer, Double> remainders = new HashMap<>();
+        int allocatedExtra = 0;
+        for (int partNo = 1; partNo <= TOTAL_TOEIC_PARTS; partNo++) {
+            double exactShare = (extraNeeded * (double) ETS_STANDARD_MATRIX.getOrDefault(partNo, 0)) / FULL_MOCK_TOTAL_QUESTIONS;
+            int floorShare = (int) Math.floor(exactShare);
+            targets.merge(partNo, floorShare, Integer::sum);
+            remainders.put(partNo, exactShare - floorShare);
+            allocatedExtra += floorShare;
+        }
+
+        int leftover = extraNeeded - allocatedExtra;
+        List<Integer> partsByRemainder = remainders.entrySet().stream()
+                .sorted(Map.Entry.<Integer, Double>comparingByValue().reversed()
+                        .thenComparingInt(Map.Entry::getKey))
+                .map(Map.Entry::getKey)
+                .toList();
+
+        for (int i = 0; i < leftover; i++) {
+            int partNo = partsByRemainder.get(i % partsByRemainder.size());
+            targets.merge(partNo, 1, Integer::sum);
+        }
+
+        return targets;
+    }
+
+    private Map<Long, Integer> loadMinEvidenceByAbilityId() {
+        List<AbilityEvaluationRule> rules = abilityEvaluationRuleRepository.findAllWithDetails();
+        Map<Long, Integer> map = new HashMap<>();
+        for (AbilityEvaluationRule rule : rules) {
+            if (rule.getAbility() != null && rule.getMinEvidenceCount() != null && rule.getMinEvidenceCount() > 0) {
+                map.put(rule.getAbility().getId(), rule.getMinEvidenceCount());
+            }
+        }
+        return map;
     }
 
     // =========================================================================
