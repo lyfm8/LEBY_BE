@@ -5,10 +5,14 @@ import com.example.be.dto.request.content.LessonScriptDto;
 import com.example.be.dto.request.content.UpdateLessonRequest;
 import com.example.be.dto.response.content.LessonDetailResponse;
 import com.example.be.dto.response.content.LessonSummaryResponse;
+import com.example.be.dto.response.content.PracticeQuestionResponse;
 import com.example.be.entity.ability.Ability;
 import com.example.be.entity.content.Lesson;
 import com.example.be.entity.content.LessonScript;
 import com.example.be.entity.content.Module;
+import com.example.be.entity.content.Part;
+import com.example.be.entity.question.PracticeQuestion;
+import com.example.be.entity.question.Question;
 import com.example.be.enums.content.ELessonType;
 import com.example.be.enums.content.EModuleStatus;
 import org.springframework.stereotype.Component;
@@ -102,9 +106,18 @@ public class LessonMapper {
     }
 
     /**
-     * Chuyển đổi Lesson sang LessonDetailResponse (kèm kịch bản scripts).
+     * Chuyển đổi Lesson sang LessonDetailResponse (kèm kịch bản scripts và danh sách câu hỏi luyện tập).
+     *
+     * @param lesson            Thực thể bài học
+     * @param scripts           Danh sách kịch bản phụ đề của bài học
+     * @param practiceQuestions Danh sách câu hỏi luyện tập đã gắn vào bài học
+     * @return LessonDetailResponse đầy đủ dữ liệu cho màn hình soạn thảo bài giảng
      */
-    public LessonDetailResponse toDetailResponse(Lesson lesson, List<LessonScript> scripts) {
+    public LessonDetailResponse toDetailResponse(
+            Lesson lesson,
+            List<LessonScript> scripts,
+            List<PracticeQuestionResponse> practiceQuestions
+    ) {
         if (lesson == null) {
             return null;
         }
@@ -113,10 +126,21 @@ public class LessonMapper {
                 ? scripts.stream().map(this::toScriptDto).collect(Collectors.toList())
                 : Collections.emptyList();
 
+        List<PracticeQuestionResponse> safePracticeQuestions = practiceQuestions != null
+                ? practiceQuestions
+                : Collections.emptyList();
+
+        // Trích xuất Part và Section (LISTENING/READING) từ Module cha để FE nhận diện cơ chế UC12
+        Module module = lesson.getModule();
+        Part part = module != null ? module.getPart() : null;
+
         return LessonDetailResponse.builder()
                 .id(lesson.getId())
-                .moduleId(lesson.getModule() != null ? lesson.getModule().getId() : null)
-                .moduleTitle(lesson.getModule() != null ? lesson.getModule().getTitle() : null)
+                .moduleId(module != null ? module.getId() : null)
+                .moduleTitle(module != null ? module.getTitle() : null)
+                .partId(part != null ? part.getId() : null)
+                .partName(part != null ? part.getName() : null)
+                .section(part != null ? part.getSections() : null)
                 .title(lesson.getTitle())
                 .orderNo(lesson.getOrderNo())
                 .status(lesson.getStatus())
@@ -130,8 +154,49 @@ public class LessonMapper {
                 .videoUrl(lesson.getVideoUrl())
                 .imageUrl(lesson.getImageUrl())
                 .scripts(scriptDtos)
+                .practiceQuestions(safePracticeQuestions)
+                .practiceQuestionCount(safePracticeQuestions.size())
                 .createdAt(lesson.getCreatedAt())
                 .updatedAt(lesson.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * Chuyển đổi thực thể trung gian PracticeQuestion sang DTO phản hồi cho Tab 3.
+     *
+     * @param practiceQuestion Bản ghi liên kết câu hỏi luyện tập
+     * @param abilityNames     Danh sách tên năng lực đã nạp sẵn theo lô (chống N+1)
+     * @param questionSummary  Đoạn trích ngắn nội dung câu hỏi đã bóc từ JSON
+     * @return PracticeQuestionResponse dùng hiển thị trên giao diện quản trị
+     */
+    public PracticeQuestionResponse toPracticeQuestionResponse(
+            PracticeQuestion practiceQuestion,
+            List<String> abilityNames,
+            String questionSummary
+    ) {
+        if (practiceQuestion == null || practiceQuestion.getQuestion() == null) {
+            return null;
+        }
+
+        Question question = practiceQuestion.getQuestion();
+        Part part = question.getPart();
+        Question parent = question.getParent();
+
+        return PracticeQuestionResponse.builder()
+                .id(practiceQuestion.getId())
+                .questionId(question.getId())
+                .orderNo(practiceQuestion.getOrderNo())
+                .points(practiceQuestion.getPoints())
+                .questionName(question.getName())
+                .questionSummary(questionSummary)
+                .questionType(question.getType())
+                .partId(part != null ? part.getId() : null)
+                .partName(part != null ? part.getName() : null)
+                .section(question.getSections() != null ? question.getSections() : (part != null ? part.getSections() : null))
+                .difficulty(question.getDifficulty())
+                .parentId(parent != null ? parent.getId() : null)
+                .parentName(parent != null ? parent.getName() : null)
+                .abilityNames(abilityNames != null ? abilityNames : Collections.emptyList())
                 .build();
     }
 

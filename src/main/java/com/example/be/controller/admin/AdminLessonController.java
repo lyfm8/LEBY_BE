@@ -4,9 +4,11 @@ import com.example.be.common.ApiResponse;
 import com.example.be.dto.request.content.CreateLessonRequest;
 import com.example.be.dto.request.content.ReorderLessonsRequest;
 import com.example.be.dto.request.content.SaveLessonScriptsRequest;
+import com.example.be.dto.request.content.SavePracticeQuestionsRequest;
 import com.example.be.dto.request.content.UpdateLessonRequest;
 import com.example.be.dto.response.content.LessonDetailResponse;
 import com.example.be.dto.response.content.LessonSummaryResponse;
+import com.example.be.dto.response.content.PracticeQuestionResponse;
 import com.example.be.service.content.service.AdminLessonService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -106,6 +108,40 @@ public class AdminLessonController {
             @Valid @RequestBody SaveLessonScriptsRequest request
     ) {
         return new ApiResponse<>(true, "Lưu kịch bản phụ đề thành công", adminLessonService.saveLessonScripts(lessonId, request));
+    }
+
+    /**
+     * Lấy danh sách câu hỏi luyện tập (Practice Questions) đã gắn vào một bài học (Tab 3 - UC A05).
+     *
+     * @param lessonId ID của bài học
+     * @return Danh sách câu hỏi luyện tập sắp xếp theo thứ tự hiển thị
+     */
+    @GetMapping("/lessons/{lessonId}/practice-questions")
+    public ApiResponse<List<PracticeQuestionResponse>> getPracticeQuestions(@PathVariable Long lessonId) {
+        return new ApiResponse<>(
+                true,
+                "Lấy danh sách câu hỏi luyện tập thành công",
+                adminLessonService.getPracticeQuestions(lessonId)
+        );
+    }
+
+    /**
+     * Đồng bộ danh sách câu hỏi luyện tập (Practice Questions) cho một bài học (Tab 3 - UC A05).
+     *
+     * @param lessonId ID của bài học
+     * @param request  Danh sách câu hỏi cần gắn kèm thứ tự và điểm số
+     * @return Chi tiết bài học sau khi lưu danh sách câu hỏi luyện tập
+     */
+    @PutMapping("/lessons/{lessonId}/practice-questions")
+    public ApiResponse<LessonDetailResponse> savePracticeQuestions(
+            @PathVariable Long lessonId,
+            @Valid @RequestBody SavePracticeQuestionsRequest request
+    ) {
+        return new ApiResponse<>(
+                true,
+                "Lưu danh sách câu hỏi luyện tập thành công",
+                adminLessonService.savePracticeQuestions(lessonId, request)
+        );
     }
 }
 
