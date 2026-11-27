@@ -2,6 +2,7 @@ package com.example.be.repository.diagnostic;
 
 import com.example.be.entity.diagnostic.DiagnosticAttempt;
 import com.example.be.enums.diagnostic.EAttemptStatus;
+import com.example.be.enums.diagnostic.ETestType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,6 +41,16 @@ public interface DiagnosticAttemptRepository extends JpaRepository<DiagnosticAtt
             Long targetProfileId,
             EAttemptStatus status
     );
+
+    /**
+     * Kiểm tra học viên đã hoàn thành ít nhất một lượt thi chẩn đoán nào chưa (không phân biệt đề hay AIM).
+     */
+    boolean existsByUserIdAndStatusIn(Long userId, Collection<EAttemptStatus> statuses);
+
+    /**
+     * Kiểm tra học viên đã từng mở xem đáp án chi tiết (Review) của bài thi chẩn đoán hay chưa.
+     */
+    boolean existsByUserIdAndHasViewedReviewTrue(Long userId);
 
     /**
      * Tìm phiên làm bài đang diễn ra (IN_PROGRESS) cho cùng đề thi và mục tiêu AIM nhằm tránh tạo trùng lượt thi.
@@ -114,4 +126,60 @@ public interface DiagnosticAttemptRepository extends JpaRepository<DiagnosticAtt
            "WHERE d.user.id = :userId " +
            "ORDER BY COALESCE(d.startedAt, d.createdAt) DESC")
     List<DiagnosticAttempt> findAllByUserIdWithContextOrderByRecent(@Param("userId") Long userId);
+
+    /**
+     * Kiểm tra học viên đã hoàn thành ít nhất một lượt thi theo đúng loại đề (DIAGNOSTIC hoặc FULL_MOCK_TEST) chưa.
+     */
+    boolean existsByUserIdAndDiagnosticTestTestTypeAndStatusIn(
+            Long userId,
+            ETestType testType,
+            Collection<EAttemptStatus> statuses
+    );
+
+    /**
+     * Kiểm tra học viên đã từng mở xem đáp án chi tiết (Review) cho đúng loại đề thi hay chưa.
+     */
+    boolean existsByUserIdAndDiagnosticTestTestTypeAndHasViewedReviewTrue(Long userId, ETestType testType);
+
+    /**
+     * Lấy lượt thi gần nhất theo userId, loại đề và trạng thái (sắp xếp theo startedAt mới nhất — dùng cho /resume).
+     */
+    @EntityGraph(attributePaths = {"diagnosticTest", "targetProfile"})
+    Optional<DiagnosticAttempt> findTopByUserIdAndDiagnosticTestTestTypeAndStatusOrderByStartedAtDesc(
+            Long userId,
+            ETestType testType,
+            EAttemptStatus status
+    );
+
+    /**
+     * Lấy lượt thi gần nhất theo userId, loại đề và trạng thái hoàn thành (sắp xếp theo completedAt mới nhất).
+     */
+    Optional<DiagnosticAttempt> findTopByUserIdAndDiagnosticTestTestTypeAndStatusOrderByCompletedAtDesc(
+            Long userId,
+            ETestType testType,
+            EAttemptStatus status
+    );
+
+    /**
+     * Lấy lượt thi đã hoàn thành (SUBMITTED hoặc TIMED_OUT) gần nhất theo loại đề để làm mốc đối sánh Trước vs Sau.
+     */
+    Optional<DiagnosticAttempt> findTopByUserIdAndDiagnosticTestTestTypeAndStatusInOrderByCompletedAtDesc(
+            Long userId,
+            ETestType testType,
+            Collection<EAttemptStatus> statuses
+    );
+
+    /**
+     * Lấy toàn bộ lịch sử lượt thi theo loại đề của học viên kèm thông tin đề thi và mục tiêu AIM (tránh N+1).
+     */
+    @Query("SELECT d FROM DiagnosticAttempt d " +
+           "JOIN FETCH d.diagnosticTest t " +
+           "LEFT JOIN FETCH d.targetProfile tp " +
+           "WHERE d.user.id = :userId " +
+           "AND t.testType = :testType " +
+           "ORDER BY COALESCE(d.completedAt, d.startedAt, d.createdAt) DESC")
+    List<DiagnosticAttempt> findAllByUserIdAndTestTypeWithContextOrderByRecent(
+            @Param("userId") Long userId,
+            @Param("testType") ETestType testType
+    );
 }

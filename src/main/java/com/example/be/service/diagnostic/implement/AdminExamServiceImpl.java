@@ -15,6 +15,7 @@ import com.example.be.entity.question.Question;
 import com.example.be.entity.question.QuestionAbility;
 import com.example.be.entity.setting.AbilityEvaluationRule;
 import com.example.be.enums.diagnostic.EExamStatus;
+import com.example.be.enums.diagnostic.EExamTag;
 import com.example.be.enums.diagnostic.ETestType;
 import com.example.be.exception.BaseException;
 import com.example.be.exception.ErrorCode;
@@ -185,6 +186,13 @@ public class AdminExamServiceImpl implements AdminExamService {
         exam.setDescription(request.getDescription());
         exam.setDurationMinutes(request.getDurationMinutes());
         exam.setTestType(request.getTestType());
+        if (request.getTestType() == ETestType.FULL_MOCK_TEST) {
+            if (request.getExamTag() != null) {
+                exam.setExamTag(request.getExamTag());
+            }
+        } else {
+            exam.setExamTag(EExamTag.PRACTICE);
+        }
         exam.setUpdatedBy(currentUsername != null ? currentUsername : "Admin");
 
         // Bước 5: Cập nhật danh sách câu hỏi nếu chưa có attempt

@@ -5,6 +5,8 @@ import com.example.be.enums.diagnostic.EExamStatus;
 import com.example.be.enums.diagnostic.ETestType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -17,6 +19,15 @@ public interface DiagnosticTestRepository extends JpaRepository<DiagnosticTest, 
      * Tìm danh sách đề thi đang Active theo loại đề.
      */
     List<DiagnosticTest> findByTestTypeAndExamStatus(ETestType testType, EExamStatus examStatus);
+
+    /**
+     * Tìm danh sách đề thi đang Active theo loại đề, sắp xếp ưu tiên mới nhất lên trước.
+     */
+    @Query("SELECT t FROM DiagnosticTest t WHERE t.testType = :testType AND t.examStatus = :examStatus ORDER BY t.id ASC")
+    List<DiagnosticTest> findActiveByTestTypeOrdered(
+            @Param("testType") ETestType testType,
+            @Param("examStatus") EExamStatus examStatus
+    );
 
     /**
      * Tìm đề chẩn đoán duy nhất đang Active.

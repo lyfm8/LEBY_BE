@@ -240,7 +240,16 @@ public enum ErrorCode {
     DIAGNOSTIC_ALREADY_COMPLETED(
             HttpStatus.CONFLICT,
             "DIAGNOSTIC_ALREADY_COMPLETED",
-            "Bạn đã hoàn thành bài thi chẩn đoán cho mục tiêu này. Vui lòng xem lại báo cáo hoặc tiến hành học theo lộ trình"
+            "Bạn đã hoàn thành bài thi chẩn đoán. Hệ thống tự động cập nhật lộ trình từ kết quả hiện có."
+    ),
+
+    /**
+     * HTTP 409 - Học viên đã xem đáp án chi tiết (Review), không thể làm lại bài thi chẩn đoán.
+     */
+    DIAGNOSTIC_RETAKE_LOCKED_AFTER_REVIEW(
+            HttpStatus.CONFLICT,
+            "DIAGNOSTIC_RETAKE_LOCKED_AFTER_REVIEW",
+            "Bạn đã xem đáp án chi tiết của bài thi chẩn đoán nên không thể làm lại bài thi."
     ),
 
     /**
@@ -367,6 +376,114 @@ public enum ErrorCode {
             HttpStatus.CONFLICT,
             "MODULE_TEST_ABILITY_MISMATCH",
             "Một số câu hỏi được chọn không thuộc năng lực đào tạo của mô-đun này. Bạn có chắc chắn muốn đưa vào đề không?"
+    ),
+
+    /**
+     * HTTP 400 - Bài thi vượt ải chưa được cấu hình đủ câu hỏi (UC13 Ngoại lệ 3a).
+     */
+    MODULE_TEST_NOT_CONFIGURED(
+            HttpStatus.BAD_REQUEST,
+            "MODULE_TEST_NOT_CONFIGURED",
+            "Bài thi vượt ải của mô-đun đang trong quá trình chuẩn bị. Vui lòng quay lại sau"
+    ),
+
+    /**
+     * HTTP 422 - Học viên chưa hoàn thành tỷ lệ bài giảng tối thiểu để mở khóa bài thi vượt ải (UC13 Ngoại lệ 2a / BR03).
+     */
+    MODULE_TEST_PREREQUISITE_NOT_MET(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            "MODULE_TEST_PREREQUISITE_NOT_MET",
+            "Bạn chưa đủ điều kiện thi vượt ải. Bạn cần hoàn thành thêm bài giảng video để mở khóa bài thi"
+    ),
+
+    /**
+     * HTTP 404 - Không tìm thấy lượt làm bài thi vượt ải.
+     */
+    MODULE_TEST_ATTEMPT_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "MODULE_TEST_ATTEMPT_NOT_FOUND",
+            "Không tìm thấy lượt làm bài thi vượt ải"
+    ),
+
+    /**
+     * HTTP 409 - Lượt thi vượt ải đã được nộp hoặc hết hạn, không thể thao tác thêm.
+     */
+    MODULE_TEST_ALREADY_SUBMITTED(
+            HttpStatus.CONFLICT,
+            "MODULE_TEST_ALREADY_SUBMITTED",
+            "Lượt thi vượt ải này đã được nộp hoặc đã hết hạn"
+    ),
+
+    /**
+     * HTTP 404 - Không tìm thấy bài tập thực hành trong mô-đun.
+     */
+    PRACTICE_LESSON_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "PRACTICE_LESSON_NOT_FOUND",
+            "Không tìm thấy bài tập thực hành trong mô-đun"
+    ),
+
+    /**
+     * HTTP 400 - Bài học yêu cầu không phải loại bài tập thực hành (PRACTICE).
+     */
+    INVALID_LESSON_TYPE(
+            HttpStatus.BAD_REQUEST,
+            "INVALID_LESSON_TYPE",
+            "Bài học này không phải là bài tập thực hành"
+    ),
+
+    /**
+     * HTTP 422 - Học viên chưa hoàn thành lộ trình học nên bị khóa đề thi đầu ra (UC17 Ngoại lệ 2a).
+     */
+    MOCK_EXAM_OUTPUT_LOCKED(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            "MOCK_EXAM_OUTPUT_LOCKED",
+            "Bạn chưa hoàn thành xong lộ trình học nên chưa thể truy cập đề thi đầu ra"
+    ),
+
+    /**
+     * HTTP 400 - Chưa có bộ đề thi thử 200 câu nào được kích hoạt (UC17 Ngoại lệ 3a).
+     */
+    MOCK_EXAM_NOT_ACTIVE(
+            HttpStatus.BAD_REQUEST,
+            "MOCK_EXAM_NOT_ACTIVE",
+            "Đề thi thử tổng hợp đang được hội đồng chuyên môn chuẩn bị. Vui lòng quay lại sau"
+    ),
+
+    /**
+     * HTTP 404 - Không tìm thấy lượt làm bài thi thử TOEIC.
+     */
+    MOCK_EXAM_ATTEMPT_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "MOCK_EXAM_ATTEMPT_NOT_FOUND",
+            "Không tìm thấy lượt làm bài thi thử"
+    ),
+
+    /**
+     * HTTP 409 - Lượt thi thử đã được nộp hoặc hết hạn, không thể thao tác thêm.
+     */
+    MOCK_EXAM_ALREADY_SUBMITTED(
+            HttpStatus.CONFLICT,
+            "MOCK_EXAM_ALREADY_SUBMITTED",
+            "Lượt thi thử này đã được nộp hoặc đã hết hạn"
+    ),
+
+    /**
+     * HTTP 422 - Học viên chưa hoàn thành bài thi thử 200 câu mà truy cập báo cáo đầu ra (UC18 Ngoại lệ 1b).
+     */
+    MOCK_EXAM_NOT_COMPLETED(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            "MOCK_EXAM_NOT_COMPLETED",
+            "Bạn chưa có kết quả thi thử nghiệm thu đầu ra. Hãy hoàn thành bài thi thử trước"
+    ),
+
+    /**
+     * HTTP 403 - Học viên chưa đạt mục tiêu AIM ở bài thi đầu ra nên không được xem lời giải chi tiết.
+     */
+    MOCK_EXAM_REVIEW_LOCKED(
+            HttpStatus.FORBIDDEN,
+            "MOCK_EXAM_REVIEW_LOCKED",
+            "Bạn chưa đạt mục tiêu AIM nên chưa thể xem đáp án và lời giải chi tiết cho bài thi đầu ra"
     ),
 
     /**

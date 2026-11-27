@@ -8,6 +8,7 @@ import com.example.be.entity.diagnostic.PartDiagnosticResult;
 import com.example.be.entity.user.TargetProfile;
 import com.example.be.entity.user.User;
 import com.example.be.enums.diagnostic.EAttemptStatus;
+import com.example.be.enums.diagnostic.ETestType;
 import com.example.be.exception.BaseException;
 import com.example.be.exception.ErrorCode;
 import com.example.be.mapper.user.TargetProfileMapper;
@@ -163,7 +164,8 @@ class UserTargetServiceImplTest {
 
         when(userRepository.findWithTargetProfileById(10L)).thenReturn(Optional.of(student));
         when(targetProfileRepository.findById(5L)).thenReturn(Optional.of(profile850));
-        when(diagnosticAttemptRepository.findTopByUserIdAndStatusOrderByCompletedAtDesc(10L, EAttemptStatus.SUBMITTED))
+        when(diagnosticAttemptRepository.findTopByUserIdAndDiagnosticTestTestTypeAndStatusOrderByCompletedAtDesc(
+                10L, ETestType.DIAGNOSTIC, EAttemptStatus.SUBMITTED))
                 .thenReturn(Optional.of(attempt));
         when(adaptivePathGeneratorService.generateAdaptivePath(attempt, 5L)).thenReturn(regeneratedPath);
 
@@ -182,7 +184,8 @@ class UserTargetServiceImplTest {
         student.setTargetProfile(profile650);
         when(userRepository.findWithTargetProfileById(10L)).thenReturn(Optional.of(student));
         when(targetProfileRepository.findById(5L)).thenReturn(Optional.of(profile850));
-        when(diagnosticAttemptRepository.findTopByUserIdAndStatusOrderByCompletedAtDesc(10L, EAttemptStatus.SUBMITTED))
+        when(diagnosticAttemptRepository.findTopByUserIdAndDiagnosticTestTestTypeAndStatusOrderByCompletedAtDesc(
+                10L, ETestType.DIAGNOSTIC, EAttemptStatus.SUBMITTED))
                 .thenReturn(Optional.empty());
 
         SelectTargetResponse resp = userTargetService.selectTarget(10L, 5L);
@@ -195,7 +198,8 @@ class UserTargetServiceImplTest {
         DiagnosticAttempt emptyAttempt = new DiagnosticAttempt();
         emptyAttempt.setPartResults(Collections.emptyList());
         student.setTargetProfile(profile650);
-        when(diagnosticAttemptRepository.findTopByUserIdAndStatusOrderByCompletedAtDesc(10L, EAttemptStatus.SUBMITTED))
+        when(diagnosticAttemptRepository.findTopByUserIdAndDiagnosticTestTestTypeAndStatusOrderByCompletedAtDesc(
+                10L, ETestType.DIAGNOSTIC, EAttemptStatus.SUBMITTED))
                 .thenReturn(Optional.of(emptyAttempt));
 
         SelectTargetResponse resp2 = userTargetService.selectTarget(10L, 5L);

@@ -1,5 +1,6 @@
 package com.example.be.dto.response.diagnostic;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -42,4 +43,10 @@ public class DiagnosticResultDetailResponse {
     private List<String> passedParts;
     /** Khuyến nghị sư phạm tổng hợp theo AIM. */
     private DiagnosticAiRoadmapSummaryResponse aiRoadmapSummary;
+    /** Học viên đã mở xem đáp án chi tiết (Review) hay chưa. */
+    @JsonProperty("hasViewedReview")
+    private Boolean hasViewedReview;
+    /** Học viên còn quyền làm lại bài thi chẩn đoán hay không (bị khóa nếu đã xem đáp án). */
+    @JsonProperty("canRetakeDiagnostic")
+    private Boolean canRetakeDiagnostic;
 }

@@ -55,6 +55,19 @@ public class DiagnosticAttempt extends AbstractEntity {
     private Integer remainingSeconds;
 
     /**
+     * Đánh dấu học viên đã mở xem lại đáp án chi tiết & lời giải (BR14) cho lượt thi này hay chưa.
+     * Khi đã xem đáp án chi tiết, hệ thống khóa quyền làm lại bài thi chẩn đoán để chống chép đáp án.
+     */
+    @Column(name = "has_viewed_review", nullable = false)
+    private Boolean hasViewedReview = false;
+
+    /**
+     * Thời điểm học viên mở xem lại đáp án lần đầu tiên.
+     */
+    @Column(name = "review_viewed_at")
+    private LocalDateTime reviewViewedAt;
+
+    /**
      * DiagnosticAttempt * ---- 1 User.
      */
     @ManyToOne(fetch = FetchType.LAZY)

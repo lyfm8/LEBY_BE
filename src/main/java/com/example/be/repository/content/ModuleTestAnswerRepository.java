@@ -7,11 +7,13 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 
 /**
  * Kho lưu trữ chi tiết câu trả lời bài thi vượt ải mô-đun (module_test_answers).
- * Dùng để kiểm tra ràng buộc toàn vẹn lịch sử thi trước khi gỡ câu hỏi khỏi đề vượt ải (UC A07).
+ * Dùng để kiểm tra ràng buộc toàn vẹn lịch sử thi trước khi gỡ câu hỏi khỏi đề vượt ải (UC A07)
+ * và lưu nháp / chấm điểm / xem lại bài thi vượt ải (UC13 - UC14).
  */
 @Repository
 public interface ModuleTestAnswerRepository extends JpaRepository<ModuleTestAnswer, Long> {
@@ -32,4 +34,12 @@ public interface ModuleTestAnswerRepository extends JpaRepository<ModuleTestAnsw
      */
     @Query("SELECT DISTINCT a.moduleTestQuestion.id FROM ModuleTestAnswer a WHERE a.moduleTestQuestion.id IN :ids")
     Set<Long> findUsedModuleTestQuestionIds(@Param("ids") Collection<Long> moduleTestQuestionIds);
+
+    /**
+     * Nạp toàn bộ câu trả lời kèm Question của một lượt thi vượt ải trong 1 câu truy vấn (tránh N+1).
+     */
+    @Query("SELECT a FROM ModuleTestAnswer a " +
+           "JOIN FETCH a.question q " +
+           "WHERE a.moduleTestAttempt.id = :attemptId")
+    List<ModuleTestAnswer> findByModuleTestAttemptIdWithQuestion(@Param("attemptId") Long attemptId);
 }

@@ -11,6 +11,8 @@ import com.example.be.entity.question.Question;
 import com.example.be.entity.question.QuestionAbility;
 import com.example.be.enums.ability.ESection;
 import com.example.be.enums.diagnostic.EExamStatus;
+import com.example.be.enums.diagnostic.EExamTag;
+import com.example.be.enums.diagnostic.ETestType;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -39,6 +41,7 @@ public class ExamMapper {
                 .title(exam.getTitle())
                 .description(exam.getDescription())
                 .testType(exam.getTestType())
+                .examTag(exam.getExamTag())
                 .examStatus(exam.getExamStatus())
                 .durationMinutes(exam.getDurationMinutes())
                 .totalQuestions(exam.getTestQuestions() != null ? exam.getTestQuestions().size() : 0)
@@ -86,6 +89,7 @@ public class ExamMapper {
                 .title(exam.getTitle())
                 .description(exam.getDescription())
                 .testType(exam.getTestType())
+                .examTag(exam.getExamTag())
                 .examStatus(exam.getExamStatus())
                 .durationMinutes(exam.getDurationMinutes())
                 .totalQuestions(testQuestions.size())
@@ -164,6 +168,11 @@ public class ExamMapper {
         exam.setTitle(request.getTitle().trim());
         exam.setDescription(request.getDescription());
         exam.setTestType(request.getTestType());
+        // Chi ap dung nhan PRACTICE / OUTPUT cho de FULL_MOCK_TEST; de chuan doan mac dinh PRACTICE
+        EExamTag resolvedTag = request.getTestType() == ETestType.FULL_MOCK_TEST && request.getExamTag() != null
+                ? request.getExamTag()
+                : EExamTag.PRACTICE;
+        exam.setExamTag(resolvedTag);
         exam.setDurationMinutes(request.getDurationMinutes());
         exam.setExamStatus(initialStatus);
         exam.setUpdatedBy(currentUsername != null ? currentUsername : "Admin");

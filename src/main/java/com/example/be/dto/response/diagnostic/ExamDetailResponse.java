@@ -1,6 +1,7 @@
 package com.example.be.dto.response.diagnostic;
 
 import com.example.be.enums.diagnostic.EExamStatus;
+import com.example.be.enums.diagnostic.EExamTag;
 import com.example.be.enums.diagnostic.ETestType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,6 +27,7 @@ public class ExamDetailResponse {
     private String title;
     private String description;
     private ETestType testType;
+    private EExamTag examTag;
     private EExamStatus examStatus;
     private Integer durationMinutes;
     private Integer totalQuestions;
