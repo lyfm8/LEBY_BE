@@ -22,7 +22,7 @@ public class AutoSelectQuestionsRequest {
     private ETestType testType;
 
     /**
-     * Tổng số câu hỏi mong muốn (áp dụng cho DIAGNOSTIC, mặc định 60 nếu null).
+     * Tổng số câu hỏi mong muốn (áp dụng cho DIAGNOSTIC, mặc định 48 nếu null).
      */
     private Integer totalQuestions;
 
@@ -30,7 +30,7 @@ public class AutoSelectQuestionsRequest {
      * Cấu hình phân bổ số câu hỏi theo từng Part (key là partNumber từ 1 đến 7, value là số lượng câu).
      * Nếu null, hệ thống sẽ sử dụng ma trận chuẩn mặc định:
      * - FULL_MOCK_TEST: Part 1=6, Part 2=25, Part 3=39, Part 4=30, Part 5=30, Part 6=16, Part 7=54 (Tổng 200 câu).
-     * - DIAGNOSTIC: 60 câu phân bổ đều và bắt buộc bao phủ tất cả Ability trong database.
+     * - DIAGNOSTIC: tối thiểu theo Quy tắc Đánh giá Năng lực (mặc định 48 câu, 3 câu/Ability) và bao phủ đủ 7 Part.
      */
     private Map<Integer, Integer> customDistribution;
 }

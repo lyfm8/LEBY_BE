@@ -4,9 +4,11 @@ import com.example.be.dto.request.diagnostic.CreateExamRequest;
 import com.example.be.dto.response.diagnostic.ExamDetailResponse;
 import com.example.be.dto.response.diagnostic.ExamListItemResponse;
 import com.example.be.dto.response.diagnostic.ExamQuestionItemResponse;
+import com.example.be.entity.ability.Ability;
 import com.example.be.entity.diagnostic.DiagnosticTest;
 import com.example.be.entity.question.DiagnosticTestQuestion;
 import com.example.be.entity.question.Question;
+import com.example.be.entity.question.QuestionAbility;
 import com.example.be.enums.ability.ESection;
 import com.example.be.enums.diagnostic.EExamStatus;
 import org.springframework.stereotype.Component;
@@ -17,6 +19,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Mapper chuyển đổi giữa Entity DiagnosticTest / DiagnosticTestQuestion và các DTO Exam.
@@ -126,6 +129,15 @@ public class ExamMapper {
         int order = 1;
         for (Question q : questions) {
             int partNo = (q.getPart() != null && q.getPart().getId() != null) ? q.getPart().getId().intValue() : 1;
+            List<String> abilities = q.getQuestionAbilities() != null
+                    ? q.getQuestionAbilities().stream()
+                            .map(QuestionAbility::getAbility)
+                            .filter(Objects::nonNull)
+                            .map(Ability::getName)
+                            .distinct()
+                            .toList()
+                    : Collections.emptyList();
+
             responses.add(ExamQuestionItemResponse.builder()
                     .questionId(q.getId())
                     .orderNo(order++)
@@ -137,6 +149,7 @@ public class ExamMapper {
                     .partName(q.getPart() != null ? q.getPart().getName() : "Part " + partNo)
                     .section(q.getSections())
                     .difficulty(q.getDifficulty())
+                    .abilityNames(abilities)
                     .build());
         }
         return responses;

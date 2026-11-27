@@ -66,6 +66,16 @@ public interface QuestionRepository extends JpaRepository<Question, Long>, JpaSp
     long countPlayableQuestionsByPartId(@Param("partId") Long partId);
 
     /**
+     * Lấy toàn bộ câu hỏi có thể làm bài kèm thông tin Part và Ability trong một truy vấn duy nhất (tránh N+1).
+     */
+    @Query("SELECT DISTINCT q FROM Question q " +
+           "JOIN FETCH q.part p " +
+           "LEFT JOIN FETCH q.questionAbilities qa " +
+           "LEFT JOIN FETCH qa.ability a " +
+           "WHERE (q.parent IS NOT NULL OR NOT EXISTS (SELECT 1 FROM Question child WHERE child.parent = q))")
+    List<Question> findAllPlayableWithAbilitiesAndPart();
+
+    /**
      * Load câu hỏi theo danh sách ID kèm Ability để tránh N+1 khi chấm điểm Tầng 2.
      *
      * @param ids Danh sách ID câu hỏi cần load
