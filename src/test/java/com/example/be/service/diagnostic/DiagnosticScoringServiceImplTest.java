@@ -227,8 +227,9 @@ class DiagnosticScoringServiceImplTest {
     void startDiagnostic_alreadyCompletedBefore_throwsBr02Conflict() {
         when(userRepo.findWithTargetProfileById(1L)).thenReturn(Optional.of(student));
         when(diagnosticTestRepo.findById(100L)).thenReturn(Optional.of(diagnosticTest));
-        when(diagnosticAttemptRepo.existsByUserIdAndStatusIn(
+        when(diagnosticAttemptRepo.existsByUserIdAndDiagnosticTestTestTypeAndStatusIn(
                 eq(1L),
+                eq(ETestType.DIAGNOSTIC),
                 argThat(statuses -> statuses.contains(EAttemptStatus.SUBMITTED))))
                 .thenReturn(true);
 
@@ -245,7 +246,8 @@ class DiagnosticScoringServiceImplTest {
     void startDiagnostic_forceRetakeBeforeViewingReview_createsNewAttemptWithInitialRemainingSeconds() {
         when(userRepo.findWithTargetProfileById(1L)).thenReturn(Optional.of(student));
         when(diagnosticTestRepo.findById(100L)).thenReturn(Optional.of(diagnosticTest));
-        when(diagnosticAttemptRepo.existsByUserIdAndHasViewedReviewTrue(1L)).thenReturn(false);
+        when(diagnosticAttemptRepo.existsByUserIdAndDiagnosticTestTestTypeAndHasViewedReviewTrue(1L, ETestType.DIAGNOSTIC))
+                .thenReturn(false);
         when(diagnosticAttemptRepo.save(any())).thenAnswer(invocation -> {
             DiagnosticAttempt saved = invocation.getArgument(0);
             if (saved.getId() == null) {
@@ -263,14 +265,15 @@ class DiagnosticScoringServiceImplTest {
         assertThat(resp.getAttemptId()).isEqualTo(300L);
         verify(diagnosticAttemptRepo).save(attemptCaptor.capture());
         assertThat(attemptCaptor.getValue().getRemainingSeconds()).isEqualTo(3600);
-        verify(diagnosticAttemptRepo, never()).existsByUserIdAndStatusIn(anyLong(), any());
+        verify(diagnosticAttemptRepo, never()).existsByUserIdAndDiagnosticTestTestTypeAndStatusIn(anyLong(), any(), any());
     }
 
     @Test
     void startDiagnostic_forceRetakeAfterViewingReview_throwsRetakeLocked() {
         when(userRepo.findWithTargetProfileById(1L)).thenReturn(Optional.of(student));
         when(diagnosticTestRepo.findById(100L)).thenReturn(Optional.of(diagnosticTest));
-        when(diagnosticAttemptRepo.existsByUserIdAndHasViewedReviewTrue(1L)).thenReturn(true);
+        when(diagnosticAttemptRepo.existsByUserIdAndDiagnosticTestTestTypeAndHasViewedReviewTrue(1L, ETestType.DIAGNOSTIC))
+                .thenReturn(true);
 
         StartDiagnosticRequest req = new StartDiagnosticRequest();
         req.setDiagnosticTestId(100L);
@@ -301,8 +304,9 @@ class DiagnosticScoringServiceImplTest {
         when(userRepo.findWithTargetProfileById(1L)).thenReturn(Optional.of(student));
         when(diagnosticTestRepo.findFirstByTestTypeAndExamStatus(ETestType.DIAGNOSTIC, EExamStatus.ACTIVE))
                 .thenReturn(Optional.of(anotherDiagnosticTest));
-        when(diagnosticAttemptRepo.existsByUserIdAndStatusIn(
+        when(diagnosticAttemptRepo.existsByUserIdAndDiagnosticTestTestTypeAndStatusIn(
                 eq(1L),
+                eq(ETestType.DIAGNOSTIC),
                 argThat(statuses -> statuses.contains(EAttemptStatus.SUBMITTED))))
                 .thenReturn(true);
 
@@ -343,7 +347,8 @@ class DiagnosticScoringServiceImplTest {
         target750.setTargetTotalScore(750);
         student.setTargetProfile(target750); // user đã đổi sang 750 nhưng attempt đang IN_PROGRESS cho 650 (id=5)
 
-        when(diagnosticAttemptRepo.findTopByUserIdAndStatusOrderByStartedAtDesc(1L, EAttemptStatus.IN_PROGRESS))
+        when(diagnosticAttemptRepo.findTopByUserIdAndDiagnosticTestTestTypeAndStatusOrderByStartedAtDesc(
+                1L, ETestType.DIAGNOSTIC, EAttemptStatus.IN_PROGRESS))
                 .thenReturn(Optional.of(attempt));
         when(userRepo.findWithTargetProfileById(1L)).thenReturn(Optional.of(student));
 
@@ -616,7 +621,8 @@ class DiagnosticScoringServiceImplTest {
         pr.setScore(100.0f);
         pr.setDirective(EPartDirective.PASS);
 
-        when(diagnosticAttemptRepo.findTopByUserIdAndStatusOrderByCompletedAtDesc(1L, EAttemptStatus.SUBMITTED))
+        when(diagnosticAttemptRepo.findTopByUserIdAndDiagnosticTestTestTypeAndStatusOrderByCompletedAtDesc(
+                1L, ETestType.DIAGNOSTIC, EAttemptStatus.SUBMITTED))
                 .thenReturn(Optional.of(attempt));
         when(diagnosticAttemptRepo.findByIdWithContext(200L)).thenReturn(Optional.of(attempt));
         when(partDiagnosticResultRepo.findByDiagnosticAttemptIdWithPart(200L)).thenReturn(List.of(pr));

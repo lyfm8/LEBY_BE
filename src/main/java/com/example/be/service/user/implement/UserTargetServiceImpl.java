@@ -7,6 +7,7 @@ import com.example.be.entity.diagnostic.DiagnosticAttempt;
 import com.example.be.entity.user.TargetProfile;
 import com.example.be.entity.user.User;
 import com.example.be.enums.diagnostic.EAttemptStatus;
+import com.example.be.enums.diagnostic.ETestType;
 import com.example.be.exception.BaseException;
 import com.example.be.exception.ErrorCode;
 import com.example.be.mapper.user.TargetProfileMapper;
@@ -96,9 +97,13 @@ public class UserTargetServiceImpl implements UserTargetService {
             );
         }
 
-        // Bước 4b: Đổi mục tiêu AIM -> kiểm tra bài chẩn đoán gần nhất đã nộp (BR02 & Luồng 7b)
+        // Bước 4b: Đổi mục tiêu AIM -> chỉ tái sử dụng bài thi chẩn đoán đầu vào (DIAGNOSTIC) theo BR02, tránh lấy nhầm Mock Test
         Optional<DiagnosticAttempt> latestAttemptOpt = diagnosticAttemptRepository
-                .findTopByUserIdAndStatusOrderByCompletedAtDesc(userId, EAttemptStatus.SUBMITTED);
+                .findTopByUserIdAndDiagnosticTestTestTypeAndStatusOrderByCompletedAtDesc(
+                        userId,
+                        ETestType.DIAGNOSTIC,
+                        EAttemptStatus.SUBMITTED
+                );
 
         if (latestAttemptOpt.isEmpty() || !hasValidPartResults(latestAttemptOpt.get())) {
             log.info("[UC05] Học viên userId={} đổi AIM sang {} nhưng chưa có dữ liệu chẩn đoán hợp lệ -> GO_DIAGNOSTIC",

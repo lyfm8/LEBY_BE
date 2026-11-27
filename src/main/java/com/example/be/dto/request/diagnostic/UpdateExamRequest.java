@@ -1,5 +1,6 @@
 package com.example.be.dto.request.diagnostic;
 
+import com.example.be.enums.diagnostic.EExamTag;
 import com.example.be.enums.diagnostic.ETestType;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -30,6 +31,9 @@ public class UpdateExamRequest {
 
     @NotNull(message = "Loại đề thi bắt buộc phải chọn")
     private ETestType testType;
+
+    /** Nhãn phân loại đề thi thử (PRACTICE: luyện tập, OUTPUT: đầu ra). */
+    private EExamTag examTag;
 
     @NotNull(message = "Thời gian làm bài không được để trống")
     @Min(value = 1, message = "Thời gian làm bài phải lớn hơn hoặc bằng 1 phút")

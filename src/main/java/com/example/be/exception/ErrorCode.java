@@ -433,6 +433,60 @@ public enum ErrorCode {
     ),
 
     /**
+     * HTTP 422 - Học viên chưa hoàn thành lộ trình học nên bị khóa đề thi đầu ra (UC17 Ngoại lệ 2a).
+     */
+    MOCK_EXAM_OUTPUT_LOCKED(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            "MOCK_EXAM_OUTPUT_LOCKED",
+            "Bạn chưa hoàn thành xong lộ trình học nên chưa thể truy cập đề thi đầu ra"
+    ),
+
+    /**
+     * HTTP 400 - Chưa có bộ đề thi thử 200 câu nào được kích hoạt (UC17 Ngoại lệ 3a).
+     */
+    MOCK_EXAM_NOT_ACTIVE(
+            HttpStatus.BAD_REQUEST,
+            "MOCK_EXAM_NOT_ACTIVE",
+            "Đề thi thử tổng hợp đang được hội đồng chuyên môn chuẩn bị. Vui lòng quay lại sau"
+    ),
+
+    /**
+     * HTTP 404 - Không tìm thấy lượt làm bài thi thử TOEIC.
+     */
+    MOCK_EXAM_ATTEMPT_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "MOCK_EXAM_ATTEMPT_NOT_FOUND",
+            "Không tìm thấy lượt làm bài thi thử"
+    ),
+
+    /**
+     * HTTP 409 - Lượt thi thử đã được nộp hoặc hết hạn, không thể thao tác thêm.
+     */
+    MOCK_EXAM_ALREADY_SUBMITTED(
+            HttpStatus.CONFLICT,
+            "MOCK_EXAM_ALREADY_SUBMITTED",
+            "Lượt thi thử này đã được nộp hoặc đã hết hạn"
+    ),
+
+    /**
+     * HTTP 422 - Học viên chưa hoàn thành bài thi thử 200 câu mà truy cập báo cáo đầu ra (UC18 Ngoại lệ 1b).
+     */
+    MOCK_EXAM_NOT_COMPLETED(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            "MOCK_EXAM_NOT_COMPLETED",
+            "Bạn chưa có kết quả thi thử nghiệm thu đầu ra. Hãy hoàn thành bài thi thử trước"
+    ),
+
+    /**
+     * HTTP 403 - Học viên chưa đạt mục tiêu AIM ở bài thi đầu ra nên không được xem lời giải chi tiết.
+     */
+    MOCK_EXAM_REVIEW_LOCKED(
+            HttpStatus.FORBIDDEN,
+            "MOCK_EXAM_REVIEW_LOCKED",
+            "Bạn chưa đạt mục tiêu AIM nên chưa thể xem đáp án và lời giải chi tiết cho bài thi đầu ra"
+    ),
+
+    /**
      * HTTP 500 - Gửi email thông báo cho người dùng thất bại.
      */
     MAIL_SEND_FAILED(

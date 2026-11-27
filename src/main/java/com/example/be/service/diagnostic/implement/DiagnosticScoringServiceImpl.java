@@ -148,14 +148,18 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
 
         boolean isForceRetake = request != null && Boolean.TRUE.equals(request.getForceRetake());
 
-        // Bước 3: Kiểm tra quy tắc khóa làm lại bài chẩn đoán ở phạm vi toàn tài khoản:
+        // Bước 3: Kiểm tra quy tắc khóa làm lại bài chẩn đoán ở phạm vi toàn tài khoản (chỉ tính đề DIAGNOSTIC, không tính FULL_MOCK_TEST):
         // - Nếu chủ động làm lại (forceRetake = true) nhưng đã từng mở xem đáp án Review -> khóa vĩnh viễn.
         // - Nếu không forceRetake -> đã hoàn thành chẩn đoán trước đó (kể cả khi vừa đổi AIM hay đổi đề) thì chặn thi lại.
         if (isForceRetake) {
-            if (diagnosticAttemptRepo.existsByUserIdAndHasViewedReviewTrue(userId)) {
+            if (diagnosticAttemptRepo.existsByUserIdAndDiagnosticTestTestTypeAndHasViewedReviewTrue(userId, ETestType.DIAGNOSTIC)) {
                 throw new BaseException(ErrorCode.DIAGNOSTIC_RETAKE_LOCKED_AFTER_REVIEW);
             }
-        } else if (diagnosticAttemptRepo.existsByUserIdAndStatusIn(userId, COMPLETED_DIAGNOSTIC_STATUSES)) {
+        } else if (diagnosticAttemptRepo.existsByUserIdAndDiagnosticTestTestTypeAndStatusIn(
+                userId,
+                ETestType.DIAGNOSTIC,
+                COMPLETED_DIAGNOSTIC_STATUSES
+        )) {
             throw new BaseException(ErrorCode.DIAGNOSTIC_ALREADY_COMPLETED);
         }
 
@@ -202,6 +206,9 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
         if (!attempt.getUser().getId().equals(userId)) {
             throw new BaseException(ErrorCode.FORBIDDEN, "Bạn không có quyền truy cập lượt thi này");
         }
+        if (attempt.getDiagnosticTest() != null && attempt.getDiagnosticTest().getTestType() != ETestType.DIAGNOSTIC) {
+            throw new BaseException(ErrorCode.BAD_REQUEST, "Lượt thi này không thuộc bài thi chẩn đoán");
+        }
         if (attempt.getStatus() != EAttemptStatus.IN_PROGRESS) {
             throw new BaseException(ErrorCode.DIAGNOSTIC_ALREADY_SUBMITTED);
         }
@@ -215,9 +222,13 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
     @Override
     @Transactional
     public DiagnosticRoomResponse getActiveSession(Long userId) {
-        // Bước 1: Tìm phiên làm bài đang diễn ra (IN_PROGRESS) gần nhất của học viên
+        // Bước 1: Tìm phiên làm bài chẩn đoán (DIAGNOSTIC) đang diễn ra (IN_PROGRESS) gần nhất của học viên
         Optional<DiagnosticAttempt> activeOpt = diagnosticAttemptRepo
-                .findTopByUserIdAndStatusOrderByStartedAtDesc(userId, EAttemptStatus.IN_PROGRESS);
+                .findTopByUserIdAndDiagnosticTestTestTypeAndStatusOrderByStartedAtDesc(
+                        userId,
+                        ETestType.DIAGNOSTIC,
+                        EAttemptStatus.IN_PROGRESS
+                );
         if (activeOpt.isEmpty()) {
             return null;
         }
@@ -252,6 +263,9 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
         if (!attempt.getUser().getId().equals(userId)) {
             throw new BaseException(ErrorCode.FORBIDDEN, "Bạn không có quyền cập nhật thời gian lượt thi này");
         }
+        if (attempt.getDiagnosticTest() != null && attempt.getDiagnosticTest().getTestType() != ETestType.DIAGNOSTIC) {
+            throw new BaseException(ErrorCode.BAD_REQUEST, "Lượt thi này không thuộc bài thi chẩn đoán");
+        }
         if (attempt.getStatus() != EAttemptStatus.IN_PROGRESS) {
             throw new BaseException(ErrorCode.DIAGNOSTIC_ALREADY_SUBMITTED);
         }
@@ -285,7 +299,10 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
             throw new BaseException(ErrorCode.FORBIDDEN, "Bạn không có quyền nộp bài lượt thi này");
         }
 
-        // Chỉ cho phép nộp bài khi lượt thi đang ở trạng thái IN_PROGRESS (tránh double-submit sinh trùng lộ trình)
+        // Chỉ cho phép nộp bài khi lượt thi thuộc loại DIAGNOSTIC và đang ở trạng thái IN_PROGRESS
+        if (attempt.getDiagnosticTest() != null && attempt.getDiagnosticTest().getTestType() != ETestType.DIAGNOSTIC) {
+            throw new BaseException(ErrorCode.BAD_REQUEST, "Lượt thi này không thuộc bài thi chẩn đoán");
+        }
         if (attempt.getStatus() != EAttemptStatus.IN_PROGRESS) {
             throw new BaseException(ErrorCode.DIAGNOSTIC_ALREADY_SUBMITTED);
         }
@@ -387,7 +404,10 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
 
         LearningPath learningPath = resolveLearningPathForAttempt(userId, attemptId);
         boolean hasAnyReviewedAttempt = Boolean.TRUE.equals(attempt.getHasViewedReview())
-                || diagnosticAttemptRepo.existsByUserIdAndHasViewedReviewTrue(userId);
+                || diagnosticAttemptRepo.existsByUserIdAndDiagnosticTestTestTypeAndHasViewedReviewTrue(
+                        userId,
+                        ETestType.DIAGNOSTIC
+                );
 
         // Bước 3: Chuyển đổi toàn bộ sang DTO báo cáo thông qua DiagnosticResultMapper
         return diagnosticResultMapper.toDetailResponse(
@@ -410,7 +430,11 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
     @Transactional(readOnly = true)
     public DiagnosticResultDetailResponse getLatestResultDetail(Long userId) {
         DiagnosticAttempt latestSubmitted = diagnosticAttemptRepo
-                .findTopByUserIdAndStatusOrderByCompletedAtDesc(userId, EAttemptStatus.SUBMITTED)
+                .findTopByUserIdAndDiagnosticTestTestTypeAndStatusOrderByCompletedAtDesc(
+                        userId,
+                        ETestType.DIAGNOSTIC,
+                        EAttemptStatus.SUBMITTED
+                )
                 .orElseThrow(() -> new BaseException(
                         ErrorCode.DIAGNOSTIC_NOT_COMPLETED,
                         "Bạn chưa có dữ liệu bài thi chẩn đoán. Vui lòng tham gia làm bài kiểm tra đầu vào trước"
@@ -516,6 +540,9 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
 
         if (!attempt.getUser().getId().equals(userId)) {
             throw new BaseException(ErrorCode.FORBIDDEN, forbiddenMessage);
+        }
+        if (attempt.getDiagnosticTest() != null && attempt.getDiagnosticTest().getTestType() != ETestType.DIAGNOSTIC) {
+            throw new BaseException(ErrorCode.BAD_REQUEST, "Lượt thi này không thuộc bài thi chẩn đoán");
         }
         if (attempt.getStatus() != EAttemptStatus.SUBMITTED && attempt.getStatus() != EAttemptStatus.TIMED_OUT) {
             throw new BaseException(

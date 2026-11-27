@@ -3,6 +3,7 @@ package com.example.be.entity.diagnostic;
 import com.example.be.entity.base.AbstractEntity;
 import com.example.be.entity.question.DiagnosticTestQuestion;
 import com.example.be.enums.diagnostic.EExamStatus;
+import com.example.be.enums.diagnostic.EExamTag;
 import com.example.be.enums.diagnostic.ETestType;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -49,6 +50,13 @@ public class DiagnosticTest extends AbstractEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "test_type", nullable = false, length = 30)
     private ETestType testType = ETestType.DIAGNOSTIC;
+
+    /**
+     * Nhãn phân loại đề thi thử (PRACTICE: luyện tập, OUTPUT: đề thi đầu ra).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "exam_tag", nullable = false, length = 20)
+    private EExamTag examTag = EExamTag.PRACTICE;
 
     /**
      * Thời lượng làm bài (tính bằng phút), đọc động từ cấu hình đề.
