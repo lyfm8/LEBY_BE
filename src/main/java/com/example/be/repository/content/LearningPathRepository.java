@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,6 +21,20 @@ public interface LearningPathRepository extends JpaRepository<LearningPath, Long
      */
     @EntityGraph(attributePaths = {"targetProfile"})
     List<LearningPath> findWithTargetProfileByUserIdOrderByCreatedAtDesc(Long userId);
+
+    /**
+     * Truy vấn các lộ trình hiện hành (ACTIVE hoặc COMPLETED) của học viên kèm sẵn TargetProfile
+     * trong 1 câu SQL để tránh N+1 query và xử lý đúng trường hợp PASS 100% 7 Part (UC09 Luồng 4a).
+     *
+     * @param userId   ID học viên đang đăng nhập
+     * @param statuses Tập hợp trạng thái hợp lệ (ACTIVE, COMPLETED)
+     * @return Danh sách lộ trình sắp xếp theo phiên bản mới nhất trước
+     */
+    @EntityGraph(attributePaths = {"targetProfile"})
+    List<LearningPath> findByUserIdAndStatusInOrderByVersionDescCreatedAtDesc(
+            Long userId,
+            Collection<ELearningPathStatus> statuses
+    );
 
     Optional<LearningPath> findByUserIdAndStatus(Long userId, ELearningPathStatus status);
 
