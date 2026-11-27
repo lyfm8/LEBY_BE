@@ -77,4 +77,14 @@ public interface ModuleTestAttemptRepository extends JpaRepository<ModuleTestAtt
            "WHERE a.user.id = :userId " +
            "ORDER BY COALESCE(a.submittedAt, a.createdAt) DESC")
     List<ModuleTestAttempt> findAllByUserIdWithModuleOrderByRecent(@Param("userId") Long userId);
+
+    /**
+     * Lấy danh sách các lượt thi vượt ải đã nộp của học viên trên một Module cụ thể,
+     * sắp xếp mới nhất trước để xác định trạng thái đã đỗ, điểm cao nhất và lượt thi gần nhất (UC10 Luồng 6b).
+     *
+     * @param userId   ID học viên đang đăng nhập
+     * @param moduleId ID của Module cần tra cứu lịch sử thi vượt ải
+     * @return Danh sách các lượt thi đã nộp sắp xếp giảm dần theo thời điểm nộp bài
+     */
+    List<ModuleTestAttempt> findByUserIdAndModuleIdAndIsSubmittedTrueOrderBySubmittedAtDesc(Long userId, Long moduleId);
 }

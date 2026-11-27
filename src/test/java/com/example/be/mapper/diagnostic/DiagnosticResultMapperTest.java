@@ -148,6 +148,75 @@ class DiagnosticResultMapperTest {
         assertThat(withoutRoadmap.getAiRoadmapSummary().getRadarInsight()).doesNotContain("0 mô-đun trọng tâm");
     }
 
+    @Test
+    void toDetailResponse_whenListeningAndReadingAreEqualZero_buildsNaturalStarterInsight() {
+        Part part1 = new Part();
+        part1.setId(1L);
+        part1.setName("Part 1: Photographs");
+
+        Part part5 = new Part();
+        part5.setId(5L);
+        part5.setName("Part 5: Incomplete Sentences");
+
+        Ability ab1 = new Ability();
+        ab1.setId(10L);
+        ab1.setName("Nghe tranh");
+
+        Ability ab5 = new Ability();
+        ab5.setId(50L);
+        ab5.setName("Ngữ pháp");
+
+        Question q1 = createQuestion(1L, part1, ab1);
+        Question q2 = createQuestion(2L, part5, ab5);
+
+        DiagnosticAnswer a1 = new DiagnosticAnswer();
+        a1.setQuestion(q1);
+        a1.setIsCorrect(false);
+
+        DiagnosticAnswer a2 = new DiagnosticAnswer();
+        a2.setQuestion(q2);
+        a2.setIsCorrect(false);
+
+        PartDiagnosticResult pr1 = new PartDiagnosticResult();
+        pr1.setPart(part1);
+        pr1.setScore(0.0f);
+        pr1.setDirective(EPartDirective.FULL_PART);
+
+        PartDiagnosticResult pr5 = new PartDiagnosticResult();
+        pr5.setPart(part5);
+        pr5.setScore(0.0f);
+        pr5.setDirective(EPartDirective.FULL_PART);
+
+        TargetProfile target = new TargetProfile();
+        target.setId(3L);
+        target.setTargetTotalScore(650);
+
+        DiagnosticTest test = new DiagnosticTest();
+        test.setId(1L);
+        test.setTitle("Bài thi chẩn đoán đầu vào");
+
+        DiagnosticAttempt attempt = new DiagnosticAttempt();
+        attempt.setId(501L);
+        attempt.setDiagnosticTest(test);
+        attempt.setCompletedAt(LocalDateTime.now());
+        attempt.setDurationSeconds(600);
+
+        DiagnosticResultDetailResponse detail = mapper.toDetailResponse(
+                attempt,
+                List.of(pr1, pr5),
+                List.of(a1, a2),
+                List.of(q1, q2),
+                List.of(),
+                List.of(),
+                target,
+                null
+        );
+
+        String insight = detail.getAiRoadmapSummary().getRadarInsight();
+        assertThat(insight).doesNotContain("nhỉnh hơn");
+        assertThat(insight).contains("mức khởi đầu (0%)");
+    }
+
     private Question createQuestion(Long id, Part part, Ability ability) {
         Question q = new Question();
         q.setId(id);
