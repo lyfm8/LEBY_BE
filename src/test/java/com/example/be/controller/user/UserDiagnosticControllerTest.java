@@ -4,6 +4,7 @@ import com.example.be.common.ApiResponse;
 import com.example.be.dto.request.diagnostic.StartDiagnosticRequest;
 import com.example.be.dto.request.diagnostic.SyncDiagnosticTimerRequest;
 import com.example.be.dto.response.diagnostic.DiagnosticResultDetailResponse;
+import com.example.be.dto.response.diagnostic.DiagnosticReviewResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticRoomResponse;
 import com.example.be.dto.response.diagnostic.StartDiagnosticResponse;
 import com.example.be.entity.user.User;
@@ -107,5 +108,28 @@ class UserDiagnosticControllerTest {
         assertThat(response.getBody().isSuccess()).isTrue();
         assertThat(response.getBody().getData()).isEqualTo(1450L);
         verify(diagnosticScoringService).syncRemainingTime(7L, request);
+    }
+
+    @Test
+    void getReviewData_delegatesToServiceAndReturnsOk() {
+        User user = new User();
+        user.setId(7L);
+
+        DiagnosticReviewResponse reviewResp = DiagnosticReviewResponse.builder()
+                .attemptId(12L)
+                .totalQuestions(48)
+                .correctCount(32)
+                .build();
+
+        when(diagnosticScoringService.getReviewData(7L, 12L)).thenReturn(reviewResp);
+
+        ResponseEntity<ApiResponse<DiagnosticReviewResponse>> response = controller.getReviewData(user, 12L);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().isSuccess()).isTrue();
+        assertThat(response.getBody().getData().getAttemptId()).isEqualTo(12L);
+        assertThat(response.getBody().getData().getCorrectCount()).isEqualTo(32);
+        verify(diagnosticScoringService).getReviewData(7L, 12L);
     }
 }

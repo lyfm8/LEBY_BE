@@ -5,6 +5,7 @@ import com.example.be.dto.request.diagnostic.SubmitDiagnosticRequest;
 import com.example.be.dto.request.diagnostic.SyncDiagnosticTimerRequest;
 import com.example.be.dto.response.diagnostic.DiagnosticResultDetailResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticResultResponse;
+import com.example.be.dto.response.diagnostic.DiagnosticReviewResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticRoomResponse;
 import com.example.be.dto.response.diagnostic.PartResultResponse;
 import com.example.be.dto.response.diagnostic.StartDiagnosticResponse;
@@ -30,6 +31,7 @@ import com.example.be.enums.diagnostic.ETestType;
 import com.example.be.exception.BaseException;
 import com.example.be.exception.ErrorCode;
 import com.example.be.mapper.diagnostic.DiagnosticResultMapper;
+import com.example.be.mapper.diagnostic.DiagnosticReviewMapper;
 import com.example.be.mapper.diagnostic.DiagnosticRoomMapper;
 import com.example.be.repository.ability.UserAbilityRepository;
 import com.example.be.repository.content.LearningPathRepository;
@@ -97,6 +99,8 @@ class DiagnosticScoringServiceImplTest {
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
     @Spy private DiagnosticRoomMapper diagnosticRoomMapper = new DiagnosticRoomMapper(new ObjectMapper());
     @Spy private DiagnosticResultMapper diagnosticResultMapper = new DiagnosticResultMapper();
+    @Spy private DiagnosticReviewMapper diagnosticReviewMapper =
+            new DiagnosticReviewMapper(diagnosticRoomMapper, new ObjectMapper());
 
     @InjectMocks
     private DiagnosticScoringServiceImpl service;
@@ -611,6 +615,61 @@ class DiagnosticScoringServiceImplTest {
         assertThat(detail.getAttemptId()).isEqualTo(200L);
         assertThat(detail.getPredictedScore()).isEqualTo(990);
         assertThat(detail.getTargetScore()).isEqualTo(650);
+    }
+
+    @Test
+    void getReviewData_notOwner_throwsForbidden() {
+        when(diagnosticAttemptRepo.findByIdWithContext(200L)).thenReturn(Optional.of(attempt));
+
+        assertThatThrownBy(() -> service.getReviewData(999L, 200L))
+                .isInstanceOf(BaseException.class)
+                .extracting(e -> ((BaseException) e).getErrorCode())
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    void getReviewData_inProgressAttempt_throwsDiagnosticNotCompleted() {
+        when(diagnosticAttemptRepo.findByIdWithContext(200L)).thenReturn(Optional.of(attempt));
+
+        assertThatThrownBy(() -> service.getReviewData(1L, 200L))
+                .isInstanceOf(BaseException.class)
+                .extracting(e -> ((BaseException) e).getErrorCode())
+                .isEqualTo(ErrorCode.DIAGNOSTIC_NOT_COMPLETED);
+    }
+
+    @Test
+    void getReviewData_submittedAttempt_returnsQuestionsWithAnswersAndExplanation() {
+        attempt.setStatus(EAttemptStatus.SUBMITTED);
+        attempt.setCompletedAt(LocalDateTime.now());
+        question.setQuestionData("{\"text\":\"Question 1\",\"options\":[{\"key\":\"A\",\"text\":\"Opt A\"},{\"key\":\"B\",\"text\":\"Opt B\"}]}");
+        question.setExplanation("{\"clue\":\"Clue text\",\"analysis\":\"Analysis text\"}");
+
+        DiagnosticTestQuestion link = new DiagnosticTestQuestion();
+        link.setOrderNo(1);
+        link.setQuestion(question);
+
+        DiagnosticAnswer ans = new DiagnosticAnswer();
+        ans.setQuestion(question);
+        ans.setUserAnswer("{\"selected\":\"B\"}");
+        ans.setIsCorrect(false);
+        ans.setIsFlagged(true);
+
+        when(diagnosticAttemptRepo.findByIdWithContext(200L)).thenReturn(Optional.of(attempt));
+        when(diagnosticTestQuestionRepo.findAllByDiagnosticTestIdOrderByOrderNoAsc(100L)).thenReturn(List.of(link));
+        when(questionRepo.findAllWithMediasAndParentByIdIn(List.of(1L))).thenReturn(List.of(question));
+        when(diagnosticAnswerRepo.findByDiagnosticAttemptIdWithQuestion(200L)).thenReturn(List.of(ans));
+
+        DiagnosticReviewResponse review = service.getReviewData(1L, 200L);
+
+        assertThat(review.getAttemptId()).isEqualTo(200L);
+        assertThat(review.getTotalQuestions()).isEqualTo(1);
+        assertThat(review.getCorrectCount()).isEqualTo(0);
+        assertThat(review.getQuestions()).hasSize(1);
+        assertThat(review.getQuestions().get(0).getUserAnswer()).isEqualTo("B");
+        assertThat(review.getQuestions().get(0).getCorrectAnswer()).isEqualTo("A");
+        assertThat(review.getQuestions().get(0).getIsCorrect()).isFalse();
+        assertThat(review.getQuestions().get(0).getIsFlagged()).isTrue();
+        assertThat(review.getQuestions().get(0).getExplanation().getClue()).isEqualTo("Clue text");
     }
 
     // =========================================================================

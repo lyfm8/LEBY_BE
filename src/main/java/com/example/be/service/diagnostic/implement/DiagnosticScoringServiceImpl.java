@@ -5,6 +5,7 @@ import com.example.be.dto.request.diagnostic.SubmitDiagnosticRequest;
 import com.example.be.dto.request.diagnostic.SyncDiagnosticTimerRequest;
 import com.example.be.dto.response.diagnostic.DiagnosticResultDetailResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticResultResponse;
+import com.example.be.dto.response.diagnostic.DiagnosticReviewResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticRoomResponse;
 import com.example.be.dto.response.diagnostic.PartResultResponse;
 import com.example.be.dto.response.diagnostic.StartDiagnosticResponse;
@@ -30,6 +31,7 @@ import com.example.be.enums.diagnostic.ETestType;
 import com.example.be.exception.BaseException;
 import com.example.be.exception.ErrorCode;
 import com.example.be.mapper.diagnostic.DiagnosticResultMapper;
+import com.example.be.mapper.diagnostic.DiagnosticReviewMapper;
 import com.example.be.mapper.diagnostic.DiagnosticRoomMapper;
 import com.example.be.repository.ability.UserAbilityRepository;
 import com.example.be.repository.content.LearningPathRepository;
@@ -50,8 +52,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -107,8 +107,8 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
     private final LearningPathRepository learningPathRepo;
     private final DiagnosticRoomMapper diagnosticRoomMapper;
     private final DiagnosticResultMapper diagnosticResultMapper;
+    private final DiagnosticReviewMapper diagnosticReviewMapper;
     private final AdaptivePathGeneratorService adaptivePathGeneratorService;
-    private final ObjectMapper objectMapper;
 
     // =========================================================================
     // PUBLIC API
@@ -357,19 +357,11 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
     @Transactional(readOnly = true)
     public DiagnosticResultDetailResponse getResultDetail(Long userId, Long attemptId) {
         // Bước 1: Nạp lượt thi và kiểm tra quyền sở hữu (chống IDOR) + điều kiện đã nộp bài (UC07 Luồng 1b)
-        DiagnosticAttempt attempt = diagnosticAttemptRepo.findByIdWithContext(attemptId)
-                .or(() -> diagnosticAttemptRepo.findById(attemptId))
-                .orElseThrow(() -> new BaseException(ErrorCode.DIAGNOSTIC_ATTEMPT_NOT_FOUND));
-
-        if (!attempt.getUser().getId().equals(userId)) {
-            throw new BaseException(ErrorCode.FORBIDDEN, "Bạn không có quyền xem báo cáo của lượt thi này");
-        }
-        if (attempt.getStatus() != EAttemptStatus.SUBMITTED) {
-            throw new BaseException(
-                    ErrorCode.DIAGNOSTIC_NOT_COMPLETED,
-                    "Bạn chưa có dữ liệu bài thi chẩn đoán. Vui lòng tham gia làm bài kiểm tra đầu vào trước"
-            );
-        }
+        DiagnosticAttempt attempt = loadCompletedAttemptWithOwnership(
+                userId,
+                attemptId,
+                "Bạn không có quyền xem báo cáo của lượt thi này"
+        );
 
         // Bước 2: Tải các dữ liệu liên quan theo từng query riêng biệt để tránh N+1 và tránh MultipleBagFetchException
         List<PartDiagnosticResult> partResults = partDiagnosticResultRepo.findByDiagnosticAttemptIdWithPart(attemptId);
@@ -411,6 +403,45 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
                         "Bạn chưa có dữ liệu bài thi chẩn đoán. Vui lòng tham gia làm bài kiểm tra đầu vào trước"
                 ));
         return getResultDetail(userId, latestSubmitted.getId());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public DiagnosticReviewResponse getReviewData(Long userId, Long attemptId) {
+        // Bước 1: Nạp lượt thi, kiểm tra quyền sở hữu (chống IDOR) và bảo đảm lượt thi đã hoàn thành
+        DiagnosticAttempt attempt = loadCompletedAttemptWithOwnership(
+                userId,
+                attemptId,
+                "Bạn không có quyền xem lại bài thi của lượt thi này"
+        );
+
+        // Bước 2: Tải danh sách câu hỏi theo đúng orderNo của đề kèm Media & câu hỏi cha (chống N+1)
+        DiagnosticTest test = attempt.getDiagnosticTest();
+        List<DiagnosticTestQuestion> orderedQuestions = loadOrderedTestQuestions(test);
+        Map<Long, Question> detailedQuestionMap = loadDetailedQuestionsForRoom(orderedQuestions);
+
+        // Bước 3: Tải toàn bộ câu trả lời đã lưu của lượt thi và lập Map theo questionId để tra cứu O(1)
+        Map<Long, DiagnosticAnswer> answerByQuestionId = diagnosticAnswerRepo
+                .findByDiagnosticAttemptIdWithQuestion(attemptId)
+                .stream()
+                .filter(ans -> ans.getQuestion() != null)
+                .collect(Collectors.toMap(
+                        ans -> ans.getQuestion().getId(),
+                        ans -> ans,
+                        (first, second) -> first
+                ));
+
+        // Bước 4: Ánh xạ sang DTO xem lại thông qua DiagnosticReviewMapper
+        return diagnosticReviewMapper.toReviewResponse(
+                test,
+                attempt,
+                orderedQuestions,
+                detailedQuestionMap,
+                answerByQuestionId
+        );
     }
 
     // =========================================================================
@@ -491,14 +522,42 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
                 && Objects.equals(pathsFromLegacyAttempt.get(0).getTargetProfile().getId(), targetProfileId);
     }
 
-    private DiagnosticRoomResponse buildDiagnosticRoomResponse(DiagnosticAttempt attempt) {
-        DiagnosticTest test = attempt.getDiagnosticTest();
+    private DiagnosticAttempt loadCompletedAttemptWithOwnership(
+            Long userId,
+            Long attemptId,
+            String forbiddenMessage
+    ) {
+        DiagnosticAttempt attempt = diagnosticAttemptRepo.findByIdWithContext(attemptId)
+                .or(() -> diagnosticAttemptRepo.findById(attemptId))
+                .orElseThrow(() -> new BaseException(ErrorCode.DIAGNOSTIC_ATTEMPT_NOT_FOUND));
+
+        if (!attempt.getUser().getId().equals(userId)) {
+            throw new BaseException(ErrorCode.FORBIDDEN, forbiddenMessage);
+        }
+        if (attempt.getStatus() != EAttemptStatus.SUBMITTED && attempt.getStatus() != EAttemptStatus.TIMED_OUT) {
+            throw new BaseException(
+                    ErrorCode.DIAGNOSTIC_NOT_COMPLETED,
+                    "Bạn chưa có dữ liệu bài thi chẩn đoán. Vui lòng tham gia làm bài kiểm tra đầu vào trước"
+            );
+        }
+        return attempt;
+    }
+
+    private List<DiagnosticTestQuestion> loadOrderedTestQuestions(DiagnosticTest test) {
+        if (test == null) {
+            return Collections.emptyList();
+        }
         List<DiagnosticTestQuestion> orderedQuestions = diagnosticTestQuestionRepo
                 .findAllByDiagnosticTestIdOrderByOrderNoAsc(test.getId());
-
         if (orderedQuestions.isEmpty() && test.getTestQuestions() != null && !test.getTestQuestions().isEmpty()) {
             orderedQuestions = test.getTestQuestions();
         }
+        return orderedQuestions;
+    }
+
+    private DiagnosticRoomResponse buildDiagnosticRoomResponse(DiagnosticAttempt attempt) {
+        DiagnosticTest test = attempt.getDiagnosticTest();
+        List<DiagnosticTestQuestion> orderedQuestions = loadOrderedTestQuestions(test);
 
         Map<Long, Question> detailedQuestionMap = loadDetailedQuestionsForRoom(orderedQuestions);
 
@@ -701,31 +760,7 @@ public class DiagnosticScoringServiceImpl implements DiagnosticScoringService {
     }
 
     private String extractAnswerKey(String jsonOrKey) {
-        String trimmed = jsonOrKey.trim();
-        if (trimmed.isEmpty()) {
-            return null;
-        }
-        if (!trimmed.startsWith("{")) {
-            return trimmed;
-        }
-        if (objectMapper != null) {
-            try {
-                JsonNode node = objectMapper.readTree(trimmed);
-                if (node != null) {
-                    if (node.has("key") && !node.get("key").isNull()) {
-                        String val = node.get("key").asText("").trim();
-                        if (!val.isEmpty()) return val;
-                    }
-                    if (node.has("selected") && !node.get("selected").isNull()) {
-                        String val = node.get("selected").asText("").trim();
-                        if (!val.isEmpty()) return val;
-                    }
-                }
-            } catch (Exception e) {
-                log.debug("Không thể parse JSON đáp án '{}': {}", trimmed, e.getMessage());
-            }
-        }
-        return null;
+        return diagnosticReviewMapper.extractAnswerKey(jsonOrKey);
     }
 
     /**

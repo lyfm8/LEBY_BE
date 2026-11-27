@@ -5,6 +5,7 @@ import com.example.be.dto.request.diagnostic.SubmitDiagnosticRequest;
 import com.example.be.dto.request.diagnostic.SyncDiagnosticTimerRequest;
 import com.example.be.dto.response.diagnostic.DiagnosticResultDetailResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticResultResponse;
+import com.example.be.dto.response.diagnostic.DiagnosticReviewResponse;
 import com.example.be.dto.response.diagnostic.DiagnosticRoomResponse;
 import com.example.be.dto.response.diagnostic.StartDiagnosticResponse;
 
@@ -81,4 +82,14 @@ public interface DiagnosticScoringService {
      * @return {@link DiagnosticResultDetailResponse} của lần thi đã nộp gần nhất
      */
     DiagnosticResultDetailResponse getLatestResultDetail(Long userId);
+
+    /**
+     * Tải toàn bộ câu hỏi, đáp án học viên đã chọn, đáp án đúng và lời giải chi tiết
+     * phục vụ chế độ Xem lại bài thi chẩn đoán (UC07 - BR14).
+     *
+     * @param userId    ID học viên đang đăng nhập (chống IDOR)
+     * @param attemptId ID lượt thi chẩn đoán đã hoàn thành
+     * @return {@link DiagnosticReviewResponse} đầy đủ dữ liệu phòng xem lại
+     */
+    DiagnosticReviewResponse getReviewData(Long userId, Long attemptId);
 }
