@@ -47,4 +47,14 @@ public interface ModuleRepository extends JpaRepository<Module, Long> {
      */
     @Query("SELECT MAX(m.sequence) FROM Module m")
     Optional<Integer> findMaxSequence();
+
+    /**
+     * Nạp chi tiết Module kèm Part và danh sách Ability trong 1 truy vấn duy nhất (UC13 - UC14).
+     */
+    @Query("SELECT DISTINCT m FROM Module m " +
+           "LEFT JOIN FETCH m.part p " +
+           "LEFT JOIN FETCH m.moduleAbilities ma " +
+           "LEFT JOIN FETCH ma.ability a " +
+           "WHERE m.id = :moduleId")
+    Optional<Module> findByIdWithPartAndAbilities(@Param("moduleId") Long moduleId);
 }

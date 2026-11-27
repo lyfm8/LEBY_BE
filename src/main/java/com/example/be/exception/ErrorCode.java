@@ -370,6 +370,60 @@ public enum ErrorCode {
     ),
 
     /**
+     * HTTP 400 - Bài thi vượt ải chưa được cấu hình đủ câu hỏi (UC13 Ngoại lệ 3a).
+     */
+    MODULE_TEST_NOT_CONFIGURED(
+            HttpStatus.BAD_REQUEST,
+            "MODULE_TEST_NOT_CONFIGURED",
+            "Bài thi vượt ải của mô-đun đang trong quá trình chuẩn bị. Vui lòng quay lại sau"
+    ),
+
+    /**
+     * HTTP 422 - Học viên chưa hoàn thành tỷ lệ bài giảng tối thiểu để mở khóa bài thi vượt ải (UC13 Ngoại lệ 2a / BR03).
+     */
+    MODULE_TEST_PREREQUISITE_NOT_MET(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            "MODULE_TEST_PREREQUISITE_NOT_MET",
+            "Bạn chưa đủ điều kiện thi vượt ải. Bạn cần hoàn thành thêm bài giảng video để mở khóa bài thi"
+    ),
+
+    /**
+     * HTTP 404 - Không tìm thấy lượt làm bài thi vượt ải.
+     */
+    MODULE_TEST_ATTEMPT_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "MODULE_TEST_ATTEMPT_NOT_FOUND",
+            "Không tìm thấy lượt làm bài thi vượt ải"
+    ),
+
+    /**
+     * HTTP 409 - Lượt thi vượt ải đã được nộp hoặc hết hạn, không thể thao tác thêm.
+     */
+    MODULE_TEST_ALREADY_SUBMITTED(
+            HttpStatus.CONFLICT,
+            "MODULE_TEST_ALREADY_SUBMITTED",
+            "Lượt thi vượt ải này đã được nộp hoặc đã hết hạn"
+    ),
+
+    /**
+     * HTTP 404 - Không tìm thấy bài tập thực hành trong mô-đun.
+     */
+    PRACTICE_LESSON_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "PRACTICE_LESSON_NOT_FOUND",
+            "Không tìm thấy bài tập thực hành trong mô-đun"
+    ),
+
+    /**
+     * HTTP 400 - Bài học yêu cầu không phải loại bài tập thực hành (PRACTICE).
+     */
+    INVALID_LESSON_TYPE(
+            HttpStatus.BAD_REQUEST,
+            "INVALID_LESSON_TYPE",
+            "Bài học này không phải là bài tập thực hành"
+    ),
+
+    /**
      * HTTP 500 - Gửi email thông báo cho người dùng thất bại.
      */
     MAIL_SEND_FAILED(

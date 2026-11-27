@@ -1,6 +1,7 @@
 package com.example.be.repository.content;
 
 import com.example.be.entity.content.ModuleTestAttempt;
+import com.example.be.enums.diagnostic.EAttemptStatus;
 import com.example.be.enums.diagnostic.ETestResult;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository thao tác với bảng lượt thi vượt ải module (module_test_attempts).
@@ -87,4 +89,28 @@ public interface ModuleTestAttemptRepository extends JpaRepository<ModuleTestAtt
      * @return Danh sách các lượt thi đã nộp sắp xếp giảm dần theo thời điểm nộp bài
      */
     List<ModuleTestAttempt> findByUserIdAndModuleIdAndIsSubmittedTrueOrderBySubmittedAtDesc(Long userId, Long moduleId);
+
+    /**
+     * Tìm phiên thi vượt ải đang diễn ra gần nhất của học viên trên một mô-đun (UC13 Luồng 7a).
+     */
+    Optional<ModuleTestAttempt> findTopByUserIdAndModuleIdAndStatusOrderByStartedAtDesc(
+            Long userId,
+            Long moduleId,
+            EAttemptStatus status
+    );
+
+    /**
+     * Nạp chi tiết lượt thi vượt ải kèm Module, Part và User trong 1 query để kiểm tra IDOR & render phòng thi.
+     */
+    @Query("SELECT a FROM ModuleTestAttempt a " +
+           "JOIN FETCH a.module m " +
+           "LEFT JOIN FETCH m.part p " +
+           "JOIN FETCH a.user u " +
+           "WHERE a.id = :attemptId")
+    Optional<ModuleTestAttempt> findByIdWithModuleAndUser(@Param("attemptId") Long attemptId);
+
+    /**
+     * Kiểm tra học viên có lượt thi vượt ải đang ở trạng thái IN_PROGRESS hay không.
+     */
+    boolean existsByUserIdAndStatus(Long userId, EAttemptStatus status);
 }
