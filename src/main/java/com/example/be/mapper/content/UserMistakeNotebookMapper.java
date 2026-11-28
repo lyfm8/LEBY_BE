@@ -24,7 +24,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserMistakeNotebookMapper {
 
-    private static final String LABEL_DIAGNOSTIC = "Bài thi chẩn đoán";
     private static final String LABEL_MODULE_TEST = "Bài thi vượt ải";
     private static final String LABEL_FULL_MOCK_TEST = "Bài thi thử TOEIC";
 
@@ -172,10 +171,9 @@ public class UserMistakeNotebookMapper {
      */
     public String resolveSourceTypeDisplayLabel(EMistakeSourceType sourceType) {
         if (sourceType == null) {
-            return LABEL_DIAGNOSTIC;
+            return LABEL_MODULE_TEST;
         }
         return switch (sourceType) {
-            case DIAGNOSTIC -> LABEL_DIAGNOSTIC;
             case MODULE_TEST -> LABEL_MODULE_TEST;
             case FULL_MOCK_TEST -> LABEL_FULL_MOCK_TEST;
         };

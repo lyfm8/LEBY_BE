@@ -86,7 +86,7 @@ class UserPracticeServiceImplTest {
         pq.setQuestion(q1);
 
         when(lessonRepository.findByIdWithModulePartAndAbility(3L)).thenReturn(Optional.of(lesson));
-        when(userExamAccessHelper.requireUnlockedPathItem(7L, 1L)).thenReturn(pathItem);
+        when(userExamAccessHelper.requireAccessibleModuleForStudy(7L, lesson.getModule())).thenReturn(pathItem);
         when(practiceQuestionRepository.findAllWithQuestionAndPartByLessonId(3L)).thenReturn(List.of(pq));
         when(questionBatchLoader.loadDetailedQuestionsMap(List.of(10L))).thenReturn(Map.of(10L, q1));
 
@@ -105,7 +105,7 @@ class UserPracticeServiceImplTest {
     void getPracticeRoom_emptyQuestions_returnsEmptyRoomFlag() {
         Lesson lesson = buildPracticeLesson(3L, 1L, ELessonType.PRACTICE, EModuleStatus.PUBLISHED);
         when(lessonRepository.findByIdWithModulePartAndAbility(3L)).thenReturn(Optional.of(lesson));
-        when(userExamAccessHelper.requireUnlockedPathItem(7L, 1L)).thenReturn(new LearningPathItem());
+        when(userExamAccessHelper.requireAccessibleModuleForStudy(7L, lesson.getModule())).thenReturn(new LearningPathItem());
         when(practiceQuestionRepository.findAllWithQuestionAndPartByLessonId(3L)).thenReturn(Collections.emptyList());
 
         PracticeRoomResponse room = service.getPracticeRoom(7L, 3L);
@@ -128,12 +128,27 @@ class UserPracticeServiceImplTest {
     void getPracticeRoom_lockedModule_propagatesContentLocked() {
         Lesson lesson = buildPracticeLesson(3L, 2L, ELessonType.PRACTICE, EModuleStatus.PUBLISHED);
         when(lessonRepository.findByIdWithModulePartAndAbility(3L)).thenReturn(Optional.of(lesson));
-        when(userExamAccessHelper.requireUnlockedPathItem(7L, 2L))
+        when(userExamAccessHelper.requireAccessibleModuleForStudy(7L, lesson.getModule()))
                 .thenThrow(new BaseException(ErrorCode.CONTENT_LOCKED));
 
         assertThatThrownBy(() -> service.getPracticeRoom(7L, 3L))
                 .isInstanceOf(BaseException.class)
                 .satisfies(ex -> assertThat(((BaseException) ex).getErrorCode()).isEqualTo(ErrorCode.CONTENT_LOCKED));
+    }
+
+    @Test
+    void getPracticeRoom_freeStudyPublishedModule_allowsAccessWhenPathItemIsNull() {
+        Lesson lesson = buildPracticeLesson(4L, 9L, ELessonType.PRACTICE, EModuleStatus.PUBLISHED);
+        lesson.getModule().setStatus(EModuleStatus.PUBLISHED);
+        when(lessonRepository.findByIdWithModulePartAndAbility(4L)).thenReturn(Optional.of(lesson));
+        when(userExamAccessHelper.requireAccessibleModuleForStudy(7L, lesson.getModule())).thenReturn(null);
+        when(practiceQuestionRepository.findAllWithQuestionAndPartByLessonId(4L)).thenReturn(Collections.emptyList());
+
+        PracticeRoomResponse room = service.getPracticeRoom(7L, 4L);
+
+        assertThat(room.getLessonId()).isEqualTo(4L);
+        assertThat(room.getModuleId()).isEqualTo(9L);
+        assertThat(room.getIsEmpty()).isTrue();
     }
 
     private Lesson buildPracticeLesson(Long lessonId, Long moduleId, ELessonType type, EModuleStatus status) {

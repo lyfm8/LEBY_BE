@@ -132,10 +132,12 @@ public class UserLessonServiceImpl implements UserLessonService {
         for (int i = 0; i < modulePublishedLessons.size(); i++) {
             Lesson itemLesson = modulePublishedLessons.get(i);
             LessonProgress itemProgress = progressByLessonId.get(itemLesson.getId());
-            boolean itemCompleted = inheritedCompleted
+            boolean isVideoLesson = itemLesson.getLessonType() == ELessonType.VIDEO;
+            boolean itemInheritedCompleted = isVideoLesson && inheritedCompleted;
+            boolean itemCompleted = itemInheritedCompleted
                     || (itemProgress != null && Boolean.TRUE.equals(itemProgress.getIsCompleted()));
 
-            if (itemLesson.getLessonType() == ELessonType.VIDEO) {
+            if (isVideoLesson) {
                 totalVideoLessons++;
                 if (itemCompleted) {
                     completedVideoLessons++;
@@ -151,7 +153,7 @@ public class UserLessonServiceImpl implements UserLessonService {
                 }
             }
 
-            navItems.add(userLessonMapper.toNavItemResponse(itemLesson, itemProgress, inheritedCompleted));
+            navItems.add(userLessonMapper.toNavItemResponse(itemLesson, itemProgress, itemInheritedCompleted));
         }
 
         // Bước 5: Tính trạng thái mở khóa bài thi vượt ải theo BR03 (chỉ áp dụng cho mô-đun thuộc lộ trình)

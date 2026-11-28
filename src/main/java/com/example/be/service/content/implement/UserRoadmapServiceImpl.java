@@ -195,8 +195,10 @@ public class UserRoadmapServiceImpl implements UserRoadmapService {
         List<UserModuleLessonResponse> lessonResponses = new ArrayList<>(publishedLessons.size());
         for (Lesson lesson : publishedLessons) {
             boolean isVideo = lesson.getLessonType() == ELessonType.VIDEO;
-            // Một bài học được xem là hoàn thành nếu đã đạt chuẩn trong lesson_progress hoặc được bảo lưu 100% theo BR06
-            boolean isCompleted = allLessonsInheritedOrDone || completedLessonIds.contains(lesson.getId());
+            // Chỉ áp dụng cờ bảo lưu 100% / COMPLETED cho bài giảng VIDEO; không đánh dấu hoàn thành giả cho bài PRACTICE
+            boolean isCompleted = isVideo
+                    ? (allLessonsInheritedOrDone || completedLessonIds.contains(lesson.getId()))
+                    : completedLessonIds.contains(lesson.getId());
 
             if (isVideo) {
                 totalVideoLessons++;

@@ -23,6 +23,7 @@ import com.example.be.entity.user.User;
 import com.example.be.enums.content.EDashboardState;
 import com.example.be.enums.content.ELearningPathStatus;
 import com.example.be.enums.content.ELessonStatus;
+import com.example.be.enums.content.ELessonType;
 import com.example.be.enums.content.EModuleStatus;
 import com.example.be.enums.ability.ESection;
 import com.example.be.enums.diagnostic.EAttemptStatus;
@@ -542,7 +543,8 @@ public class UserDashboardServiceImpl implements UserDashboardService {
 
         for (Lesson lesson : publishedLessons) {
             LessonProgress progress = progressByLessonId.get(lesson.getId());
-            boolean isCompleted = isModuleInheritedComplete
+            boolean isVideo = lesson.getLessonType() == ELessonType.VIDEO;
+            boolean isCompleted = (isVideo && isModuleInheritedComplete)
                     || (progress != null && Boolean.TRUE.equals(progress.getIsCompleted()));
             if (isCompleted) {
                 completedCount++;
@@ -573,7 +575,8 @@ public class UserDashboardServiceImpl implements UserDashboardService {
         List<UserDashboardLessonItemDto> upcomingLessonDtos = displayLessons.stream()
                 .map(lesson -> {
                     LessonProgress progress = progressByLessonId.get(lesson.getId());
-                    boolean isCompleted = isModuleInheritedComplete
+                    boolean isVideo = lesson.getLessonType() == ELessonType.VIDEO;
+                    boolean isCompleted = (isVideo && isModuleInheritedComplete)
                             || (progress != null && Boolean.TRUE.equals(progress.getIsCompleted()));
                     int questionCount = questionCountByLessonId.getOrDefault(lesson.getId(), 0);
                     boolean isNextRecommended = Objects.equals(lesson.getId(), continueLessonId);
@@ -619,7 +622,9 @@ public class UserDashboardServiceImpl implements UserDashboardService {
         List<Lesson> completed = new ArrayList<>();
         for (Lesson lesson : publishedLessons) {
             LessonProgress lp = progressByLessonId.get(lesson.getId());
-            boolean done = isModuleInheritedComplete || (lp != null && Boolean.TRUE.equals(lp.getIsCompleted()));
+            boolean isVideo = lesson.getLessonType() == ELessonType.VIDEO;
+            boolean done = (isVideo && isModuleInheritedComplete)
+                    || (lp != null && Boolean.TRUE.equals(lp.getIsCompleted()));
             if (done) {
                 completed.add(lesson);
             } else {

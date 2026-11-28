@@ -16,14 +16,19 @@ import com.example.be.dto.response.content.MistakeRetrySubmitResponse.QuestionRe
 import com.example.be.entity.ability.Ability;
 import com.example.be.entity.question.Question;
 import com.example.be.entity.question.QuestionAbility;
+import com.example.be.entity.setting.ToeicScoreConversion;
+import com.example.be.enums.ability.ESection;
 import com.example.be.enums.content.EMistakeSourceType;
 import com.example.be.enums.diagnostic.EAttemptStatus;
+import com.example.be.enums.diagnostic.EExamTag;
 import com.example.be.enums.diagnostic.ETestType;
 import com.example.be.exception.BaseException;
 import com.example.be.exception.ErrorCode;
 import com.example.be.mapper.content.UserMistakeNotebookMapper;
+import com.example.be.mapper.mockexam.MockExamReportMapper;
 import com.example.be.repository.content.UserMistakeQueryRepository;
 import com.example.be.repository.question.QuestionAbilityRepository;
+import com.example.be.repository.setting.ToeicScoreConversionRepository;
 import com.example.be.service.content.service.UserMistakeNotebookService;
 import com.example.be.service.exam.util.QuestionBatchLoader;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +43,7 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -49,7 +55,8 @@ import java.util.stream.Collectors;
 /**
  * Triển khai nghiệp vụ Sổ tay câu hỏi làm sai và phiên làm lại trực tiếp (UC15).
  * Gom lỗi sai từ lịch sử bài thi chẩn đoán, bài thi vượt ải mô-đun và bài thi thử TOEIC
- * theo cơ chế chỉ đọc (0 bảng DB thừa, 0 N+1 Query nhờ tái sử dụng {@link QuestionBatchLoader}).
+ * theo cơ chế chỉ đọc (0 bảng DB thừa, 0 N+1 Query nhờ tái sử dụng {@link QuestionBatchLoader}),
+ * đồng thời áp dụng chặt quy tắc khóa đáp án với bài đầu ra OUTPUT chưa đạt AIM và bài chẩn đoán chưa mở review.
  */
 @Slf4j
 @Service
@@ -60,6 +67,7 @@ public class UserMistakeNotebookServiceImpl implements UserMistakeNotebookServic
             EAttemptStatus.SUBMITTED,
             EAttemptStatus.TIMED_OUT
     );
+    private static final int LISTENING_PART_MAX = 4;
     private static final int DEFAULT_PAGE_SIZE = 10;
     private static final int MAX_PAGE_SIZE = 50;
     private static final int DEFAULT_RETRY_LIMIT = 20;
@@ -68,7 +76,9 @@ public class UserMistakeNotebookServiceImpl implements UserMistakeNotebookServic
 
     private final UserMistakeQueryRepository userMistakeQueryRepository;
     private final QuestionAbilityRepository questionAbilityRepository;
+    private final ToeicScoreConversionRepository toeicScoreConversionRepository;
     private final QuestionBatchLoader questionBatchLoader;
+    private final MockExamReportMapper mockExamReportMapper;
     private final UserMistakeNotebookMapper userMistakeNotebookMapper;
 
     /**
@@ -89,7 +99,7 @@ public class UserMistakeNotebookServiceImpl implements UserMistakeNotebookServic
         int safePage = Math.max(0, page);
         int safeSize = Math.min(Math.max(1, size > 0 ? size : DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
 
-        // Bước 1: Gom và khử trùng lặp toàn bộ câu làm sai từ bài thi chẩn đoán, vượt ải và thi thử
+        // Bước 1: Gom và khử trùng lặp toàn bộ câu làm sai từ Bài thi vượt ải & Bài thi thử TOEIC
         List<AggregatedMistake> allMistakes = loadAndAggregateUserMistakes(userId);
         if (allMistakes.isEmpty()) {
             // Trả sớm khi sổ tay rỗng (UC15 Luồng 5b), không bắn thêm truy vấn thừa
@@ -315,28 +325,69 @@ public class UserMistakeNotebookServiceImpl implements UserMistakeNotebookServic
     // =========================================================================
 
     /**
-     * Gom và khử trùng lặp toàn bộ câu hỏi sai của học viên từ Diagnostic/MockTest và ModuleTest.
-     * Sắp xếp theo thời điểm sai gần nhất giảm dần, sau đó theo số lần sai giảm dần.
+     * Gom và khử trùng lặp toàn bộ câu hỏi sai của học viên từ đúng 2 nguồn học tập & khảo thí:
+     * 1) Bài thi thử TOEIC (FULL_MOCK_TEST) — đề PRACTICE luôn mở; đề đầu ra OUTPUT chỉ mở khi đạt mục tiêu AIM.
+     * 2) Bài thi vượt ải mô-đun (MODULE_TEST).
+     * Tuyệt đối không đưa câu hỏi từ bài thi chẩn đoán đầu vào (DIAGNOSTIC) vào Sổ tay câu sai.
      */
     private List<AggregatedMistake> loadAndAggregateUserMistakes(Long userId) {
         Map<Long, MutableMistakeAccumulator> accByQuestionId = new LinkedHashMap<>();
 
-        // Nguồn 1: Lỗi sai từ bài thi chẩn đoán & bài thi thử TOEIC 200 câu đã nộp
-        List<Object[]> diagnosticRows = userMistakeQueryRepository.findWrongDiagnosticAnswersByUserId(
+        // Nguồn 1: Lỗi sai từ bài thi thử TOEIC 200 câu đã nộp (chỉ truy vấn FULL_MOCK_TEST)
+        List<Object[]> mockExamRows = userMistakeQueryRepository.findWrongMockExamAnswersByUserId(
                 userId,
+                ETestType.FULL_MOCK_TEST,
                 COMPLETED_ATTEMPT_STATUSES
         );
-        for (Object[] row : diagnosticRows) {
-            Long questionId = toLong(row[0]);
-            if (questionId == null) {
-                continue;
-            }
-            String userAnswer = userMistakeNotebookMapper.extractAnswerKey(toStringOrNull(row[1]));
-            EMistakeSourceType sourceType = resolveDiagnosticSourceType(row[2]);
-            String sourceLabel = toStringOrNull(row[3]);
-            LocalDateTime answeredAt = toLocalDateTime(row[5]);
 
-            mergeMistakeOccurrence(accByQuestionId, questionId, sourceType, sourceLabel, userAnswer, answeredAt);
+        // Gom các lượt thi đầu ra (OUTPUT) để kiểm tra điều kiện mở khóa theo điểm AIM trong đúng 1 câu SQL
+        Map<Long, Integer> outputAttemptTargetScores = new HashMap<>();
+        if (mockExamRows != null) {
+            for (Object[] row : mockExamRows) {
+                if (row == null || row.length < 7) {
+                    continue;
+                }
+                Long attemptId = toLong(row[3]);
+                EExamTag examTag = row[5] instanceof EExamTag tag ? tag : null;
+                if (examTag == EExamTag.OUTPUT && attemptId != null) {
+                    Integer targetScore = row[6] instanceof Number num ? num.intValue() : null;
+                    outputAttemptTargetScores.putIfAbsent(attemptId, targetScore);
+                }
+            }
+        }
+        Set<Long> unlockedOutputAttemptIds = resolveUnlockedOutputAttemptIds(outputAttemptTargetScores);
+
+        if (mockExamRows != null) {
+            for (Object[] row : mockExamRows) {
+                if (row == null || row.length < 5) {
+                    continue;
+                }
+                Long questionId = toLong(row[0]);
+                if (questionId == null) {
+                    continue;
+                }
+
+                Long attemptId = toLong(row[3]);
+                EExamTag examTag = row.length > 5 && row[5] instanceof EExamTag tag ? tag : null;
+
+                // Chốt chặn bảo mật: bỏ qua câu sai của bài thi đầu ra (OUTPUT) chưa đạt mục tiêu AIM
+                if (examTag == EExamTag.OUTPUT && (attemptId == null || !unlockedOutputAttemptIds.contains(attemptId))) {
+                    continue;
+                }
+
+                String userAnswer = userMistakeNotebookMapper.extractAnswerKey(toStringOrNull(row[1]));
+                String sourceLabel = toStringOrNull(row[2]);
+                LocalDateTime answeredAt = toLocalDateTime(row[4]);
+
+                mergeMistakeOccurrence(
+                        accByQuestionId,
+                        questionId,
+                        EMistakeSourceType.FULL_MOCK_TEST,
+                        sourceLabel,
+                        userAnswer,
+                        answeredAt
+                );
+            }
         }
 
         // Nguồn 2: Lỗi sai từ bài thi vượt ải mô-đun đã nộp (lấy trực tiếp a.question.id theo schema V6)
@@ -344,26 +395,28 @@ public class UserMistakeNotebookServiceImpl implements UserMistakeNotebookServic
                 userId,
                 COMPLETED_ATTEMPT_STATUSES
         );
-        for (Object[] row : moduleTestRows) {
-            Long questionId = toLong(row[0]);
-            if (questionId == null) {
-                continue;
-            }
-            String userAnswer = userMistakeNotebookMapper.extractAnswerKey(toStringOrNull(row[1]));
-            String moduleTitle = toStringOrNull(row[2]);
-            String sourceLabel = moduleTitle != null && !moduleTitle.isBlank()
-                    ? "Thi vượt ải: " + moduleTitle.trim()
-                    : null;
-            LocalDateTime answeredAt = toLocalDateTime(row[4]);
+        if (moduleTestRows != null) {
+            for (Object[] row : moduleTestRows) {
+                Long questionId = toLong(row[0]);
+                if (questionId == null) {
+                    continue;
+                }
+                String userAnswer = userMistakeNotebookMapper.extractAnswerKey(toStringOrNull(row[1]));
+                String moduleTitle = toStringOrNull(row[2]);
+                String sourceLabel = moduleTitle != null && !moduleTitle.isBlank()
+                        ? "Thi vượt ải: " + moduleTitle.trim()
+                        : null;
+                LocalDateTime answeredAt = toLocalDateTime(row[4]);
 
-            mergeMistakeOccurrence(
-                    accByQuestionId,
-                    questionId,
-                    EMistakeSourceType.MODULE_TEST,
-                    sourceLabel,
-                    userAnswer,
-                    answeredAt
-            );
+                mergeMistakeOccurrence(
+                        accByQuestionId,
+                        questionId,
+                        EMistakeSourceType.MODULE_TEST,
+                        sourceLabel,
+                        userAnswer,
+                        answeredAt
+                );
+            }
         }
 
         // Sắp xếp ổn định: câu vừa làm sai gần nhất lên đầu, cùng thời điểm thì ưu tiên câu sai nhiều lần hơn
@@ -374,6 +427,109 @@ public class UserMistakeNotebookServiceImpl implements UserMistakeNotebookServic
                         .thenComparing(AggregatedMistake::wrongCount, Comparator.reverseOrder())
                         .thenComparing(AggregatedMistake::questionId))
                 .toList();
+    }
+
+    /**
+     * Xác định tập hợp các lượt thi đầu ra (OUTPUT) đã đạt mục tiêu AIM (mở khóa xem đáp án)
+     * bằng đúng 1 câu truy vấn tổng hợp theo Part + bảng quy đổi ETS 990 (0 N+1).
+     */
+    private Set<Long> resolveUnlockedOutputAttemptIds(Map<Long, Integer> outputAttemptTargetScores) {
+        if (outputAttemptTargetScores.isEmpty()) {
+            return Collections.emptySet();
+        }
+
+        List<Object[]> statRows = userMistakeQueryRepository.countOutputAttemptPartStatsByAttemptIds(
+                outputAttemptTargetScores.keySet()
+        );
+        Map<Long, OutputAttemptSectionCounter> counterByAttemptId = new HashMap<>();
+        if (statRows != null) {
+            for (Object[] row : statRows) {
+                if (row == null || row.length < 6) {
+                    continue;
+                }
+                Long attemptId = toLong(row[0]);
+                Long partId = toLong(row[1]);
+                Object sectionObj = row[2];
+                String partName = toStringOrNull(row[3]);
+                int total = row[4] instanceof Number num ? num.intValue() : 0;
+                int correct = row[5] instanceof Number num ? num.intValue() : 0;
+                if (attemptId == null || total <= 0) {
+                    continue;
+                }
+                OutputAttemptSectionCounter counter = counterByAttemptId.computeIfAbsent(
+                        attemptId,
+                        ignored -> new OutputAttemptSectionCounter()
+                );
+                if (isListeningSection(sectionObj, partName, partId)) {
+                    counter.listeningTotal += total;
+                    counter.listeningCorrect += correct;
+                } else {
+                    counter.readingTotal += total;
+                    counter.readingCorrect += correct;
+                }
+            }
+        }
+
+        Map<Integer, ToeicScoreConversion> conversionMap = loadToeicScoreConversionMap();
+        Set<Long> unlockedIds = new HashSet<>();
+
+        for (Map.Entry<Long, Integer> entry : outputAttemptTargetScores.entrySet()) {
+            Long attemptId = entry.getKey();
+            Integer targetScore = entry.getValue();
+            OutputAttemptSectionCounter counter = counterByAttemptId.get(attemptId);
+            if (counter == null) {
+                continue;
+            }
+            int listeningScore = mockExamReportMapper.resolveSectionToeicScore(
+                    counter.listeningCorrect,
+                    counter.listeningTotal,
+                    true,
+                    conversionMap
+            );
+            int readingScore = mockExamReportMapper.resolveSectionToeicScore(
+                    counter.readingCorrect,
+                    counter.readingTotal,
+                    false,
+                    conversionMap
+            );
+            int totalToeicScore = listeningScore + readingScore;
+            if (MockExamReportMapper.isReviewUnlocked(EExamTag.OUTPUT, totalToeicScore, targetScore)) {
+                unlockedIds.add(attemptId);
+            }
+        }
+        return unlockedIds;
+    }
+
+    /**
+     * Phân loại kỹ năng Nghe (LISTENING) hay Đọc (READING) ưu tiên theo cột {@code parts.sections},
+     * dự phòng phân tích tên Part nếu dữ liệu section bị thiếu.
+     */
+    private boolean isListeningSection(Object sectionObj, String partName, Long partId) {
+        if (sectionObj instanceof ESection section) {
+            return section == ESection.LISTENING;
+        }
+        if (sectionObj != null) {
+            return "LISTENING".equalsIgnoreCase(sectionObj.toString());
+        }
+        if (partName != null && !partName.isBlank()) {
+            return partName.contains("1") || partName.contains("2")
+                    || partName.contains("3") || partName.contains("4");
+        }
+        return partId != null && partId <= LISTENING_PART_MAX;
+    }
+
+    private Map<Integer, ToeicScoreConversion> loadToeicScoreConversionMap() {
+        List<ToeicScoreConversion> rows = toeicScoreConversionRepository.findAll();
+        if (rows == null || rows.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return rows.stream()
+                .filter(row -> row != null && row.getCorrectCount() != null)
+                .collect(Collectors.toMap(
+                        ToeicScoreConversion::getCorrectCount,
+                        row -> row,
+                        (first, second) -> first
+                ));
     }
 
     /**
@@ -404,13 +560,6 @@ public class UserMistakeNotebookServiceImpl implements UserMistakeNotebookServic
             return;
         }
         acc.recordOccurrence(sourceType, sourceLabel, userAnswer, answeredAt);
-    }
-
-    private EMistakeSourceType resolveDiagnosticSourceType(Object rawTestType) {
-        if (rawTestType instanceof ETestType testType && testType == ETestType.FULL_MOCK_TEST) {
-            return EMistakeSourceType.FULL_MOCK_TEST;
-        }
-        return EMistakeSourceType.DIAGNOSTIC;
     }
 
     private Map<Long, QuestionMeta> loadQuestionMetaMap(List<Long> questionIds) {
@@ -617,6 +766,13 @@ public class UserMistakeNotebookServiceImpl implements UserMistakeNotebookServic
 
     private LocalDateTime toLocalDateTime(Object value) {
         return value instanceof LocalDateTime ldt ? ldt : null;
+    }
+
+    private static final class OutputAttemptSectionCounter {
+        private int listeningTotal;
+        private int listeningCorrect;
+        private int readingTotal;
+        private int readingCorrect;
     }
 
     private record QuestionMeta(Long questionId, Long partId, String partName, String questionName) {

@@ -120,6 +120,7 @@ public class AdminModuleTestServiceImpl implements AdminModuleTestService {
         EModuleTestSelectionMode selectionMode = request.getSelectionMode();
 
         // Bước 2: Xử lý theo phương thức chọn câu hỏi
+        int effectiveQuestionCount = request.getQuestionCount();
         if (selectionMode == EModuleTestSelectionMode.RANDOM_BY_ABILITY) {
             // Luồng thay thế 6a & Ngoại lệ 6c: Kho câu hỏi thuộc Ability của Module phải đủ số câu yêu cầu
             long availableCount = countAvailableAbilityQuestions(module, moduleAbilityIds);
@@ -130,19 +131,19 @@ public class AdminModuleTestServiceImpl implements AdminModuleTestService {
                 );
             }
         } else {
-            // Luồng chính (MANUAL): Kiểm tra, bóc tách chùm câu hỏi, cảnh báo 6b và Diff-update an toàn FK
-            syncManualQuestions(module, request, moduleAbilityIds);
+            // Luồng chính (MANUAL): Kiểm tra, bóc tách chùm câu hỏi, cảnh báo 6b và đồng bộ chính xác số câu thực tế
+            effectiveQuestionCount = syncManualQuestions(module, request, moduleAbilityIds);
         }
 
         // Bước 3: Cập nhật tham số cấu hình đề vượt ải trên Entity Module
         module.setTestDurationMinutes(request.getDurationMinutes());
-        module.setTestQuestionCount(request.getQuestionCount());
+        module.setTestQuestionCount(effectiveQuestionCount);
         module.setShuffleQuestions(Boolean.TRUE.equals(request.getShuffleQuestions()));
         module.setTestSelectionMode(selectionMode);
         moduleRepository.save(module);
 
         log.info("Đã cập nhật cấu hình bài thi vượt ải cho moduleId={} (mode={}, duration={}p, count={})",
-                moduleId, selectionMode, request.getDurationMinutes(), request.getQuestionCount());
+                moduleId, selectionMode, request.getDurationMinutes(), effectiveQuestionCount);
 
         return getModuleTestConfig(moduleId);
     }
@@ -167,10 +168,8 @@ public class AdminModuleTestServiceImpl implements AdminModuleTestService {
             );
         }
 
-        // Bước 3: Xáo trộn ngẫu nhiên và lấy đúng số lượng yêu cầu
-        List<Question> shuffled = new ArrayList<>(pool);
-        Collections.shuffle(shuffled);
-        List<Question> picked = shuffled.subList(0, request.getQuestionCount());
+        // Bước 3: Xáo trộn và bốc ngẫu nhiên theo cụm câu hỏi (giữ nguyên vẹn chùm Part 3, 4, 6, 7 không bị xé lẻ)
+        List<Question> picked = pickClusterAwareQuestions(pool, request.getQuestionCount());
 
         // Bước 4: Nạp batch thông tin Ability cho các câu hỏi vừa bốc để trả về DTO đầy đủ
         List<Long> pickedIds = picked.stream().map(Question::getId).collect(Collectors.toList());
@@ -247,8 +246,10 @@ public class AdminModuleTestServiceImpl implements AdminModuleTestService {
      * 1. Xác thực tồn tại và tự động bóc tách bản ghi cha của chùm (Part 3, 4, 6, 7) thành các câu con playable.
      * 2. Kiểm tra cảnh báo sư phạm nếu có câu hỏi lệch Ability của Module (Ngoại lệ 6b).
      * 3. Diff-update an toàn: bảo toàn ID câu không đổi và chặn gỡ câu đã có lịch sử trả lời trong module_test_answers.
+     *
+     * @return Tổng số câu hỏi thực tế sau khi bóc tách chùm và lưu xuống DB
      */
-    private void syncManualQuestions(
+    private int syncManualQuestions(
             Module module,
             SaveModuleTestConfigRequest request,
             Set<Long> moduleAbilityIds
@@ -369,6 +370,45 @@ public class AdminModuleTestServiceImpl implements AdminModuleTestService {
         }
 
         moduleTestQuestionRepository.saveAll(toSave);
+        return toSave.size();
+    }
+
+    /**
+     * Bốc ngẫu nhiên {@code targetCount} câu hỏi từ kho sao cho ưu tiên giữ trọn vẹn các cụm câu chùm (Part 3, 4, 6, 7)
+     * có cùng {@code parentId}, tránh xé lẻ đoạn văn/hội thoại.
+     */
+    private List<Question> pickClusterAwareQuestions(List<Question> pool, int targetCount) {
+        Map<String, List<Question>> clustersMap = new LinkedHashMap<>();
+        for (Question q : pool) {
+            String clusterKey = q.getParent() != null && q.getParent().getId() != null
+                    ? "P_" + q.getParent().getId()
+                    : "S_" + q.getId();
+            clustersMap.computeIfAbsent(clusterKey, k -> new ArrayList<>()).add(q);
+        }
+
+        List<List<Question>> clusters = new ArrayList<>(clustersMap.values());
+        Collections.shuffle(clusters);
+
+        List<Question> picked = new ArrayList<>(targetCount);
+        List<Question> leftover = new ArrayList<>();
+        for (List<Question> cluster : clusters) {
+            if (picked.size() + cluster.size() <= targetCount) {
+                picked.addAll(cluster);
+            } else {
+                leftover.addAll(cluster);
+            }
+            if (picked.size() == targetCount) {
+                break;
+            }
+        }
+
+        for (Question extra : leftover) {
+            if (picked.size() >= targetCount) {
+                break;
+            }
+            picked.add(extra);
+        }
+        return picked;
     }
 
     private List<ModuleTestQuestionItemResponse> buildQuestionItems(Long moduleId, Set<Long> moduleAbilityIds) {

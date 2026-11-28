@@ -34,6 +34,11 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserTargetServiceImpl implements UserTargetService {
 
+    private static final List<EAttemptStatus> COMPLETED_ATTEMPT_STATUSES = List.of(
+            EAttemptStatus.SUBMITTED,
+            EAttemptStatus.TIMED_OUT
+    );
+
     private final UserRepository userRepository;
     private final TargetProfileRepository targetProfileRepository;
     private final DiagnosticAttemptRepository diagnosticAttemptRepository;
@@ -97,12 +102,12 @@ public class UserTargetServiceImpl implements UserTargetService {
             );
         }
 
-        // Bước 4b: Đổi mục tiêu AIM -> chỉ tái sử dụng bài thi chẩn đoán đầu vào (DIAGNOSTIC) theo BR02, tránh lấy nhầm Mock Test
+        // Bước 4b: Đổi mục tiêu AIM -> tái sử dụng bài thi chẩn đoán đã nộp (bao gồm cả tự nộp hết giờ TIMED_OUT theo BR07)
         Optional<DiagnosticAttempt> latestAttemptOpt = diagnosticAttemptRepository
-                .findTopByUserIdAndDiagnosticTestTestTypeAndStatusOrderByCompletedAtDesc(
+                .findTopByUserIdAndDiagnosticTestTestTypeAndStatusInOrderByCompletedAtDesc(
                         userId,
                         ETestType.DIAGNOSTIC,
-                        EAttemptStatus.SUBMITTED
+                        COMPLETED_ATTEMPT_STATUSES
                 );
 
         if (latestAttemptOpt.isEmpty() || !hasValidPartResults(latestAttemptOpt.get())) {

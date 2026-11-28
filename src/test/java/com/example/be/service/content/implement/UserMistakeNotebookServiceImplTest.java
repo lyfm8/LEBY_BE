@@ -11,13 +11,16 @@ import com.example.be.entity.question.Question;
 import com.example.be.entity.question.QuestionAbility;
 import com.example.be.enums.ability.ESection;
 import com.example.be.enums.content.EMistakeSourceType;
+import com.example.be.enums.diagnostic.EExamTag;
 import com.example.be.enums.diagnostic.ETestType;
 import com.example.be.exception.BaseException;
 import com.example.be.exception.ErrorCode;
 import com.example.be.mapper.content.UserMistakeNotebookMapper;
+import com.example.be.mapper.mockexam.MockExamReportMapper;
 import com.example.be.mapper.question.ExamQuestionMapper;
 import com.example.be.repository.content.UserMistakeQueryRepository;
 import com.example.be.repository.question.QuestionAbilityRepository;
+import com.example.be.repository.setting.ToeicScoreConversionRepository;
 import com.example.be.service.exam.util.QuestionBatchLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +54,9 @@ class UserMistakeNotebookServiceImplTest {
     private QuestionAbilityRepository questionAbilityRepository;
 
     @Mock
+    private ToeicScoreConversionRepository toeicScoreConversionRepository;
+
+    @Mock
     private QuestionBatchLoader questionBatchLoader;
 
     private UserMistakeNotebookServiceImpl service;
@@ -58,18 +64,22 @@ class UserMistakeNotebookServiceImplTest {
     @BeforeEach
     void setUp() {
         ExamQuestionMapper examQuestionMapper = new ExamQuestionMapper(new ObjectMapper());
+        MockExamReportMapper mockExamReportMapper = new MockExamReportMapper(examQuestionMapper);
         UserMistakeNotebookMapper mapper = new UserMistakeNotebookMapper(examQuestionMapper);
         service = new UserMistakeNotebookServiceImpl(
                 userMistakeQueryRepository,
                 questionAbilityRepository,
+                toeicScoreConversionRepository,
                 questionBatchLoader,
+                mockExamReportMapper,
                 mapper
         );
     }
 
     @Test
     void getMistakeNotebook_whenUserHasNoWrongAnswers_returnsEmptyWithoutBatchQueries() {
-        when(userMistakeQueryRepository.findWrongDiagnosticAnswersByUserId(eq(USER_ID), anyCollection()))
+        when(userMistakeQueryRepository.findWrongMockExamAnswersByUserId(
+                eq(USER_ID), eq(ETestType.FULL_MOCK_TEST), anyCollection()))
                 .thenReturn(Collections.emptyList());
         when(userMistakeQueryRepository.findWrongModuleTestAnswersByUserId(eq(USER_ID), anyCollection()))
                 .thenReturn(Collections.emptyList());
@@ -83,15 +93,16 @@ class UserMistakeNotebookServiceImplTest {
     }
 
     @Test
-    void getMistakeNotebook_deduplicatesAcrossSourcesFiltersByPartAndKeepsLatestWrongAnswer() {
+    void getMistakeNotebook_deduplicatesAcrossMockExamAndModuleTestAndKeepsLatestWrongAnswer() {
         LocalDateTime olderTime = LocalDateTime.of(2026, 11, 20, 9, 0);
         LocalDateTime newerTime = LocalDateTime.of(2026, 11, 27, 15, 30);
 
-        // Câu 101 sai cả ở Diagnostic (cũ hơn) lẫn ModuleTest (mới hơn); Câu 202 chỉ sai ở Full Mock Test
-        when(userMistakeQueryRepository.findWrongDiagnosticAnswersByUserId(eq(USER_ID), anyCollection()))
+        // Câu 101 sai cả ở Đề thi thử PRACTICE (cũ hơn) lẫn ModuleTest (mới hơn); Câu 202 sai ở Đề thi thử PRACTICE
+        when(userMistakeQueryRepository.findWrongMockExamAnswersByUserId(
+                eq(USER_ID), eq(ETestType.FULL_MOCK_TEST), anyCollection()))
                 .thenReturn(List.of(
-                        new Object[]{101L, "{\"selected\":\"B\"}", ETestType.DIAGNOSTIC, "Đề chẩn đoán #1", 10L, olderTime},
-                        new Object[]{202L, "{\"selected\":\"C\"}", ETestType.FULL_MOCK_TEST, "ETS Full Test 1", 11L, olderTime}
+                        new Object[]{101L, "{\"selected\":\"B\"}", "ETS Full Test 1", 10L, olderTime, EExamTag.PRACTICE, 650},
+                        new Object[]{202L, "{\"selected\":\"C\"}", "ETS Full Test 1", 10L, olderTime, EExamTag.PRACTICE, 650}
                 ));
         when(userMistakeQueryRepository.findWrongModuleTestAnswersByUserId(eq(USER_ID), anyCollection()))
                 .thenReturn(List.<Object[]>of(
@@ -119,7 +130,6 @@ class UserMistakeNotebookServiceImplTest {
 
         MistakeNotebookResponse response = service.getMistakeNotebook(USER_ID, 5L, null, null, null, 0, 10);
 
-        // Tổng toàn sổ tay là 2 câu duy nhất, nhưng lọc Part 5 chỉ trả 1 câu 101 với wrongCount = 2 và đáp án mới nhất D
         assertThat(response.getTotalWrongCount()).isEqualTo(2);
         assertThat(response.getTotalElements()).isEqualTo(1L);
         assertThat(response.getItems()).hasSize(1);
@@ -134,14 +144,85 @@ class UserMistakeNotebookServiceImplTest {
     }
 
     @Test
-    void getRetryQuestionSet_returnsFilteredQuestionsWithoutExposingAnswers() {
-        LocalDateTime time = LocalDateTime.of(2026, 11, 25, 10, 0);
-        when(userMistakeQueryRepository.findWrongDiagnosticAnswersByUserId(eq(USER_ID), anyCollection()))
+    void getMistakeNotebook_excludesLockedOutputExamBelowAimFromReviewAndRetry() {
+        LocalDateTime time = LocalDateTime.of(2026, 11, 27, 10, 0);
+
+        // Attempt 50: Đề đầu ra OUTPUT mục tiêu AIM 750 nhưng điểm quy đổi ~300 -> không trả ra Sổ tay
+        when(userMistakeQueryRepository.findWrongMockExamAnswersByUserId(
+                eq(USER_ID), eq(ETestType.FULL_MOCK_TEST), anyCollection()))
                 .thenReturn(List.<Object[]>of(
-                        new Object[]{101L, "{\"selected\":\"B\"}", ETestType.DIAGNOSTIC, "Đề chẩn đoán", 10L, time}
+                        new Object[]{301L, "{\"selected\":\"B\"}", "Đề đầu ra ETS #1", 50L, time, EExamTag.OUTPUT, 750}
                 ));
+        when(userMistakeQueryRepository.countOutputAttemptPartStatsByAttemptIds(anyCollection()))
+                .thenReturn(List.of(
+                        new Object[]{50L, 1L, ESection.LISTENING, "Part 1", 100L, 30L},
+                        new Object[]{50L, 5L, ESection.READING, "Part 5", 100L, 30L}
+                ));
+        when(toeicScoreConversionRepository.findAll()).thenReturn(Collections.emptyList());
         when(userMistakeQueryRepository.findWrongModuleTestAnswersByUserId(eq(USER_ID), anyCollection()))
                 .thenReturn(Collections.emptyList());
+
+        MistakeNotebookResponse response = service.getMistakeNotebook(USER_ID, null, null, null, null, 0, 10);
+
+        assertThat(response.getTotalWrongCount()).isZero();
+        assertThat(response.getItems()).isEmpty();
+        verify(questionBatchLoader, never()).loadDetailedQuestionsMap(anyCollection());
+
+        // Chặn cả API chấm lại (chống answer-harvesting cho câu OUTPUT đang khóa)
+        SubmitMistakeRetryRequest retryReq = SubmitMistakeRetryRequest.builder()
+                .answers(List.of(MistakeRetryAnswerItem.builder().questionId(301L).selectedAnswer("A").build()))
+                .build();
+        assertThatThrownBy(() -> service.submitRetryAnswers(USER_ID, retryReq))
+                .isInstanceOf(BaseException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    void getMistakeNotebook_exposesOutputExamMistakesOnceAimTargetIsReached() {
+        LocalDateTime time = LocalDateTime.of(2026, 11, 28, 9, 0);
+
+        // Attempt 60: Đề đầu ra OUTPUT mục tiêu AIM 650, đúng 80/100 Nghe + 80/100 Đọc (~790 điểm >= 650) -> MỞ KHÓA
+        when(userMistakeQueryRepository.findWrongMockExamAnswersByUserId(
+                eq(USER_ID), eq(ETestType.FULL_MOCK_TEST), anyCollection()))
+                .thenReturn(List.<Object[]>of(
+                        new Object[]{401L, "{\"selected\":\"B\"}", "Đề đầu ra ETS #2", 60L, time, EExamTag.OUTPUT, 650}
+                ));
+        // Kiểm chứng dùng p.sections (LISTENING/READING) thay vì hardcode partId <= 4 (thử với partId = 10 thuộc LISTENING)
+        when(userMistakeQueryRepository.countOutputAttemptPartStatsByAttemptIds(anyCollection()))
+                .thenReturn(List.of(
+                        new Object[]{60L, 10L, ESection.LISTENING, "Part 2", 100L, 80L},
+                        new Object[]{60L, 17L, ESection.READING, "Part 7", 100L, 80L}
+                ));
+        when(toeicScoreConversionRepository.findAll()).thenReturn(Collections.emptyList());
+        when(userMistakeQueryRepository.findWrongModuleTestAnswersByUserId(eq(USER_ID), anyCollection()))
+                .thenReturn(Collections.emptyList());
+        when(userMistakeQueryRepository.findQuestionMetaByIdIn(anyCollection()))
+                .thenReturn(List.<Object[]>of(new Object[]{401L, 7L, "Part 7", "Câu đọc hiểu"}));
+        when(questionAbilityRepository.findWithAbilityByQuestionIdIn(anyCollection()))
+                .thenReturn(Collections.emptyList());
+
+        Question q401 = buildQuestion(401L, 7L, "Part 7", ESection.READING, "A", "{\"text\":\"Reading Q\"}", "{\"clue\":\"Clue\"}");
+        when(questionBatchLoader.loadDetailedQuestionsMap(List.of(401L)))
+                .thenReturn(Map.of(401L, q401));
+
+        MistakeNotebookResponse response = service.getMistakeNotebook(USER_ID, null, null, null, null, 0, 10);
+
+        assertThat(response.getTotalWrongCount()).isEqualTo(1);
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getQuestionId()).isEqualTo(401L);
+    }
+
+    @Test
+    void getRetryQuestionSet_returnsFilteredQuestionsWithoutExposingAnswers() {
+        LocalDateTime time = LocalDateTime.of(2026, 11, 25, 10, 0);
+        when(userMistakeQueryRepository.findWrongMockExamAnswersByUserId(
+                eq(USER_ID), eq(ETestType.FULL_MOCK_TEST), anyCollection()))
+                .thenReturn(Collections.emptyList());
+        when(userMistakeQueryRepository.findWrongModuleTestAnswersByUserId(eq(USER_ID), anyCollection()))
+                .thenReturn(List.<Object[]>of(
+                        new Object[]{101L, "{\"selected\":\"B\"}", "Module 1 - Part 5", 10L, time}
+                ));
         when(userMistakeQueryRepository.findQuestionMetaByIdIn(anyCollection()))
                 .thenReturn(List.<Object[]>of(new Object[]{101L, 5L, "Part 5", "Câu Part 5"}));
         when(questionAbilityRepository.findWithAbilityByQuestionIdIn(anyCollection()))
@@ -165,13 +246,14 @@ class UserMistakeNotebookServiceImplTest {
     @Test
     void submitRetryAnswers_gradesOwnedQuestionsAndReturnsExplanations() {
         LocalDateTime time = LocalDateTime.of(2026, 11, 25, 10, 0);
-        when(userMistakeQueryRepository.findWrongDiagnosticAnswersByUserId(eq(USER_ID), anyCollection()))
-                .thenReturn(List.of(
-                        new Object[]{101L, "{\"selected\":\"B\"}", ETestType.DIAGNOSTIC, "Đề chẩn đoán", 10L, time},
-                        new Object[]{102L, "{\"selected\":\"D\"}", ETestType.DIAGNOSTIC, "Đề chẩn đoán", 10L, time}
-                ));
-        when(userMistakeQueryRepository.findWrongModuleTestAnswersByUserId(eq(USER_ID), anyCollection()))
+        when(userMistakeQueryRepository.findWrongMockExamAnswersByUserId(
+                eq(USER_ID), eq(ETestType.FULL_MOCK_TEST), anyCollection()))
                 .thenReturn(Collections.emptyList());
+        when(userMistakeQueryRepository.findWrongModuleTestAnswersByUserId(eq(USER_ID), anyCollection()))
+                .thenReturn(List.of(
+                        new Object[]{101L, "{\"selected\":\"B\"}", "Module 1", 10L, time},
+                        new Object[]{102L, "{\"selected\":\"D\"}", "Module 1", 10L, time}
+                ));
 
         Question q101 = buildQuestion(101L, 5L, "Part 5", ESection.READING, "A", "{\"text\":\"Q1\"}", "{\"clue\":\"Clue 1\"}");
         Question q102 = buildQuestion(102L, 5L, "Part 5", ESection.READING, "C", "{\"text\":\"Q2\"}", "{\"clue\":\"Clue 2\"}");
@@ -199,7 +281,8 @@ class UserMistakeNotebookServiceImplTest {
 
     @Test
     void submitRetryAnswers_whenSubmittingQuestionNotInUserMistakes_throwsForbidden() {
-        when(userMistakeQueryRepository.findWrongDiagnosticAnswersByUserId(eq(USER_ID), anyCollection()))
+        when(userMistakeQueryRepository.findWrongMockExamAnswersByUserId(
+                eq(USER_ID), eq(ETestType.FULL_MOCK_TEST), anyCollection()))
                 .thenReturn(Collections.emptyList());
         when(userMistakeQueryRepository.findWrongModuleTestAnswersByUserId(eq(USER_ID), anyCollection()))
                 .thenReturn(Collections.emptyList());
