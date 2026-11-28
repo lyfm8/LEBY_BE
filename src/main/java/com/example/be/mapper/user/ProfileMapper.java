@@ -106,13 +106,24 @@ public class ProfileMapper {
      * @return ProfileResponse DTO tổng hợp hoàn chỉnh
      */
     public ProfileResponse toProfileResponse(User user, List<UserAbility> userAbilities) {
+        return toProfileResponseWithSkills(user, toSkillStatResponseList(userAbilities));
+    }
+
+    /**
+     * Tổng hợp toàn bộ dữ liệu người dùng, mục tiêu và danh sách kỹ năng đã tổng hợp vào ProfileResponse.
+     *
+     * @param user   Thực thể người dùng
+     * @param skills Danh sách DTO thống kê kỹ năng đã tổng hợp từ chẩn đoán & bài thi mô-đun
+     * @return ProfileResponse DTO tổng hợp hoàn chỉnh
+     */
+    public ProfileResponse toProfileResponseWithSkills(User user, List<UserSkillStatResponse> skills) {
         if (user == null) {
             return null;
         }
         return ProfileResponse.builder()
                 .user(toUserInfoResponse(user))
                 .target(toUserTargetResponse(user))
-                .skills(toSkillStatResponseList(userAbilities))
+                .skills(skills != null ? skills : Collections.emptyList())
                 .build();
     }
 }

@@ -345,11 +345,53 @@ class UserRoadmapServiceImplTest {
         UserModuleDetailResponse result = userRoadmapService.getModuleDetailForUser(USER_ID, MODULE_ID_1);
 
         assertThat(result.getModuleTest().getHasPassed()).isTrue();
+        assertThat(result.getModuleTest().getNeedsRetakeForNewAim()).isFalse();
         assertThat(result.getModuleTest().getBestScore()).isEqualTo(90);
         assertThat(result.getModuleTest().getLastAttemptId()).isEqualTo(502L);
         assertThat(result.getModuleTest().getIsUnlocked()).isTrue();
         assertThat(result.getModuleTest().getTotalQuestions()).isEqualTo(25);
         assertThat(result.getModuleTest().getDurationMinutes()).isEqualTo(20);
+    }
+
+    @Test
+    @DisplayName("UC16 Bổ sung / BR06 (25/11): Nâng AIM bảo lưu 100% bài học nhưng chưa PASS ở AIM mới -> hasPassed=false & needsRetakeForNewAim=true")
+    void getModuleDetailForUser_whenUpgradedAimRequiresRetake_setsHasPassedFalseAndNeedsRetakeTrue() {
+        LearningPath activePath = buildLearningPath(PATH_ID, ELearningPathStatus.ACTIVE, 850);
+        Module module = buildModule(MODULE_ID_1, "Nghe tranh cơ bản", 1, ESection.LISTENING, "Part 1");
+        module.setTestSelectionMode(EModuleTestSelectionMode.RANDOM_BY_ABILITY);
+        module.setTestQuestionCount(25);
+        module.setTestDurationMinutes(25);
+
+        LearningPathItem retakeItem = buildPathItem(12L, activePath, module, 1, ELessonStatus.IN_PROGRESS, 100);
+        retakeItem.setIsCorrect(false);
+
+        ModuleTestAttempt oldAimPassAttempt = new ModuleTestAttempt();
+        oldAimPassAttempt.setId(601L);
+        oldAimPassAttempt.setScore(68);
+        oldAimPassAttempt.setResult(ETestResult.PASS);
+
+        ModuleTargetThreshold threshold850 = new ModuleTargetThreshold();
+        threshold850.setPassScore(80);
+
+        when(learningPathRepository.findByUserIdAndStatusInOrderByVersionDescCreatedAtDesc(eq(USER_ID), anyCollection()))
+                .thenReturn(List.of(activePath));
+        when(learningPathItemRepository.findByLearningPathIdAndModuleIdWithDetails(PATH_ID, MODULE_ID_1))
+                .thenReturn(Optional.of(retakeItem));
+        when(lessonRepository.findByModuleIdAndStatusWithAbilityOrderByOrderNoAsc(MODULE_ID_1, EModuleStatus.PUBLISHED))
+                .thenReturn(Collections.emptyList());
+        when(moduleTargetThresholdRepository.findByModuleIdAndTargetProfileId(MODULE_ID_1, TARGET_ID))
+                .thenReturn(Optional.of(threshold850));
+        when(moduleTestAttemptRepository.findByUserIdAndModuleIdAndIsSubmittedTrueOrderBySubmittedAtDesc(USER_ID, MODULE_ID_1))
+                .thenReturn(List.of(oldAimPassAttempt));
+
+        UserModuleDetailResponse result = userRoadmapService.getModuleDetailForUser(USER_ID, MODULE_ID_1);
+
+        assertThat(result.getModuleTest().getHasPassed()).isFalse();
+        assertThat(result.getModuleTest().getNeedsRetakeForNewAim()).isTrue();
+        assertThat(result.getModuleTest().getIsUnlocked()).isTrue();
+        assertThat(result.getModuleTest().getBestScore()).isEqualTo(68);
+        assertThat(result.getModuleTest().getPassScore()).isEqualTo(80);
+        assertThat(result.getModuleTest().getDescription()).contains("80/100");
     }
 
     private LearningPath buildLearningPath(Long id, ELearningPathStatus status, int targetScore) {

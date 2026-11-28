@@ -153,6 +153,7 @@ public class UserCatalogMapper {
             completedLessons = resolveRoadmapCompletedLessons(pathItem, totalLessons, completedLessonsFromDb);
         } else {
             // Trường hợp 2B: Mô-đun ngoài lộ trình -> mở tự do cho học viên ôn tập bổ trợ
+            // Tính % tiến độ theo số bài giảng VIDEO giống phòng học UC11 & chế độ ROADMAP (bài PRACTICE không lưu LessonProgress)
             accessMode = ECatalogAccessMode.FREE_STUDY;
             categoryLabel = CATEGORY_FREE_STUDY;
             status = ELessonStatus.UNLOCKED;
@@ -160,8 +161,10 @@ public class UserCatalogMapper {
             canAccess = true;
             lockReason = null;
             completedLessons = Math.min(totalLessons, Math.max(ZERO_VALUE, completedLessonsFromDb));
-            progressPercent = totalLessons > ZERO_VALUE
-                    ? clampPercent((int) Math.round((completedLessons * 100.0) / totalLessons))
+            int progressBase = videoLessonCount > ZERO_VALUE ? videoLessonCount : totalLessons;
+            int progressCompleted = Math.min(progressBase, Math.max(ZERO_VALUE, completedLessonsFromDb));
+            progressPercent = progressBase > ZERO_VALUE
+                    ? clampPercent((int) Math.round((progressCompleted * 100.0) / progressBase))
                     : ZERO_VALUE;
         }
 

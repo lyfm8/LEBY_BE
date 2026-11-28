@@ -38,8 +38,30 @@ public interface ModuleRepository extends JpaRepository<Module, Long> {
 
     List<Module> findByPartIdOrderBySequenceAsc(Long partId);
 
+    /**
+     * Lấy danh sách Module đã xuất bản (PUBLISHED) thuộc một Part theo thứ tự sư phạm sequence tăng dần
+     * để thuật toán sinh lộ trình không bao giờ bốc nhầm Module bản nháp (DRAFT).
+     *
+     * @param partId ID của Part
+     * @param status Trạng thái Module hợp lệ (EModuleStatus.PUBLISHED)
+     * @return Danh sách Module đã xuất bản sắp xếp theo sequence tăng dần
+     */
+    List<Module> findByPartIdAndStatusOrderBySequenceAsc(Long partId, EModuleStatus status);
+
     @Query("SELECT DISTINCT m FROM Module m JOIN m.moduleAbilities ma WHERE ma.ability.id = :abilityId ORDER BY m.sequence ASC")
     List<Module> findByAbilityId(@Param("abilityId") Long abilityId);
+
+    /**
+     * Lấy danh sách Module đã xuất bản (PUBLISHED) phụ trách một năng lực Ability cụ thể theo thứ tự sư phạm.
+     *
+     * @param abilityId ID của Ability yếu cần bổ trợ
+     * @param status    Trạng thái Module hợp lệ (EModuleStatus.PUBLISHED)
+     * @return Danh sách Module đã xuất bản sắp xếp theo sequence tăng dần
+     */
+    @Query("SELECT DISTINCT m FROM Module m JOIN m.moduleAbilities ma " +
+           "WHERE ma.ability.id = :abilityId AND m.status = :status " +
+           "ORDER BY m.sequence ASC")
+    List<Module> findByAbilityIdAndStatus(@Param("abilityId") Long abilityId, @Param("status") EModuleStatus status);
 
     /**
      * Lấy toàn bộ Module theo trạng thái xuất bản (PUBLISHED) kèm Part và Abilities trong 1 query duy nhất.

@@ -18,7 +18,6 @@ import com.example.be.enums.content.ELessonStatus;
 import com.example.be.enums.content.ELessonType;
 import com.example.be.enums.content.EModuleStatus;
 import com.example.be.enums.content.EModuleTestSelectionMode;
-import com.example.be.enums.diagnostic.ETestResult;
 import com.example.be.exception.BaseException;
 import com.example.be.exception.ErrorCode;
 import com.example.be.mapper.content.UserRoadmapMapper;
@@ -196,8 +195,10 @@ public class UserRoadmapServiceImpl implements UserRoadmapService {
         List<UserModuleLessonResponse> lessonResponses = new ArrayList<>(publishedLessons.size());
         for (Lesson lesson : publishedLessons) {
             boolean isVideo = lesson.getLessonType() == ELessonType.VIDEO;
-            // Một bài học được xem là hoàn thành nếu đã đạt chuẩn trong lesson_progress hoặc được bảo lưu 100% theo BR06
-            boolean isCompleted = allLessonsInheritedOrDone || completedLessonIds.contains(lesson.getId());
+            // Chỉ áp dụng cờ bảo lưu 100% / COMPLETED cho bài giảng VIDEO; không đánh dấu hoàn thành giả cho bài PRACTICE
+            boolean isCompleted = isVideo
+                    ? (allLessonsInheritedOrDone || completedLessonIds.contains(lesson.getId()))
+                    : completedLessonIds.contains(lesson.getId());
 
             if (isVideo) {
                 totalVideoLessons++;
@@ -366,11 +367,14 @@ public class UserRoadmapServiceImpl implements UserRoadmapService {
         boolean isUnlocked = pathItem.getStatus() == ELessonStatus.COMPLETED
                 || currentProgress >= requiredCompletionRate;
 
-        // Nạp lịch sử lượt thi vượt ải đã nộp của học viên trên Module để phục vụ UC10 Luồng 6b
+        // Nạp lịch sử lượt thi vượt ải đã nộp của học viên trên Module để lấy điểm cao nhất và lượt thi gần nhất
         List<ModuleTestAttempt> submittedAttempts = moduleTestAttemptRepository
                 .findByUserIdAndModuleIdAndIsSubmittedTrueOrderBySubmittedAtDesc(userId, moduleId);
 
-        boolean hasPassed = false;
+        // QUY TẮC BR06 (bản cập nhật 25/11): Trạng thái đã vượt ải phải căn cứ vào chặng hiện tại trên lộ trình,
+        // tuyệt đối không lấy lượt PASS từ AIM cũ thấp hơn để đánh dấu đã đỗ khi học viên vừa nâng AIM
+        boolean hasPassed = pathItem.getStatus() == ELessonStatus.COMPLETED
+                || Boolean.TRUE.equals(pathItem.getIsCorrect());
         Integer bestScore = null;
         Long lastAttemptId = null;
 
@@ -379,24 +383,27 @@ public class UserRoadmapServiceImpl implements UserRoadmapService {
             lastAttemptId = submittedAttempts.get(0).getId();
 
             for (ModuleTestAttempt attempt : submittedAttempts) {
-                if (attempt.getResult() == ETestResult.PASS) {
-                    hasPassed = true;
-                }
                 if (attempt.getScore() != null && (bestScore == null || attempt.getScore() > bestScore)) {
                     bestScore = attempt.getScore();
                 }
             }
         }
 
-        // Nếu chặng đã được bảo lưu COMPLETED từ lộ trình cũ theo BR06 nhưng chưa có attempt mới, vẫn ghi nhận trạng thái đã đạt
-        if (!hasPassed && pathItem.getStatus() == ELessonStatus.COMPLETED) {
-            hasPassed = true;
-        }
+        // Xác định trường hợp nâng AIM: đã bảo lưu 100% bài giảng và từng có điểm thi quá khứ nhưng chưa pass ở AIM mới
+        boolean needsRetakeForNewAim = !hasPassed
+                && currentProgress >= FULL_PROGRESS_PERCENT
+                && bestScore != null;
 
         String testTitle = "Bài kiểm tra vượt ải — " + module.getTitle();
-        String testDescription = hasPassed
-                ? "Bạn đã vượt qua bài kiểm tra của mô-đun này. Bạn có thể xem lại kết quả hoặc thi lại để nâng cao điểm số."
-                : "Hoàn thành bài kiểm tra để xác nhận năng lực và mở khóa mô-đun tiếp theo trên lộ trình của bạn.";
+        String testDescription;
+        if (hasPassed) {
+            testDescription = "Bạn đã vượt qua bài kiểm tra của mô-đun này. Bạn có thể xem lại kết quả hoặc thi lại để nâng cao điểm số.";
+        } else if (needsRetakeForNewAim) {
+            testDescription = "Bạn đã hoàn thành toàn bộ bài giảng. Hãy làm lại bài kiểm tra vượt ải đạt từ "
+                    + passScore + "/100 điểm theo mục tiêu mới để mở khóa mô-đun tiếp theo.";
+        } else {
+            testDescription = "Hoàn thành bài kiểm tra để xác nhận năng lực và mở khóa mô-đun tiếp theo trên lộ trình của bạn.";
+        }
 
         return UserModuleTestInfoResponse.builder()
                 .id(moduleId)
@@ -408,6 +415,7 @@ public class UserRoadmapServiceImpl implements UserRoadmapService {
                 .totalQuestions(totalQuestions)
                 .durationMinutes(durationMinutes)
                 .hasPassed(hasPassed)
+                .needsRetakeForNewAim(needsRetakeForNewAim)
                 .bestScore(bestScore)
                 .lastAttemptId(lastAttemptId)
                 .build();

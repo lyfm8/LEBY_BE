@@ -171,7 +171,7 @@ class AdminModuleTestServiceImplTest {
 
         SaveModuleTestConfigRequest request = SaveModuleTestConfigRequest.builder()
                 .durationMinutes(25)
-                .questionCount(2)
+                .questionCount(10)
                 .shuffleQuestions(true)
                 .selectionMode(EModuleTestSelectionMode.MANUAL)
                 .questionIds(List.of(200L))
@@ -191,6 +191,8 @@ class AdminModuleTestServiceImplTest {
         assertThat(saved.get(1).getQuestion().getId()).isEqualTo(202L);
         assertThat(saved.get(1).getOrderNo()).isEqualTo(2);
         assertThat(response.getDurationMinutes()).isEqualTo(25);
+        // Chế độ MANUAL tự động đồng bộ testQuestionCount theo đúng số câu thực tế sau bóc tách chùm
+        assertThat(module.getTestQuestionCount()).isEqualTo(2);
     }
 
     @Test

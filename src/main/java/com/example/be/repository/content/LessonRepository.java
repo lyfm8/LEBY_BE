@@ -2,6 +2,7 @@ package com.example.be.repository.content;
 
 import com.example.be.entity.content.Lesson;
 import com.example.be.entity.question.QuestionMedia;
+import com.example.be.enums.content.ELessonType;
 import com.example.be.enums.content.EModuleStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -121,6 +122,24 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
            "WHERE qm.question.id IN :questionIds " +
            "ORDER BY qm.orderNo ASC")
     List<QuestionMedia> findQuestionMediasByQuestionIdIn(@Param("questionIds") Collection<Long> questionIds);
+
+    /**
+     * Đếm tổng số bài học theo trạng thái xuất bản và loại bài học (ví dụ ELessonType.VIDEO) cho nhiều Module
+     * trong đúng 1 câu SQL GROUP BY để tính chính xác tỷ lệ kế thừa tiến độ khi đổi mục tiêu AIM (0 N+1 Query).
+     *
+     * @param moduleIds  Tập hợp ID các Module cần thống kê
+     * @param status     Trạng thái bài học cần lọc (EModuleStatus.PUBLISHED)
+     * @param lessonType Loại bài học cần lọc (ELessonType.VIDEO)
+     * @return Danh sách cặp [moduleId, lessonCount]
+     */
+    @Query("SELECT l.module.id, COUNT(l.id) FROM Lesson l " +
+           "WHERE l.module.id IN :moduleIds AND l.status = :status AND l.lessonType = :lessonType " +
+           "GROUP BY l.module.id")
+    List<Object[]> countByModuleIdInAndStatusAndLessonType(
+            @Param("moduleIds") Collection<Long> moduleIds,
+            @Param("status") EModuleStatus status,
+            @Param("lessonType") ELessonType lessonType
+    );
 
     /**
      * Nạp toàn bộ đề cương bài học đã xuất bản (PUBLISHED) cho nhiều Module trong đúng 1 câu SQL (IN)

@@ -47,16 +47,15 @@ public class UserPracticeServiceImpl implements UserPracticeService {
         Lesson lesson = lessonRepository.findByIdWithModulePartAndAbility(lessonId)
                 .orElseThrow(() -> new BaseException(ErrorCode.PRACTICE_LESSON_NOT_FOUND));
 
-        if (lesson.getStatus() != EModuleStatus.PUBLISHED) {
+        if (lesson.getStatus() != EModuleStatus.PUBLISHED || lesson.getModule() == null) {
             throw new BaseException(ErrorCode.PRACTICE_LESSON_NOT_FOUND);
         }
         if (lesson.getLessonType() != ELessonType.PRACTICE) {
             throw new BaseException(ErrorCode.INVALID_LESSON_TYPE);
         }
 
-        // Bước 2: Kiểm tra mô-đun chứa bài học thuộc lộ trình của user và đã được mở khóa (BR10, chống IDOR)
-        Long moduleId = lesson.getModule().getId();
-        userExamAccessHelper.requireUnlockedPathItem(userId, moduleId);
+        // Bước 2: Kiểm tra quyền truy cập mô-đun (chặn LOCKED theo BR10 nếu trong lộ trình; mở Học tự do nếu PUBLISHED ngoài lộ trình)
+        userExamAccessHelper.requireAccessibleModuleForStudy(userId, lesson.getModule());
 
         // Bước 3: Nạp danh sách câu hỏi thực hành theo thứ tự orderNo tăng dần
         List<PracticeQuestion> practiceQuestions = practiceQuestionRepository

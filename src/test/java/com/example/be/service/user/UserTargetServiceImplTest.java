@@ -164,8 +164,8 @@ class UserTargetServiceImplTest {
 
         when(userRepository.findWithTargetProfileById(10L)).thenReturn(Optional.of(student));
         when(targetProfileRepository.findById(5L)).thenReturn(Optional.of(profile850));
-        when(diagnosticAttemptRepository.findTopByUserIdAndDiagnosticTestTestTypeAndStatusOrderByCompletedAtDesc(
-                10L, ETestType.DIAGNOSTIC, EAttemptStatus.SUBMITTED))
+        when(diagnosticAttemptRepository.findTopByUserIdAndDiagnosticTestTestTypeAndStatusInOrderByCompletedAtDesc(
+                10L, ETestType.DIAGNOSTIC, List.of(EAttemptStatus.SUBMITTED, EAttemptStatus.TIMED_OUT)))
                 .thenReturn(Optional.of(attempt));
         when(adaptivePathGeneratorService.generateAdaptivePath(attempt, 5L)).thenReturn(regeneratedPath);
 
@@ -180,12 +180,38 @@ class UserTargetServiceImplTest {
     }
 
     @Test
+    void selectTarget_changeAimWithTimedOutDiagnostic_reusesAttemptAndRegeneratesPath() {
+        student.setTargetProfile(profile650);
+
+        DiagnosticAttempt timedOutAttempt = new DiagnosticAttempt();
+        timedOutAttempt.setId(56L);
+        timedOutAttempt.setStatus(EAttemptStatus.TIMED_OUT);
+        timedOutAttempt.setPartResults(List.of(new PartDiagnosticResult()));
+
+        LearningPath regeneratedPath = new LearningPath();
+        regeneratedPath.setId(78L);
+
+        when(userRepository.findWithTargetProfileById(10L)).thenReturn(Optional.of(student));
+        when(targetProfileRepository.findById(5L)).thenReturn(Optional.of(profile850));
+        when(diagnosticAttemptRepository.findTopByUserIdAndDiagnosticTestTestTypeAndStatusInOrderByCompletedAtDesc(
+                10L, ETestType.DIAGNOSTIC, List.of(EAttemptStatus.SUBMITTED, EAttemptStatus.TIMED_OUT)))
+                .thenReturn(Optional.of(timedOutAttempt));
+        when(adaptivePathGeneratorService.generateAdaptivePath(timedOutAttempt, 5L)).thenReturn(regeneratedPath);
+
+        SelectTargetResponse resp = userTargetService.selectTarget(10L, 5L);
+
+        assertThat(resp.getRedirectAction()).isEqualTo(SelectTargetResponse.ACTION_GO_LEARNING_PATH);
+        assertThat(resp.getLearningPathId()).isEqualTo(78L);
+        verify(adaptivePathGeneratorService).generateAdaptivePath(timedOutAttempt, 5L);
+    }
+
+    @Test
     void selectTarget_changeAimWithoutDiagnosticData_redirectsToDiagnostic() {
         student.setTargetProfile(profile650);
         when(userRepository.findWithTargetProfileById(10L)).thenReturn(Optional.of(student));
         when(targetProfileRepository.findById(5L)).thenReturn(Optional.of(profile850));
-        when(diagnosticAttemptRepository.findTopByUserIdAndDiagnosticTestTestTypeAndStatusOrderByCompletedAtDesc(
-                10L, ETestType.DIAGNOSTIC, EAttemptStatus.SUBMITTED))
+        when(diagnosticAttemptRepository.findTopByUserIdAndDiagnosticTestTestTypeAndStatusInOrderByCompletedAtDesc(
+                10L, ETestType.DIAGNOSTIC, List.of(EAttemptStatus.SUBMITTED, EAttemptStatus.TIMED_OUT)))
                 .thenReturn(Optional.empty());
 
         SelectTargetResponse resp = userTargetService.selectTarget(10L, 5L);
@@ -198,8 +224,8 @@ class UserTargetServiceImplTest {
         DiagnosticAttempt emptyAttempt = new DiagnosticAttempt();
         emptyAttempt.setPartResults(Collections.emptyList());
         student.setTargetProfile(profile650);
-        when(diagnosticAttemptRepository.findTopByUserIdAndDiagnosticTestTestTypeAndStatusOrderByCompletedAtDesc(
-                10L, ETestType.DIAGNOSTIC, EAttemptStatus.SUBMITTED))
+        when(diagnosticAttemptRepository.findTopByUserIdAndDiagnosticTestTestTypeAndStatusInOrderByCompletedAtDesc(
+                10L, ETestType.DIAGNOSTIC, List.of(EAttemptStatus.SUBMITTED, EAttemptStatus.TIMED_OUT)))
                 .thenReturn(Optional.of(emptyAttempt));
 
         SelectTargetResponse resp2 = userTargetService.selectTarget(10L, 5L);

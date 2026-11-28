@@ -2,8 +2,10 @@ package com.example.be.service.exam.util;
 
 import com.example.be.entity.content.LearningPath;
 import com.example.be.entity.content.LearningPathItem;
+import com.example.be.entity.content.Module;
 import com.example.be.enums.content.ELearningPathStatus;
 import com.example.be.enums.content.ELessonStatus;
+import com.example.be.enums.content.EModuleStatus;
 import com.example.be.exception.BaseException;
 import com.example.be.exception.ErrorCode;
 import com.example.be.repository.content.LearningPathItemRepository;
@@ -13,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Helper dùng chung xác thực quyền truy cập chặng học trên Lộ trình cá nhân (BR10 & chống IDOR)
@@ -69,6 +72,50 @@ public class UserExamAccessHelper {
 
         if (pathItem.getStatus() == ELessonStatus.LOCKED) {
             log.warn("[BR10] Học viên userId={} cố truy cập moduleId={} đang bị khóa", userId, moduleId);
+            throw new BaseException(
+                    ErrorCode.CONTENT_LOCKED,
+                    "Mô-đun đang bị khóa. Bạn phải hoàn thành các mô-đun phía trước"
+            );
+        }
+
+        return pathItem;
+    }
+
+    /**
+     * Xác thực quyền vào học / luyện tập (UC11, UC12) cho cả mô-đun trong lộ trình lẫn chế độ Học tự do (UC17 Catalog):
+     * - Bắt buộc học viên đã hoàn thành chẩn đoán và có lộ trình hiện hành.
+     * - Nếu mô-đun nằm trong lộ trình cá nhân: chặn cứng trạng thái LOCKED theo BR10 và trả về {@link LearningPathItem}.
+     * - Nếu mô-đun nằm ngoài lộ trình: chỉ cho phép truy cập chế độ Học tự do (trả {@code null}) khi mô-đun đã PUBLISHED.
+     *
+     * @param userId ID học viên đang đăng nhập
+     * @param module Thực thể mô-đun cần truy cập
+     * @return {@link LearningPathItem} nếu thuộc lộ trình, hoặc {@code null} nếu là mô-đun Học tự do
+     */
+    public LearningPathItem requireAccessibleModuleForStudy(Long userId, Module module) {
+        if (module == null || module.getId() == null) {
+            throw new BaseException(
+                    ErrorCode.RESOURCE_NOT_FOUND,
+                    "Nội dung mô-đun không tồn tại hoặc đã được gỡ bỏ"
+            );
+        }
+
+        LearningPath learningPath = requireCurrentLearningPath(userId);
+        Optional<LearningPathItem> pathItemOpt = learningPathItemRepository
+                .findByLearningPathIdAndModuleIdWithDetails(learningPath.getId(), module.getId());
+
+        if (pathItemOpt.isEmpty()) {
+            if (module.getStatus() != EModuleStatus.PUBLISHED) {
+                throw new BaseException(
+                        ErrorCode.RESOURCE_NOT_FOUND,
+                        "Bài học thuộc mô-đun hiện chưa được xuất bản"
+                );
+            }
+            return null;
+        }
+
+        LearningPathItem pathItem = pathItemOpt.get();
+        if (pathItem.getStatus() == ELessonStatus.LOCKED) {
+            log.warn("[BR10] Học viên userId={} cố truy cập moduleId={} đang bị khóa", userId, module.getId());
             throw new BaseException(
                     ErrorCode.CONTENT_LOCKED,
                     "Mô-đun đang bị khóa. Bạn phải hoàn thành các mô-đun phía trước"

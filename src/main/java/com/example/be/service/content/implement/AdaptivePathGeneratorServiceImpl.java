@@ -16,12 +16,16 @@ import com.example.be.entity.setting.TargetPartThreshold;
 import com.example.be.entity.user.TargetProfile;
 import com.example.be.enums.content.ELearningPathStatus;
 import com.example.be.enums.content.ELessonStatus;
+import com.example.be.enums.content.ELessonType;
+import com.example.be.enums.content.EModuleStatus;
 import com.example.be.enums.diagnostic.EPartDirective;
 import com.example.be.enums.diagnostic.ETestResult;
 import com.example.be.exception.BaseException;
 import com.example.be.exception.ErrorCode;
 import com.example.be.repository.content.LearningPathItemRepository;
 import com.example.be.repository.content.LearningPathRepository;
+import com.example.be.repository.content.LessonProgressRepository;
+import com.example.be.repository.content.LessonRepository;
 import com.example.be.repository.content.ModuleRepository;
 import com.example.be.repository.content.ModuleTestAttemptRepository;
 import com.example.be.repository.setting.AbilityEvaluationRuleRepository;
@@ -35,6 +39,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -61,6 +66,8 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
     private final TargetPartThresholdRepository targetPartThresholdRepo;
     private final AbilityEvaluationRuleRepository abilityRuleRepo;
     private final ModuleRepository moduleRepo;
+    private final LessonRepository lessonRepo;
+    private final LessonProgressRepository lessonProgressRepo;
     private final LearningPathRepository learningPathRepo;
     private final LearningPathItemRepository learningPathItemRepo;
     private final TargetProfileRepository targetProfileRepo;
@@ -117,14 +124,25 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
 
     /**
      * Đọc lịch sử lộ trình của học viên, xác định điểm AIM gần nhất & version kế tiếp,
-     * sau đó chuyển toàn bộ lộ trình đang ACTIVE sang trạng thái ARCHIVED.
+     * sau đó chuyển toàn bộ lộ trình hiện hành cũ (ACTIVE hoặc COMPLETED) sang trạng thái ARCHIVED
+     * để bảo đảm mỗi học viên chỉ có duy nhất 01 lộ trình hiện hành tại cùng một thời điểm (BR06).
      */
     private PathHistoryMetadata resolveHistoryAndArchiveOldPaths(Long userId) {
         List<LearningPath> existingPaths = learningPathRepo.findWithTargetProfileByUserIdOrderByCreatedAtDesc(userId);
 
+        // Ưu tiên lấy điểm AIM của lộ trình đang ACTIVE (version cao nhất), sau đó COMPLETED mới nhất, cuối cùng bản ghi gần nhất
+        Comparator<LearningPath> versionDesc = Comparator.comparing(
+                LearningPath::getVersion,
+                Comparator.nullsLast(Comparator.reverseOrder())
+        );
         Integer previousTargetScore = existingPaths.stream()
                 .filter(lp -> lp.getStatus() == ELearningPathStatus.ACTIVE)
+                .sorted(versionDesc)
                 .findFirst()
+                .or(() -> existingPaths.stream()
+                        .filter(lp -> lp.getStatus() == ELearningPathStatus.COMPLETED)
+                        .sorted(versionDesc)
+                        .findFirst())
                 .or(() -> existingPaths.stream().findFirst())
                 .map(LearningPath::getTargetProfile)
                 .map(TargetProfile::getTargetTotalScore)
@@ -136,20 +154,22 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
                 .max(Integer::compareTo)
                 .orElse(0) + 1;
 
-        List<LearningPath> activePaths = existingPaths.stream()
-                .filter(lp -> lp.getStatus() == ELearningPathStatus.ACTIVE)
+        // Đóng gói toàn bộ lộ trình hiện hành cũ (cả ACTIVE lẫn COMPLETED) vào lịch sử ARCHIVED
+        List<LearningPath> pathsToArchive = existingPaths.stream()
+                .filter(lp -> lp.getStatus() == ELearningPathStatus.ACTIVE
+                        || lp.getStatus() == ELearningPathStatus.COMPLETED)
                 .peek(lp -> lp.setStatus(ELearningPathStatus.ARCHIVED))
                 .toList();
 
-        if (!activePaths.isEmpty()) {
-            learningPathRepo.saveAll(activePaths);
+        if (!pathsToArchive.isEmpty()) {
+            learningPathRepo.saveAll(pathsToArchive);
         }
 
         return new PathHistoryMetadata(previousTargetScore, nextVersion);
     }
 
     /**
-     * Đánh giá 2 tầng trên toàn bộ Part của lượt thi chẩn đoán để chọn tập Module cần học theo AIM mới.
+     * Đánh giá 2 tầng trên toàn bộ Part của lượt thi chẩn đoán để chọn tập Module đã xuất bản (PUBLISHED) theo AIM mới.
      */
     private Map<Long, SelectedModuleEntry> evaluateModulesFromDiagnostic(DiagnosticAttempt attempt, Long targetProfileId) {
         Map<Long, SelectedModuleEntry> selectedModuleMap = new LinkedHashMap<>();
@@ -178,8 +198,11 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
                     // Đạt chuẩn AIM -> Miễn học 100% Part này
                 }
                 case FULL_PART -> {
-                    // Mất gốc -> Bốc toàn bộ module của Part theo thứ tự sequence
-                    List<Module> allModulesOfPart = moduleRepo.findByPartIdOrderBySequenceAsc(partId);
+                    // Mất gốc -> Bốc toàn bộ module đã xuất bản (PUBLISHED) của Part theo thứ tự sequence
+                    List<Module> allModulesOfPart = moduleRepo.findByPartIdAndStatusOrderBySequenceAsc(
+                            partId,
+                            EModuleStatus.PUBLISHED
+                    );
                     for (Module m : allModulesOfPart) {
                         selectedModuleMap.putIfAbsent(m.getId(), new SelectedModuleEntry(m, null));
                     }
@@ -192,12 +215,15 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
     }
 
     /**
-     * Khởi tạo và lưu hàng loạt các LearningPathItem cho lộ trình mới, áp dụng quy tắc bảo lưu BR06:
+     * Khởi tạo và lưu hàng loạt các LearningPathItem cho lộ trình mới, áp dụng đầy đủ quy tắc bảo lưu BR06 (25/11)
+     * kết hợp kế thừa tiến độ học thực tế từ bảng {@code lesson_progress}:
      * - Nếu module đã từng thi vượt ải thành công (PASS) ở quá khứ:
-     *   + Khi tăng AIM lên mốc cao hơn (hoặc điểm cũ thấp hơn ngưỡng mới): giữ tiến độ bài giảng 100%
-     *     (không phải học lại lesson), nhưng yêu cầu làm lại bài kiểm tra vượt ải (isCorrect = false).
+     *   + Khi tăng AIM lên mốc cao hơn (hoặc điểm cũ thấp hơn ngưỡng mới): bảo lưu tiến độ bài giảng 100%
+     *     (không phải học lại bài giảng), nhưng yêu cầu làm lại bài kiểm tra vượt ải (isCorrect = false).
      *   + Khi hạ/giữ nguyên AIM và điểm đạt chuẩn ngưỡng mới: bảo lưu hoàn toàn COMPLETED.
-     * - Mở khóa (IN_PROGRESS) cho module đầu tiên chưa COMPLETED trong danh sách.
+     * - Nếu module chưa từng PASS vượt ải: kế thừa đúng tỷ lệ % bài giảng đã hoàn thành từ {@code lesson_progress}
+     *   (áp dụng cho cả bài học dở ở lộ trình cũ lẫn bài học tự do từ Thư viện), không reset về 0%.
+     * - Mở khóa (IN_PROGRESS) cho module đầu tiên chưa COMPLETED; nếu 100% chặng đã COMPLETED thì chốt lộ trình COMPLETED.
      */
     private void createAndSavePathItems(
             LearningPath learningPath,
@@ -210,8 +236,16 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
         }
 
         Long userId = learningPath.getUser().getId();
+        List<Long> moduleIds = finalEntries.stream()
+                .map(entry -> entry.module.getId())
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        // Nạp theo lô 0 N+1: điểm vượt ải đã PASS, ngưỡng passScore AIM mới và tỷ lệ bài giảng đã hoàn thành trong lesson_progress
         Map<Long, Integer> passedModuleBestScores = loadPassedModuleBestScores(userId);
         Map<Long, Integer> newModulePassScores = loadModulePassScoresForTarget(newProfile.getId());
+        Map<Long, Integer> lessonProgressPercentMap = loadModuleLessonProgressPercentMap(userId, moduleIds);
 
         boolean isHigherAim = previousTargetScore != null
                 && newProfile.getTargetTotalScore() != null
@@ -231,12 +265,20 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
             if (passedModuleBestScores.containsKey(moduleId)) {
                 applyInheritedModuleState(item, entry.module, passedModuleBestScores.get(moduleId), newModulePassScores, isHigherAim);
             } else {
-                item.setProgressPercent(ZERO_PROGRESS_PERCENT);
+                // Kế thừa tiến độ bài giảng thực tế từ lesson_progress thay vì reset cứng về 0%
+                int inheritedLessonPercent = lessonProgressPercentMap.getOrDefault(moduleId, ZERO_PROGRESS_PERCENT);
+                item.setProgressPercent(inheritedLessonPercent);
                 item.setIsCorrect(false);
                 item.setStatus(ELessonStatus.LOCKED);
+
+                if (inheritedLessonPercent >= FULL_PROGRESS_PERCENT) {
+                    item.setReason("Đã hoàn thành toàn bộ bài giảng — sẵn sàng làm bài kiểm tra vượt ải");
+                } else if (inheritedLessonPercent > ZERO_PROGRESS_PERCENT) {
+                    item.setReason("Đã kế thừa " + inheritedLessonPercent + "% tiến độ bài giảng từ quá trình học trước");
+                }
             }
 
-            // Gán lý do gợi ý rõ ràng cho từng chặng học nếu chưa có lý do bảo lưu riêng từ BR06
+            // Gán lý do gợi ý rõ ràng cho từng chặng học nếu chưa có lý do bảo lưu/kế thừa riêng
             if (item.getReason() == null || item.getReason().isBlank()) {
                 item.setReason(buildItemReason(entry));
             }
@@ -245,12 +287,24 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
         }
 
         // Mở khóa module đầu tiên chưa hoàn thành để học viên bắt đầu ngay
-        itemsToSave.stream()
+        boolean hasUncompletedItem = itemsToSave.stream()
                 .filter(i -> i.getStatus() != ELessonStatus.COMPLETED)
                 .findFirst()
-                .ifPresent(i -> i.setStatus(ELessonStatus.IN_PROGRESS));
+                .map(i -> {
+                    i.setStatus(ELessonStatus.IN_PROGRESS);
+                    return true;
+                })
+                .orElse(false);
 
         learningPathItemRepo.saveAll(itemsToSave);
+
+        // Trường hợp biên khi hạ AIM: 100% chặng đều được bảo lưu COMPLETED -> đánh dấu lộ trình mới COMPLETED ngay
+        if (!hasUncompletedItem) {
+            learningPath.setStatus(ELearningPathStatus.COMPLETED);
+            learningPathRepo.save(learningPath);
+            log.info("Toàn bộ {} chặng của learningPathId={} (userId={}) đều bảo lưu COMPLETED -> chốt lộ trình COMPLETED",
+                    itemsToSave.size(), learningPath.getId(), userId);
+        }
     }
 
     /**
@@ -300,7 +354,92 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
         item.setProgressPercent(FULL_PROGRESS_PERCENT);
         item.setIsCorrect(false);
         item.setStatus(ELessonStatus.LOCKED);
-        item.setReason("Đã hoàn thành bài học — cần làm lại bài kiểm tra vượt ải theo ngưỡng AIM mới");
+        item.setReason(requiredPassScore > 0
+                ? "Đã bảo lưu toàn bộ bài giảng — cần thi vượt ải đạt từ " + requiredPassScore + "/100 điểm cho mục tiêu mới"
+                : "Đã hoàn thành bài học — cần làm lại bài kiểm tra vượt ải theo ngưỡng mục tiêu mới");
+    }
+
+    /**
+     * Tính tỷ lệ phần trăm hoàn thành bài giảng thực tế (0 - 100%) cho toàn bộ danh sách Module từ bảng
+     * {@code lesson_progress} theo đúng công thức mở khóa vượt ải BR03 của UC11 (tối đa 4 câu GROUP BY, 0 N+1 Query):
+     * - Ưu tiên tính trên tập bài giảng {@code VIDEO} đã {@code PUBLISHED}.
+     * - Nếu một Module không có bài giảng {@code VIDEO} nào (chỉ gồm bài {@code PRACTICE}), fallback sang tổng số bài {@code PUBLISHED}.
+     */
+    private Map<Long, Integer> loadModuleLessonProgressPercentMap(Long userId, List<Long> moduleIds) {
+        if (moduleIds == null || moduleIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        // Bước 1: Đếm tổng số bài giảng VIDEO đã xuất bản và số bài VIDEO học viên đã hoàn thành bằng 2 câu GROUP BY
+        Map<Long, Integer> totalVideoMap = toCountMap(
+                lessonRepo.countByModuleIdInAndStatusAndLessonType(moduleIds, EModuleStatus.PUBLISHED, ELessonType.VIDEO)
+        );
+        Map<Long, Integer> completedVideoMap = toCountMap(
+                lessonProgressRepo.countCompletedLessonsGroupedByModuleIdAndType(
+                        userId,
+                        moduleIds,
+                        EModuleStatus.PUBLISHED,
+                        ELessonType.VIDEO
+                )
+        );
+
+        Map<Long, Integer> progressPercentMap = new HashMap<>(moduleIds.size());
+        List<Long> modulesWithoutVideo = new ArrayList<>();
+
+        for (Long moduleId : moduleIds) {
+            int totalVideo = totalVideoMap.getOrDefault(moduleId, 0);
+            if (totalVideo > 0) {
+                int completedVideo = completedVideoMap.getOrDefault(moduleId, 0);
+                int percent = Math.min(FULL_PROGRESS_PERCENT, (int) Math.round((completedVideo * 100.0) / totalVideo));
+                progressPercentMap.put(moduleId, Math.max(ZERO_PROGRESS_PERCENT, percent));
+            } else {
+                // Gom các Module không có bài VIDEO để chạy truy vấn fallback theo tổng bài PUBLISHED
+                modulesWithoutVideo.add(moduleId);
+            }
+        }
+
+        // Bước 2: Chỉ bắn truy vấn fallback khi thực sự tồn tại Module không có bài VIDEO
+        if (!modulesWithoutVideo.isEmpty()) {
+            Map<Long, Integer> totalPublishedMap = toCountMap(
+                    lessonRepo.countByModuleIdInAndStatus(modulesWithoutVideo, EModuleStatus.PUBLISHED)
+            );
+            Map<Long, Integer> completedPublishedMap = toCountMap(
+                    lessonProgressRepo.countCompletedLessonsGroupedByModuleId(
+                            userId,
+                            modulesWithoutVideo,
+                            EModuleStatus.PUBLISHED
+                    )
+            );
+
+            for (Long moduleId : modulesWithoutVideo) {
+                int totalLessons = totalPublishedMap.getOrDefault(moduleId, 0);
+                int completedLessons = completedPublishedMap.getOrDefault(moduleId, 0);
+                int percent = totalLessons > 0
+                        ? Math.min(FULL_PROGRESS_PERCENT, (int) Math.round((completedLessons * 100.0) / totalLessons))
+                        : ZERO_PROGRESS_PERCENT;
+                progressPercentMap.put(moduleId, Math.max(ZERO_PROGRESS_PERCENT, percent));
+            }
+        }
+
+        return progressPercentMap;
+    }
+
+    /**
+     * Chuyển kết quả truy vấn JPQL GROUP BY dạng [moduleId, count] sang Map để tra cứu O(1).
+     */
+    private Map<Long, Integer> toCountMap(List<Object[]> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, Integer> result = new HashMap<>(rows.size());
+        for (Object[] row : rows) {
+            if (row != null && row.length >= 2 && row[0] != null) {
+                Long key = ((Number) row[0]).longValue();
+                int count = row[1] != null ? ((Number) row[1]).intValue() : 0;
+                result.put(key, count);
+            }
+        }
+        return result;
     }
 
     /**
@@ -363,9 +502,12 @@ public class AdaptivePathGeneratorServiceImpl implements AdaptivePathGeneratorSe
                 isWeak = abilityScore.getAccuracyRate() < fallbackCutoff;
             }
 
-            // ĐÁNH GIÁ NHỊ PHÂN TẦNG 2: Nếu tỷ lệ đúng < ngưỡng cắt -> BỐC MODULE
+            // ĐÁNH GIÁ NHỊ PHÂN TẦNG 2: Nếu tỷ lệ đúng < ngưỡng cắt -> BỐC MODULE ĐÃ XUẤT BẢN (PUBLISHED)
             if (isWeak) {
-                List<Module> modulesForAbility = moduleRepo.findByAbilityId(abilityScore.getAbilityId());
+                List<Module> modulesForAbility = moduleRepo.findByAbilityIdAndStatus(
+                        abilityScore.getAbilityId(),
+                        EModuleStatus.PUBLISHED
+                );
                 for (Module m : modulesForAbility) {
                     Ability abilityObj = new Ability();
                     abilityObj.setId(abilityScore.getAbilityId());
