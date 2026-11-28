@@ -102,9 +102,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
         } catch (BaseException ex) {
-            // Với riêng endpoint /api/auth/logout, không chặn 401 khi Access Token đã hết hạn/lỗi
-            // để AuthController vẫn xóa sạch HTTP-Only Cookie và thu hồi phiên qua Refresh Token.
-            if ("/api/auth/logout".equals(request.getRequestURI())) {
+            // Với /api/auth/logout hoặc API công khai GET /api/public/**, không chặn 401 khi Cookie cũ hết hạn
+            String requestUri = request.getRequestURI();
+            if ("/api/auth/logout".equals(requestUri) || requestUri.startsWith("/api/public/")) {
                 SecurityContextHolder.clearContext();
                 filterChain.doFilter(request, response);
                 return;

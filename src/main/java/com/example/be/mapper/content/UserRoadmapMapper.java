@@ -19,6 +19,7 @@ import com.example.be.enums.content.ELearningPathStatus;
 import com.example.be.enums.content.ELessonStatus;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -38,6 +39,8 @@ public class UserRoadmapMapper {
     private static final String STATUS_UNLOCKED_LABEL = "Sẵn sàng học";
     private static final String STATUS_LOCKED_LABEL = "Chưa mở khóa";
     private static final String STATUS_FREE_STUDY_LABEL = "Học tự do";
+    private static final String STATUS_EXEMPTED_LABEL = "Đã miễn học";
+    private static final String REASON_EXEMPTED = "Đã đạt chuẩn qua bài đánh giá đầu vào";
 
     /**
      * Chuyển đổi Entity LearningPath và danh sách chặng Module sang RoadmapResponse tổng quan.
@@ -52,11 +55,31 @@ public class UserRoadmapMapper {
             List<RoadmapModuleItemResponse> moduleItems,
             boolean passedAllParts
     ) {
+        return toRoadmapResponse(learningPath, moduleItems, Collections.emptyList(), passedAllParts);
+    }
+
+    /**
+     * Chuyển đổi Entity LearningPath, danh sách chặng trong lộ trình và các mô-đun được miễn sang RoadmapResponse.
+     *
+     * @param learningPath    Lộ trình học hiện hành của học viên
+     * @param moduleItems     Danh sách chặng học thuộc lộ trình cá nhân
+     * @param exemptedModules Danh sách mô-đun đã xuất bản được miễn học ngoài lộ trình
+     * @param passedAllParts  Cờ xác nhận học viên đã PASS 100% 7 Part ở bài chẩn đoán
+     * @return RoadmapResponse hoàn chỉnh cho giao diện Lộ trình học
+     */
+    public RoadmapResponse toRoadmapResponse(
+            LearningPath learningPath,
+            List<RoadmapModuleItemResponse> moduleItems,
+            List<RoadmapModuleItemResponse> exemptedModules,
+            boolean passedAllParts
+    ) {
+        List<RoadmapModuleItemResponse> safeModules = moduleItems != null ? moduleItems : Collections.emptyList();
+        List<RoadmapModuleItemResponse> safeExempted = exemptedModules != null ? exemptedModules : Collections.emptyList();
         TargetProfile targetProfile = learningPath.getTargetProfile();
-        int totalModules = moduleItems.size();
+        int totalModules = safeModules.size();
 
         // Đếm tổng số chặng đã vượt ải hoàn thành trên lộ trình
-        int completedModules = (int) moduleItems.stream()
+        int completedModules = (int) safeModules.stream()
                 .filter(item -> item.getStatus() == ELessonStatus.COMPLETED)
                 .count();
 
@@ -84,7 +107,8 @@ public class UserRoadmapMapper {
                 .totalModules(totalModules)
                 .completedModules(completedModules)
                 .isPassedAllParts(passedAllParts)
-                .modules(moduleItems)
+                .modules(safeModules)
+                .exemptedModules(safeExempted)
                 .build();
     }
 
@@ -125,6 +149,50 @@ public class UserRoadmapMapper {
                 .progressPercent(safeProgress)
                 .status(item.getStatus())
                 .statusLabel(resolveStatusLabel(item.getStatus()))
+                .inRoadmap(true)
+                .build();
+    }
+
+    /**
+     * Chuyển đổi một Module đã xuất bản được miễn học (ngoài lộ trình cá nhân) sang RoadmapModuleItemResponse.
+     *
+     * @param module           Thực thể Module đã xuất bản (kèm Part và ModuleAbilities)
+     * @param totalLessons     Tổng số bài học đã xuất bản của Module
+     * @param completedLessons Số lượng bài học đã hoàn thành thực tế từ lesson_progress
+     * @return RoadmapModuleItemResponse đánh dấu {@code inRoadmap = false}
+     */
+    public RoadmapModuleItemResponse toExemptedRoadmapModuleItemResponse(
+            Module module,
+            int totalLessons,
+            int completedLessons
+    ) {
+        Part part = module.getPart();
+        Ability primaryAbility = extractPrimaryAbility(module);
+        int safeTotal = Math.max(0, totalLessons);
+        int safeCompleted = Math.min(Math.max(0, completedLessons), safeTotal);
+        int progressPercent = safeTotal > ZERO_PERCENT
+                ? clampPercent((int) Math.round((safeCompleted * 100.0) / safeTotal))
+                : ZERO_PERCENT;
+
+        return RoadmapModuleItemResponse.builder()
+                .id(module.getId())
+                .learningPathItemId(null)
+                .orderNo(null)
+                .sequence(module.getSequence())
+                .title(module.getTitle())
+                .description(module.getDescriptions() != null ? module.getDescriptions() : "")
+                .partId(part != null ? part.getId() : null)
+                .partName(part != null ? part.getName() : DEFAULT_PART_NAME)
+                .section(resolveSection(part))
+                .abilityId(primaryAbility != null ? primaryAbility.getId() : null)
+                .abilityName(primaryAbility != null ? primaryAbility.getName() : null)
+                .reason(REASON_EXEMPTED)
+                .totalLessons(safeTotal)
+                .completedLessons(safeCompleted)
+                .progressPercent(progressPercent)
+                .status(ELessonStatus.COMPLETED)
+                .statusLabel(STATUS_EXEMPTED_LABEL)
+                .inRoadmap(false)
                 .build();
     }
 
@@ -235,17 +303,8 @@ public class UserRoadmapMapper {
                 ? clampPercent((int) Math.round((completedLessons * 100.0) / totalLessons))
                 : ZERO_PERCENT;
 
-        // Lấy tên năng lực đại diện đầu tiên gắn trên Module (nếu có) để hiển thị ở phần mô tả
-        String primaryAbilityName = module.getModuleAbilities() == null
-                ? null
-                : module.getModuleAbilities().stream()
-                .filter(Objects::nonNull)
-                .map(ModuleAbility::getAbility)
-                .filter(Objects::nonNull)
-                .map(Ability::getName)
-                .filter(name -> name != null && !name.isBlank())
-                .findFirst()
-                .orElse(null);
+        Ability primaryAbility = extractPrimaryAbility(module);
+        String primaryAbilityName = primaryAbility != null ? primaryAbility.getName() : null;
 
         return UserModuleDetailResponse.builder()
                 .moduleId(module.getId())
@@ -291,6 +350,21 @@ public class UserRoadmapMapper {
         return (part != null && part.getSections() != null)
                 ? part.getSections()
                 : ESection.READING;
+    }
+
+    /**
+     * Trích xuất năng lực đại diện đầu tiên gắn trên Module (nếu có).
+     */
+    private Ability extractPrimaryAbility(Module module) {
+        if (module == null || module.getModuleAbilities() == null) {
+            return null;
+        }
+        return module.getModuleAbilities().stream()
+                .filter(Objects::nonNull)
+                .map(ModuleAbility::getAbility)
+                .filter(ability -> ability != null && ability.getName() != null && !ability.getName().isBlank())
+                .findFirst()
+                .orElse(null);
     }
 
     /**

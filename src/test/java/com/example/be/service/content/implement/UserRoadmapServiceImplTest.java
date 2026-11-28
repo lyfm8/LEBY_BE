@@ -311,6 +311,75 @@ class UserRoadmapServiceImplTest {
     }
 
     @Test
+    @DisplayName("UC09 - Nạp song song mô-đun miễn học (ngoài lộ trình) theo đúng sequence mà không làm sai lệch tiến độ lộ trình")
+    void getCurrentUserRoadmap_whenHasExemptedModules_returnsExemptedWithoutAffectingRoadmapMetrics() {
+        LearningPath activePath = buildLearningPath(PATH_ID, ELearningPathStatus.ACTIVE, 650);
+        Module exemptedModule = buildModule(MODULE_ID_1, "Tranh tả người Part 1", 1, ESection.LISTENING, "Part 1");
+        exemptedModule.setStatus(EModuleStatus.PUBLISHED);
+        Module roadmapModule = buildModule(MODULE_ID_2, "Đọc hiểu Part 5", 2, ESection.READING, "Part 5");
+        roadmapModule.setStatus(EModuleStatus.PUBLISHED);
+
+        LearningPathItem roadmapItem = buildPathItem(12L, activePath, roadmapModule, 1, ELessonStatus.IN_PROGRESS, 50);
+
+        when(learningPathRepository.findByUserIdAndStatusInOrderByVersionDescCreatedAtDesc(eq(USER_ID), anyCollection()))
+                .thenReturn(List.of(activePath));
+        when(learningPathItemRepository.findByLearningPathIdWithDetailsOrderByOrderNoAsc(PATH_ID))
+                .thenReturn(List.of(roadmapItem));
+        when(moduleRepository.findByStatusWithPartAndAbilitiesOrderBySequenceAsc(EModuleStatus.PUBLISHED))
+                .thenReturn(List.of(exemptedModule, roadmapModule));
+        when(lessonRepository.countByModuleIdInAndStatus(List.of(MODULE_ID_2, MODULE_ID_1), EModuleStatus.PUBLISHED))
+                .thenReturn(List.of(
+                        new Object[]{MODULE_ID_1, 3L},
+                        new Object[]{MODULE_ID_2, 4L}
+                ));
+        when(lessonProgressRepository.countCompletedLessonsGroupedByModuleId(
+                USER_ID, List.of(MODULE_ID_2, MODULE_ID_1), EModuleStatus.PUBLISHED))
+                .thenReturn(List.<Object[]>of(
+                        new Object[]{MODULE_ID_2, 2L}
+                ));
+
+        RoadmapResponse result = userRoadmapService.getCurrentUserRoadmap(USER_ID);
+
+        assertThat(result.getTotalModules()).isEqualTo(1);
+        assertThat(result.getCompletedModules()).isZero();
+        assertThat(result.getModules()).hasSize(1);
+        assertThat(result.getModules().get(0).getInRoadmap()).isTrue();
+        assertThat(result.getExemptedModules()).hasSize(1);
+        assertThat(result.getExemptedModules().get(0).getId()).isEqualTo(MODULE_ID_1);
+        assertThat(result.getExemptedModules().get(0).getSequence()).isEqualTo(1);
+        assertThat(result.getExemptedModules().get(0).getInRoadmap()).isFalse();
+        assertThat(result.getExemptedModules().get(0).getStatus()).isEqualTo(ELessonStatus.COMPLETED);
+    }
+
+    @Test
+    @DisplayName("UC09 - Luồng 4a: PASS 100% 7 Part vẫn trả về đầy đủ exemptedModules để học viên ôn tự do")
+    void getCurrentUserRoadmap_whenPassedAll7PartsWithPublishedModules_includesExemptedModules() {
+        LearningPath completedPath = buildLearningPath(PATH_ID, ELearningPathStatus.COMPLETED, 750);
+        Module exemptedModule = buildModule(MODULE_ID_1, "Tranh tả người Part 1", 1, ESection.LISTENING, "Part 1");
+        exemptedModule.setStatus(EModuleStatus.PUBLISHED);
+
+        when(learningPathRepository.findByUserIdAndStatusInOrderByVersionDescCreatedAtDesc(eq(USER_ID), anyCollection()))
+                .thenReturn(List.of(completedPath));
+        when(learningPathItemRepository.findByLearningPathIdWithDetailsOrderByOrderNoAsc(PATH_ID))
+                .thenReturn(Collections.emptyList());
+        when(moduleRepository.findByStatusWithPartAndAbilitiesOrderBySequenceAsc(EModuleStatus.PUBLISHED))
+                .thenReturn(List.of(exemptedModule));
+        when(lessonRepository.countByModuleIdInAndStatus(List.of(MODULE_ID_1), EModuleStatus.PUBLISHED))
+                .thenReturn(List.<Object[]>of(new Object[]{MODULE_ID_1, 2L}));
+        when(lessonProgressRepository.countCompletedLessonsGroupedByModuleId(
+                USER_ID, List.of(MODULE_ID_1), EModuleStatus.PUBLISHED))
+                .thenReturn(Collections.emptyList());
+
+        RoadmapResponse result = userRoadmapService.getCurrentUserRoadmap(USER_ID);
+
+        assertThat(result.getIsPassedAllParts()).isTrue();
+        assertThat(result.getModules()).isEmpty();
+        assertThat(result.getExemptedModules()).hasSize(1);
+        assertThat(result.getExemptedModules().get(0).getInRoadmap()).isFalse();
+        assertThat(result.getExemptedModules().get(0).getTotalLessons()).isEqualTo(2);
+    }
+
+    @Test
     @DisplayName("UC10 - Luồng 6b: Trả về điểm cao nhất và lượt thi gần nhất khi học viên đã từng thi đỗ mô-đun")
     void getModuleDetailForUser_whenPreviouslyPassed_returnsBestScoreAndLastAttemptId() {
         LearningPath activePath = buildLearningPath(PATH_ID, ELearningPathStatus.ACTIVE, 650);

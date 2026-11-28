@@ -113,6 +113,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
 
                         // Tất cả endpoint còn lại yêu cầu xác thực.
                         // Quyền cụ thể (STUDENT/TEACHER/ADMIN) được kiểm tra bằng @PreAuthorize(Roles.*).
