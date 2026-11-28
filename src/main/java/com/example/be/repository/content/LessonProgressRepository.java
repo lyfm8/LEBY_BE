@@ -83,4 +83,19 @@ public interface LessonProgressRepository extends JpaRepository<LessonProgress, 
             @Param("lessonStatus") EModuleStatus lessonStatus,
             @Param("lessonType") ELessonType lessonType
     );
+
+    /**
+     * Nạp toàn bộ bản ghi tiến độ bài học của một học viên kèm sẵn Lesson và Module trong 1 câu SQL (JOIN FETCH)
+     * để tổng hợp thời gian học, chuỗi ngày học (Streak), biểu đồ 7 ngày và hoạt động gần đây trên Dashboard (UC08)
+     * mà không phát sinh N+1 Query.
+     *
+     * @param userId ID học viên đang đăng nhập
+     * @return Danh sách LessonProgress sắp xếp theo thời điểm tương tác mới nhất trước
+     */
+    @Query("SELECT lp FROM LessonProgress lp " +
+           "JOIN FETCH lp.lesson l " +
+           "JOIN FETCH l.module m " +
+           "WHERE lp.user.id = :userId " +
+           "ORDER BY COALESCE(lp.lastSyncedAt, lp.updatedAt, lp.createdAt) DESC")
+    List<LessonProgress> findAllByUserIdWithLessonAndModuleOrderByRecent(@Param("userId") Long userId);
 }
