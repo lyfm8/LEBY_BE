@@ -35,6 +35,13 @@ public class UserModuleTestInfoResponse {
     @JsonProperty("hasPassed")
     private Boolean hasPassed;
 
+    /**
+     * Cờ báo hiệu học viên đã bảo lưu toàn bộ bài giảng từ lộ trình trước nhưng cần thi lại vượt ải
+     * theo ngưỡng điểm đỗ của mục tiêu AIM mới cao hơn (BR06 bản cập nhật 25/11).
+     */
+    @JsonProperty("needsRetakeForNewAim")
+    private Boolean needsRetakeForNewAim;
+
     private Integer bestScore;
 
     private Long lastAttemptId;

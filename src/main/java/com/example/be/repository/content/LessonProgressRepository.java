@@ -85,6 +85,31 @@ public interface LessonProgressRepository extends JpaRepository<LessonProgress, 
     );
 
     /**
+     * Đếm số bài học đã hoàn thành theo loại bài học (ví dụ ELessonType.VIDEO) cho nhiều Module
+     * trong đúng 1 câu SQL GROUP BY phục vụ kế thừa tiến độ LessonProgress khi đổi mục tiêu AIM (0 N+1 Query).
+     *
+     * @param userId       ID học viên
+     * @param moduleIds    Tập hợp ID các Module trong lộ trình mới
+     * @param lessonStatus Trạng thái bài học cần lọc (EModuleStatus.PUBLISHED)
+     * @param lessonType   Loại bài học cần đếm (ELessonType.VIDEO)
+     * @return Danh sách cặp [moduleId, completedLessonCount]
+     */
+    @Query("SELECT l.module.id, COUNT(lp.id) FROM LessonProgress lp " +
+           "JOIN lp.lesson l " +
+           "WHERE lp.user.id = :userId " +
+           "AND lp.isCompleted = true " +
+           "AND l.status = :lessonStatus " +
+           "AND l.lessonType = :lessonType " +
+           "AND l.module.id IN :moduleIds " +
+           "GROUP BY l.module.id")
+    List<Object[]> countCompletedLessonsGroupedByModuleIdAndType(
+            @Param("userId") Long userId,
+            @Param("moduleIds") Collection<Long> moduleIds,
+            @Param("lessonStatus") EModuleStatus lessonStatus,
+            @Param("lessonType") ELessonType lessonType
+    );
+
+    /**
      * Nạp toàn bộ bản ghi tiến độ bài học của một học viên kèm sẵn Lesson và Module trong 1 câu SQL (JOIN FETCH)
      * để tổng hợp thời gian học, chuỗi ngày học (Streak), biểu đồ 7 ngày và hoạt động gần đây trên Dashboard (UC08)
      * mà không phát sinh N+1 Query.
