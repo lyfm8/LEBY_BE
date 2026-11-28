@@ -45,4 +45,9 @@ public class RoadmapResponse {
     private Boolean isPassedAllParts;
 
     private List<RoadmapModuleItemResponse> modules;
+
+    /**
+     * Danh sách mô-đun đã xuất bản được miễn học (ngoài lộ trình cá nhân), sắp xếp theo sequence.
+     */
+    private List<RoadmapModuleItemResponse> exemptedModules;
 }

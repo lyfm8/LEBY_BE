@@ -52,4 +52,9 @@ public class RoadmapModuleItemResponse {
     private ELessonStatus status;
 
     private String statusLabel;
+
+    /**
+     * True nếu mô-đun nằm trong lộ trình cá nhân; false nếu là mô-đun đã vượt qua được miễn học.
+     */
+    private Boolean inRoadmap;
 }

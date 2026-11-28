@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -100,27 +101,31 @@ public class UserRoadmapServiceImpl implements UserRoadmapService {
         List<LearningPathItem> items = learningPathItemRepository
                 .findByLearningPathIdWithDetailsOrderByOrderNoAsc(learningPath.getId());
 
-        // Bước 3: Xử lý trường hợp biên học viên PASS 100% 7 Part ở bài chẩn đoán (items rỗng & status = COMPLETED)
-        if (items.isEmpty()) {
-            boolean passedAllParts = learningPath.getStatus() == ELearningPathStatus.COMPLETED;
-            log.info("[UC09] Học viên userId={} có learningPathId={} không có chặng học con (passedAllParts={})",
-                    userId, learningPath.getId(), passedAllParts);
-            return userRoadmapMapper.toRoadmapResponse(learningPath, Collections.emptyList(), passedAllParts);
+        // Bước 3: Nạp toàn bộ mô-đun đã xuất bản để xác định phần được miễn học (ngoài lộ trình)
+        Set<Long> roadmapModuleIds = new LinkedHashSet<>();
+        for (LearningPathItem item : items) {
+            if (item.getModule() != null && item.getModule().getId() != null) {
+                roadmapModuleIds.add(item.getModule().getId());
+            }
         }
 
-        // Bước 4: Gom toàn bộ moduleId và đếm số bài học đã xuất bản (PUBLISHED) bằng đúng 1 câu GROUP BY
-        List<Long> moduleIds = items.stream()
-                .map(LearningPathItem::getModule)
-                .filter(Objects::nonNull)
-                .map(Module::getId)
-                .distinct()
+        List<Module> allPublishedModules = moduleRepository
+                .findByStatusWithPartAndAbilitiesOrderBySequenceAsc(EModuleStatus.PUBLISHED);
+        List<Module> exemptedModules = allPublishedModules.stream()
+                .filter(mod -> mod.getId() != null && !roadmapModuleIds.contains(mod.getId()))
                 .toList();
 
-        Map<Long, Integer> totalLessonsMap = loadPublishedLessonCountByModuleIds(moduleIds);
-        // Nạp số bài học đã hoàn thành thực tế từ bảng lesson_progress trong 1 câu GROUP BY (chống N+1)
-        Map<Long, Integer> completedLessonsMap = loadCompletedLessonCountByModuleIds(userId, moduleIds);
+        Set<Long> allModuleIdSet = new LinkedHashSet<>(roadmapModuleIds);
+        for (Module exempted : exemptedModules) {
+            allModuleIdSet.add(exempted.getId());
+        }
+        List<Long> allModuleIds = new ArrayList<>(allModuleIdSet);
 
-        // Bước 5: Map từng LearningPathItem sang DTO kèm số lượng bài học và tiến độ hoàn thành thực tế
+        // Bước 4: Đếm tổng số bài học PUBLISHED và số bài đã hoàn thành thực tế bằng 2 query GROUP BY duy nhất
+        Map<Long, Integer> totalLessonsMap = loadPublishedLessonCountByModuleIds(allModuleIds);
+        Map<Long, Integer> completedLessonsMap = loadCompletedLessonCountByModuleIds(userId, allModuleIds);
+
+        // Bước 5: Map chặng lộ trình cá nhân và các mô-đun miễn học sang DTO qua Mapper
         List<RoadmapModuleItemResponse> moduleResponses = items.stream()
                 .map(item -> {
                     Long moduleId = item.getModule() != null ? item.getModule().getId() : null;
@@ -131,8 +136,23 @@ public class UserRoadmapServiceImpl implements UserRoadmapService {
                 })
                 .toList();
 
+        List<RoadmapModuleItemResponse> exemptedResponses = exemptedModules.stream()
+                .map(mod -> {
+                    Long moduleId = mod.getId();
+                    int totalLessons = totalLessonsMap.getOrDefault(moduleId, 0);
+                    int completedLessons = completedLessonsMap.getOrDefault(moduleId, 0);
+                    return userRoadmapMapper.toExemptedRoadmapModuleItemResponse(mod, totalLessons, completedLessons);
+                })
+                .toList();
+
+        boolean passedAllParts = items.isEmpty() && learningPath.getStatus() == ELearningPathStatus.COMPLETED;
+        if (items.isEmpty()) {
+            log.info("[UC09] Học viên userId={} có learningPathId={} không có chặng học con (passedAllParts={})",
+                    userId, learningPath.getId(), passedAllParts);
+        }
+
         // Bước 6: Tổng hợp kết quả lộ trình tổng thể và trả về
-        return userRoadmapMapper.toRoadmapResponse(learningPath, moduleResponses, false);
+        return userRoadmapMapper.toRoadmapResponse(learningPath, moduleResponses, exemptedResponses, passedAllParts);
     }
 
     /**
