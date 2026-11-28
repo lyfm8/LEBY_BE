@@ -121,5 +121,21 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
            "WHERE qm.question.id IN :questionIds " +
            "ORDER BY qm.orderNo ASC")
     List<QuestionMedia> findQuestionMediasByQuestionIdIn(@Param("questionIds") Collection<Long> questionIds);
+
+    /**
+     * Nạp toàn bộ đề cương bài học đã xuất bản (PUBLISHED) cho nhiều Module trong đúng 1 câu SQL (IN)
+     * phục vụ Thư viện khóa học 7 Part (UC17 Catalog) nhằm triệt tiêu hoàn toàn N+1 Query.
+     *
+     * @param moduleIds Tập hợp ID các Module cần nạp đề cương bài học
+     * @param status    Trạng thái xuất bản cần lọc (EModuleStatus.PUBLISHED)
+     * @return Danh sách bài học sắp xếp theo moduleId và thứ tự orderNo tăng dần
+     */
+    @Query("SELECT l FROM Lesson l " +
+           "WHERE l.module.id IN :moduleIds AND l.status = :status " +
+           "ORDER BY l.module.id ASC, l.orderNo ASC")
+    List<Lesson> findByModuleIdInAndStatusOrderByModuleIdAscOrderNoAsc(
+            @Param("moduleIds") Collection<Long> moduleIds,
+            @Param("status") EModuleStatus status
+    );
 }
 

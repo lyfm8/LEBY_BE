@@ -1,6 +1,7 @@
 package com.example.be.dto.response.content;
 
 import com.example.be.enums.ability.ESection;
+import com.example.be.enums.content.ECatalogAccessMode;
 import com.example.be.enums.content.ELessonStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -33,6 +34,10 @@ public class UserModuleDetailResponse {
     private ELessonStatus status;
 
     private String statusLabel;
+
+    private Boolean inRoadmap;
+
+    private ECatalogAccessMode accessMode;
 
     private Integer totalLessons;
 

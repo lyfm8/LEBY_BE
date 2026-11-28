@@ -26,6 +26,7 @@ import com.example.be.repository.content.LearningPathItemRepository;
 import com.example.be.repository.content.LearningPathRepository;
 import com.example.be.repository.content.LessonProgressRepository;
 import com.example.be.repository.content.LessonRepository;
+import com.example.be.repository.content.ModuleRepository;
 import com.example.be.repository.content.ModuleTestAttemptRepository;
 import com.example.be.repository.question.ModuleTestQuestionRepository;
 import com.example.be.repository.setting.ModuleTargetThresholdRepository;
@@ -72,6 +73,7 @@ public class UserRoadmapServiceImpl implements UserRoadmapService {
     private final LearningPathItemRepository learningPathItemRepository;
     private final LessonRepository lessonRepository;
     private final LessonProgressRepository lessonProgressRepository;
+    private final ModuleRepository moduleRepository;
     private final ModuleTargetThresholdRepository moduleTargetThresholdRepository;
     private final ModuleTestQuestionRepository moduleTestQuestionRepository;
     private final ModuleTestAttemptRepository moduleTestAttemptRepository;
@@ -156,12 +158,15 @@ public class UserRoadmapServiceImpl implements UserRoadmapService {
                 ));
 
         // Bước 2: Tìm chặng học tương ứng với moduleId trong lộ trình của chính userId (chống IDOR)
-        LearningPathItem pathItem = learningPathItemRepository
-                .findByLearningPathIdAndModuleIdWithDetails(learningPath.getId(), moduleId)
-                .orElseThrow(() -> new BaseException(
-                        ErrorCode.RESOURCE_NOT_FOUND,
-                        "Nội dung mô-đun không tồn tại hoặc đã được gỡ bỏ"
-                ));
+        Optional<LearningPathItem> pathItemOpt = learningPathItemRepository
+                .findByLearningPathIdAndModuleIdWithDetails(learningPath.getId(), moduleId);
+
+        if (pathItemOpt.isEmpty()) {
+            // Nhánh mở rộng UC17 Catalog: Mô-đun nằm ngoài lộ trình cá nhân -> cho phép truy cập chế độ Học tự do nếu đã PUBLISHED
+            return buildFreeStudyModuleDetail(userId, moduleId);
+        }
+
+        LearningPathItem pathItem = pathItemOpt.get();
 
         // Bước 3: SECURITY (BR10) — Chặn tuyệt đối hành vi can thiệp URL truy cập mô-đun đang bị khóa
         if (pathItem.getStatus() == ELessonStatus.LOCKED) {
@@ -228,6 +233,58 @@ public class UserRoadmapServiceImpl implements UserRoadmapService {
                 completedLessons,
                 requiredCompletionRate,
                 moduleTestInfo
+        );
+    }
+
+    /**
+     * Xây dựng chi tiết một Mô-đun ở chế độ Học tự do (FREE_STUDY) dành cho các Mô-đun đã xuất bản
+     * nằm ngoài lộ trình cá nhân (học viên đã đạt chuẩn ở bài chẩn đoán và mở từ Thư viện 7 Part).
+     */
+    private UserModuleDetailResponse buildFreeStudyModuleDetail(Long userId, Long moduleId) {
+        // Chỉ cho phép truy cập các Mô-đun đã PUBLISHED; chặn bản nháp DRAFT hoặc ID không tồn tại
+        Module module = moduleRepository
+                .findByIdAndStatusWithPartAndAbilities(moduleId, EModuleStatus.PUBLISHED)
+                .orElseThrow(() -> new BaseException(
+                        ErrorCode.RESOURCE_NOT_FOUND,
+                        "Nội dung mô-đun không tồn tại hoặc đã được gỡ bỏ"
+                ));
+
+        List<Lesson> publishedLessons = lessonRepository
+                .findByModuleIdAndStatusWithAbilityOrderByOrderNoAsc(moduleId, EModuleStatus.PUBLISHED);
+        Map<Long, Integer> questionCountMap = loadPracticeQuestionCounts(publishedLessons);
+        Set<Long> completedLessonIds = loadCompletedLessonIds(userId, publishedLessons);
+
+        int totalVideoLessons = 0;
+        int completedVideoLessons = 0;
+        int completedLessons = 0;
+
+        List<UserModuleLessonResponse> lessonResponses = new ArrayList<>(publishedLessons.size());
+        for (Lesson lesson : publishedLessons) {
+            boolean isVideo = lesson.getLessonType() == ELessonType.VIDEO;
+            boolean isCompleted = completedLessonIds.contains(lesson.getId());
+
+            if (isVideo) {
+                totalVideoLessons++;
+                if (isCompleted) {
+                    completedVideoLessons++;
+                }
+            }
+            if (isCompleted) {
+                completedLessons++;
+            }
+
+            int questionCount = questionCountMap.getOrDefault(lesson.getId(), 0);
+            lessonResponses.add(userRoadmapMapper.toUserModuleLessonResponse(lesson, questionCount, isCompleted, false));
+        }
+
+        int requiredCompletionRate = resolveRequiredCompletionRate(module);
+        return userRoadmapMapper.toFreeStudyModuleDetailResponse(
+                module,
+                lessonResponses,
+                totalVideoLessons,
+                completedVideoLessons,
+                completedLessons,
+                requiredCompletionRate
         );
     }
 

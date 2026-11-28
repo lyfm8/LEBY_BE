@@ -105,8 +105,9 @@ public class UserLessonServiceImpl implements UserLessonService {
         Lesson lesson = findPublishedLessonOrThrow(lessonId);
         Module module = lesson.getModule();
 
-        // Bước 2: Xác thực lộ trình hiện hành của học viên và kiểm tra khóa tuần tự BR10 cho Module chứa bài học
-        LearningPathItem pathItem = resolveUnlockedPathItemOrThrow(userId, module.getId());
+        // Bước 2: Xác thực lộ trình hiện hành, chặn khóa tuần tự BR10 và hỗ trợ chế độ Học tự do (UC17 Catalog)
+        LearningPathItem pathItem = resolveAccessiblePathItemOrNull(userId, module);
+        boolean inRoadmap = pathItem != null;
 
         // Bước 3: Nạp toàn bộ bài học PUBLISHED của Module và toàn bộ LessonProgress của học viên trong 2 câu SQL (0 N+1)
         List<Lesson> modulePublishedLessons = lessonRepository
@@ -121,7 +122,7 @@ public class UserLessonServiceImpl implements UserLessonService {
         LessonProgress currentProgress = progressByLessonId.get(lesson.getId());
 
         // Bước 4: Xác định cờ bảo lưu BR06, tính danh sách bài điều hướng, bài liền trước/sau và thống kê Video của Module
-        boolean inheritedCompleted = isAllModuleLessonsInheritedOrDone(pathItem);
+        boolean inheritedCompleted = inRoadmap && isAllModuleLessonsInheritedOrDone(pathItem);
         List<UserLessonNavItemResponse> navItems = new ArrayList<>(modulePublishedLessons.size());
         Long prevLessonId = null;
         Lesson nextLesson = null;
@@ -153,15 +154,13 @@ public class UserLessonServiceImpl implements UserLessonService {
             navItems.add(userLessonMapper.toNavItemResponse(itemLesson, itemProgress, inheritedCompleted));
         }
 
-        // Bước 5: Tính trạng thái mở khóa bài thi vượt ải theo BR03 từ ngưỡng cấu hình động của Module
+        // Bước 5: Tính trạng thái mở khóa bài thi vượt ải theo BR03 (chỉ áp dụng cho mô-đun thuộc lộ trình)
         int requiredCompletionRate = resolveRequiredCompletionRate(module);
-        int moduleProgressPercent = resolveEffectiveModuleProgress(
-                pathItem,
-                totalVideoLessons,
-                completedVideoLessons
-        );
-        boolean moduleTestUnlocked = pathItem.getStatus() == ELessonStatus.COMPLETED
-                || moduleProgressPercent >= requiredCompletionRate;
+        int moduleProgressPercent = inRoadmap
+                ? resolveEffectiveModuleProgress(pathItem, totalVideoLessons, completedVideoLessons)
+                : calculateFreeStudyModuleProgress(totalVideoLessons, completedVideoLessons);
+        boolean moduleTestUnlocked = inRoadmap
+                && (pathItem.getStatus() == ELessonStatus.COMPLETED || moduleProgressPercent >= requiredCompletionRate);
 
         // Bước 6: Nạp bộ câu hỏi ôn tập củng cố (nếu bài giảng có gắn trong practice_questions) cùng Media theo lô 1 query
         List<UserLessonReviewQuestionResponse> reviewQuestions = loadReviewQuestionsWithoutNPlus1(lesson.getId());
@@ -171,6 +170,7 @@ public class UserLessonServiceImpl implements UserLessonService {
                 lesson,
                 currentProgress,
                 inheritedCompleted,
+                inRoadmap,
                 resolveVideoCompletionThreshold(),
                 moduleProgressPercent,
                 completedVideoLessons,
@@ -209,12 +209,15 @@ public class UserLessonServiceImpl implements UserLessonService {
 
         Module module = lesson.getModule();
 
-        // Bước 2: Xác thực lộ trình hiện hành và kiểm soát khóa tuần tự BR10 cho Module
-        LearningPathItem pathItem = resolveUnlockedPathItemOrThrow(userId, module.getId());
+        // Bước 2: Xác thực lộ trình hiện hành, chặn khóa tuần tự BR10 và hỗ trợ chế độ Học tự do (UC17 Catalog)
+        LearningPathItem pathItem = resolveAccessiblePathItemOrNull(userId, module);
+        boolean inRoadmap = pathItem != null;
         int requiredCompletionRate = resolveRequiredCompletionRate(module);
-        int previousModuleProgress = pathItem.getProgressPercent() != null ? pathItem.getProgressPercent() : 0;
-        boolean wasTestUnlocked = pathItem.getStatus() == ELessonStatus.COMPLETED
-                || previousModuleProgress >= requiredCompletionRate;
+        int previousModuleProgress = inRoadmap && pathItem.getProgressPercent() != null
+                ? pathItem.getProgressPercent()
+                : 0;
+        boolean wasTestUnlocked = inRoadmap
+                && (pathItem.getStatus() == ELessonStatus.COMPLETED || previousModuleProgress >= requiredCompletionRate);
 
         // Bước 3: Tìm hoặc khởi tạo bản ghi LessonProgress của cặp (userId, lessonId)
         LocalDateTime now = LocalDateTime.now();
@@ -288,31 +291,38 @@ public class UserLessonServiceImpl implements UserLessonService {
                 ? Math.min(FULL_PROGRESS_PERCENT, (int) Math.round((completedVideoLessons * 100.0) / totalVideoLessons))
                 : (Boolean.TRUE.equals(savedProgress.getIsCompleted()) ? FULL_PROGRESS_PERCENT : 0);
 
-        // Bảo toàn tiến độ 100% nếu chặng học thuộc diện kế thừa bảo lưu theo BR06
-        int finalModuleProgress = isAllModuleLessonsInheritedOrDone(pathItem)
-                ? Math.max(previousModuleProgress, recalculatedPercent)
-                : recalculatedPercent;
+        int finalModuleProgress = recalculatedPercent;
+        boolean moduleTestUnlocked = false;
+        boolean moduleTestJustUnlocked = false;
 
-        boolean pathItemDirty = false;
-        if (!Objects.equals(pathItem.getProgressPercent(), finalModuleProgress)) {
-            pathItem.setProgressPercent(finalModuleProgress);
-            pathItemDirty = true;
-        }
-        // Chuyển trạng thái UNLOCKED -> IN_PROGRESS ngay khi học viên bắt đầu xem bài giảng trong Module
-        if (pathItem.getStatus() == ELessonStatus.UNLOCKED && (updatedWatched > 0 || clampedPosition > 0)) {
-            pathItem.setStatus(ELessonStatus.IN_PROGRESS);
-            pathItemDirty = true;
-        }
-        if (pathItemDirty) {
-            learningPathItemRepository.save(pathItem);
-        }
+        // Chỉ đồng bộ ngược sang LearningPathItem và kiểm tra mở khóa vượt ải (BR03) khi mô-đun thuộc lộ trình cá nhân
+        if (inRoadmap) {
+            // Bảo toàn tiến độ 100% nếu chặng học thuộc diện kế thừa bảo lưu theo BR06
+            finalModuleProgress = isAllModuleLessonsInheritedOrDone(pathItem)
+                    ? Math.max(previousModuleProgress, recalculatedPercent)
+                    : recalculatedPercent;
 
-        boolean moduleTestUnlocked = pathItem.getStatus() == ELessonStatus.COMPLETED
-                || finalModuleProgress >= requiredCompletionRate;
-        boolean moduleTestJustUnlocked = !wasTestUnlocked && moduleTestUnlocked;
-        if (moduleTestJustUnlocked) {
-            log.info("[UC11] Học viên userId={} vừa mở khóa bài thi vượt ải moduleId={} ({}% >= {}%)",
-                    userId, module.getId(), finalModuleProgress, requiredCompletionRate);
+            boolean pathItemDirty = false;
+            if (!Objects.equals(pathItem.getProgressPercent(), finalModuleProgress)) {
+                pathItem.setProgressPercent(finalModuleProgress);
+                pathItemDirty = true;
+            }
+            // Chuyển trạng thái UNLOCKED -> IN_PROGRESS ngay khi học viên bắt đầu xem bài giảng trong Module
+            if (pathItem.getStatus() == ELessonStatus.UNLOCKED && (updatedWatched > 0 || clampedPosition > 0)) {
+                pathItem.setStatus(ELessonStatus.IN_PROGRESS);
+                pathItemDirty = true;
+            }
+            if (pathItemDirty) {
+                learningPathItemRepository.save(pathItem);
+            }
+
+            moduleTestUnlocked = pathItem.getStatus() == ELessonStatus.COMPLETED
+                    || finalModuleProgress >= requiredCompletionRate;
+            moduleTestJustUnlocked = !wasTestUnlocked && moduleTestUnlocked;
+            if (moduleTestJustUnlocked) {
+                log.info("[UC11] Học viên userId={} vừa mở khóa bài thi vượt ải moduleId={} ({}% >= {}%)",
+                        userId, module.getId(), finalModuleProgress, requiredCompletionRate);
+            }
         }
 
         // Bước 7: Map kết quả tiến độ bài học và trạng thái mở khóa bài thi vượt ải trả về cho FE
@@ -350,25 +360,35 @@ public class UserLessonServiceImpl implements UserLessonService {
     }
 
     /**
-     * Xác thực học viên có lộ trình hiện hành và Module chứa bài học không ở trạng thái LOCKED (BR10).
+     * Xác thực học viên đã có lộ trình hiện hành và kiểm soát quyền truy cập bài giảng:
+     * - Nếu Module nằm trong lộ trình cá nhân: chặn cứng trạng thái LOCKED theo BR10 và trả về LearningPathItem.
+     * - Nếu Module nằm ngoài lộ trình nhưng đã PUBLISHED: trả về {@code null} đại diện cho chế độ Học tự do (UC17 Catalog).
+     * - Nếu Module ngoài lộ trình chưa PUBLISHED (DRAFT): ném 404 RESOURCE_NOT_FOUND.
      */
-    private LearningPathItem resolveUnlockedPathItemOrThrow(Long userId, Long moduleId) {
+    private LearningPathItem resolveAccessiblePathItemOrNull(Long userId, Module module) {
         LearningPath learningPath = resolveCurrentLearningPath(userId)
                 .orElseThrow(() -> new BaseException(
                         ErrorCode.DIAGNOSTIC_NOT_COMPLETED,
                         "Bạn cần hoàn thành bài kiểm tra chẩn đoán trước khi truy cập nội dung học tập"
                 ));
 
-        LearningPathItem pathItem = learningPathItemRepository
-                .findByLearningPathIdAndModuleIdWithDetails(learningPath.getId(), moduleId)
-                .orElseThrow(() -> new BaseException(
-                        ErrorCode.RESOURCE_NOT_FOUND,
-                        "Bài học không thuộc lộ trình học hiện tại của bạn"
-                ));
+        Optional<LearningPathItem> pathItemOpt = learningPathItemRepository
+                .findByLearningPathIdAndModuleIdWithDetails(learningPath.getId(), module.getId());
 
+        if (pathItemOpt.isEmpty()) {
+            if (module.getStatus() != EModuleStatus.PUBLISHED) {
+                throw new BaseException(
+                        ErrorCode.RESOURCE_NOT_FOUND,
+                        "Bài học thuộc mô-đun hiện chưa được xuất bản"
+                );
+            }
+            return null;
+        }
+
+        LearningPathItem pathItem = pathItemOpt.get();
         if (pathItem.getStatus() == ELessonStatus.LOCKED) {
             log.warn("[UC11] Học viên userId={} cố truy cập bài giảng trong moduleId={} đang bị khóa (BR10)",
-                    userId, moduleId);
+                    userId, module.getId());
             throw new BaseException(
                     ErrorCode.CONTENT_LOCKED,
                     "Mô-đun đang bị khóa. Bạn phải hoàn thành các mô-đun phía trước"
@@ -376,6 +396,16 @@ public class UserLessonServiceImpl implements UserLessonService {
         }
 
         return pathItem;
+    }
+
+    /**
+     * Tính tỷ lệ hoàn thành bài giảng Video cho mô-đun ở chế độ Học tự do (không lưu lên LearningPathItem).
+     */
+    private int calculateFreeStudyModuleProgress(int totalVideoLessons, int completedVideoLessons) {
+        if (totalVideoLessons <= 0 || completedVideoLessons <= 0) {
+            return 0;
+        }
+        return Math.min(FULL_PROGRESS_PERCENT, (int) Math.round((completedVideoLessons * 100.0) / totalVideoLessons));
     }
 
     /**
