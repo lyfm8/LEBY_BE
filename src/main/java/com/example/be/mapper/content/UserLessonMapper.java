@@ -100,6 +100,7 @@ public class UserLessonMapper {
             Lesson lesson,
             LessonProgress progress,
             boolean inheritedCompleted,
+            boolean inRoadmap,
             int requiredWatchPercent,
             int moduleProgressPercent,
             int completedVideoLessons,
@@ -139,6 +140,7 @@ public class UserLessonMapper {
                 .durationSeconds(safeNonNegative(lesson.getDurationSeconds()))
                 .isFree(Boolean.TRUE.equals(lesson.getIsFree()))
                 .abilityName(ability != null ? ability.getName() : null)
+                .inRoadmap(inRoadmap)
                 .watchedSeconds(watchedSeconds)
                 .lastPositionSeconds(lastPositionSeconds)
                 .watchPercent(watchPercent)

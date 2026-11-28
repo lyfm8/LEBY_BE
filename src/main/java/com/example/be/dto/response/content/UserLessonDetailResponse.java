@@ -35,6 +35,7 @@ public class UserLessonDetailResponse {
     private Integer durationSeconds;
     private Boolean isFree;
     private String abilityName;
+    private Boolean inRoadmap;
 
     // Thông tin tiến độ xem của học viên đối với bài giảng hiện tại
     private Integer watchedSeconds;

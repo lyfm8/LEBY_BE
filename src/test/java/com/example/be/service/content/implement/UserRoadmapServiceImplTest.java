@@ -13,6 +13,7 @@ import com.example.be.entity.content.Part;
 import com.example.be.entity.setting.ModuleTargetThreshold;
 import com.example.be.entity.user.TargetProfile;
 import com.example.be.enums.ability.ESection;
+import com.example.be.enums.content.ECatalogAccessMode;
 import com.example.be.enums.content.ELearningPathStatus;
 import com.example.be.enums.content.ELessonStatus;
 import com.example.be.enums.content.ELessonType;
@@ -26,6 +27,7 @@ import com.example.be.repository.content.LearningPathItemRepository;
 import com.example.be.repository.content.LearningPathRepository;
 import com.example.be.repository.content.LessonProgressRepository;
 import com.example.be.repository.content.LessonRepository;
+import com.example.be.repository.content.ModuleRepository;
 import com.example.be.repository.content.ModuleTestAttemptRepository;
 import com.example.be.repository.question.ModuleTestQuestionRepository;
 import com.example.be.repository.setting.ModuleTargetThresholdRepository;
@@ -78,6 +80,9 @@ class UserRoadmapServiceImplTest {
     private LessonProgressRepository lessonProgressRepository;
 
     @Mock
+    private ModuleRepository moduleRepository;
+
+    @Mock
     private ModuleTargetThresholdRepository moduleTargetThresholdRepository;
 
     @Mock
@@ -96,6 +101,7 @@ class UserRoadmapServiceImplTest {
                 learningPathItemRepository,
                 lessonRepository,
                 lessonProgressRepository,
+                moduleRepository,
                 moduleTargetThresholdRepository,
                 moduleTestQuestionRepository,
                 moduleTestAttemptRepository,
@@ -193,19 +199,53 @@ class UserRoadmapServiceImplTest {
     }
 
     @Test
-    @DisplayName("UC10 - Luồng 3a: Ném 404 RESOURCE_NOT_FOUND khi mô-đun không tồn tại trong lộ trình của học viên")
-    void getModuleDetailForUser_whenModuleNotInPath_throwsResourceNotFound() {
+    @DisplayName("UC10 - Luồng 3a: Ném 404 RESOURCE_NOT_FOUND khi mô-đun không tồn tại hoặc chưa xuất bản")
+    void getModuleDetailForUser_whenModuleNotInPathAndNotPublished_throwsResourceNotFound() {
         LearningPath activePath = buildLearningPath(PATH_ID, ELearningPathStatus.ACTIVE, 650);
 
         when(learningPathRepository.findByUserIdAndStatusInOrderByVersionDescCreatedAtDesc(eq(USER_ID), anyCollection()))
                 .thenReturn(List.of(activePath));
         when(learningPathItemRepository.findByLearningPathIdAndModuleIdWithDetails(PATH_ID, 999L))
                 .thenReturn(Optional.empty());
+        when(moduleRepository.findByIdAndStatusWithPartAndAbilities(999L, EModuleStatus.PUBLISHED))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userRoadmapService.getModuleDetailForUser(USER_ID, 999L))
                 .isInstanceOf(BaseException.class)
                 .extracting(ex -> ((BaseException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.RESOURCE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("UC17 - Học tự do: Cho phép mở chi tiết mô-đun PUBLISHED nằm ngoài lộ trình ở chế độ FREE_STUDY")
+    void getModuleDetailForUser_whenModuleOutsideRoadmapAndPublished_returnsFreeStudyDetail() {
+        LearningPath activePath = buildLearningPath(PATH_ID, ELearningPathStatus.ACTIVE, 650);
+        Module freeModule = buildModule(MODULE_ID_2, "Part 2 Ôn bổ trợ", 2, ESection.LISTENING, "Part 2");
+        freeModule.setStatus(EModuleStatus.PUBLISHED);
+        Lesson videoLesson = buildLesson(301L, "Chiến thuật câu hỏi đuôi", 1, ELessonType.VIDEO, 320);
+
+        when(learningPathRepository.findByUserIdAndStatusInOrderByVersionDescCreatedAtDesc(eq(USER_ID), anyCollection()))
+                .thenReturn(List.of(activePath));
+        when(learningPathItemRepository.findByLearningPathIdAndModuleIdWithDetails(PATH_ID, MODULE_ID_2))
+                .thenReturn(Optional.empty());
+        when(moduleRepository.findByIdAndStatusWithPartAndAbilities(MODULE_ID_2, EModuleStatus.PUBLISHED))
+                .thenReturn(Optional.of(freeModule));
+        when(lessonRepository.findByModuleIdAndStatusWithAbilityOrderByOrderNoAsc(MODULE_ID_2, EModuleStatus.PUBLISHED))
+                .thenReturn(List.of(videoLesson));
+        when(lessonRepository.countPracticeQuestionsByLessonIdIn(List.of(301L)))
+                .thenReturn(Collections.emptyList());
+        when(lessonProgressRepository.findByUserIdAndLessonIdIn(USER_ID, List.of(301L)))
+                .thenReturn(Collections.emptyList());
+
+        UserModuleDetailResponse result = userRoadmapService.getModuleDetailForUser(USER_ID, MODULE_ID_2);
+
+        assertThat(result.getModuleId()).isEqualTo(MODULE_ID_2);
+        assertThat(result.getInRoadmap()).isFalse();
+        assertThat(result.getAccessMode()).isEqualTo(ECatalogAccessMode.FREE_STUDY);
+        assertThat(result.getStatus()).isEqualTo(ELessonStatus.UNLOCKED);
+        assertThat(result.getModuleTest()).isNull();
+        assertThat(result.getLessons()).hasSize(1);
+        assertThat(result.getLessons().get(0).getIsLocked()).isFalse();
     }
 
     @Test

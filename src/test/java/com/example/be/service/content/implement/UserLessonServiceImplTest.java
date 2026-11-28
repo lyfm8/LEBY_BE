@@ -48,6 +48,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -415,6 +416,52 @@ class UserLessonServiceImplTest {
                 .isEqualTo(ErrorCode.BAD_REQUEST);
     }
 
+    @Test
+    @DisplayName("UC17 - Học tự do: Cho phép xem & lưu LessonProgress cho bài Video ngoài lộ trình mà không sửa LearningPathItem")
+    void freeStudyLesson_whenModuleOutsideRoadmapAndPublished_savesProgressWithoutTouchingRoadmap() {
+        Module freeModule = buildModule(MODULE_ID, "Part 2 Học tự do");
+        freeModule.setStatus(EModuleStatus.PUBLISHED);
+        Lesson videoLesson = buildLesson(LESSON_1_ID, freeModule, "Bài giảng bổ trợ", 1, ELessonType.VIDEO, 100);
+        LearningPath path = buildLearningPath(PATH_ID, ELearningPathStatus.ACTIVE);
+        User userRef = new User();
+        userRef.setId(USER_ID);
+
+        when(lessonRepository.findByIdWithModulePartAndAbility(LESSON_1_ID)).thenReturn(Optional.of(videoLesson));
+        when(learningPathRepository.findByUserIdAndStatusInOrderByVersionDescCreatedAtDesc(eq(USER_ID), anyCollection()))
+                .thenReturn(List.of(path));
+        when(learningPathItemRepository.findByLearningPathIdAndModuleIdWithDetails(PATH_ID, MODULE_ID))
+                .thenReturn(Optional.empty());
+        when(lessonRepository.findByModuleIdAndStatusWithAbilityOrderByOrderNoAsc(MODULE_ID, EModuleStatus.PUBLISHED))
+                .thenReturn(List.of(videoLesson));
+        when(lessonProgressRepository.findByUserIdAndLessonIdIn(USER_ID, List.of(LESSON_1_ID)))
+                .thenReturn(List.of());
+        when(practiceQuestionRepository.findAllWithQuestionAndPartByLessonId(LESSON_1_ID)).thenReturn(List.of());
+
+        UserLessonDetailResponse detail = userLessonService.getLessonDetailForUser(USER_ID, LESSON_1_ID);
+        assertThat(detail.getInRoadmap()).isFalse();
+        assertThat(detail.getModuleTestUnlocked()).isFalse();
+
+        // Cập nhật tiến độ đạt 60% -> vẫn lưu LessonProgress, nhưng không đụng vào LearningPathItem
+        when(lessonProgressRepository.findByUserIdAndLessonId(USER_ID, LESSON_1_ID)).thenReturn(Optional.empty());
+        when(userRepository.getReferenceById(USER_ID)).thenReturn(userRef);
+        when(lessonProgressRepository.save(any(LessonProgress.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(lessonProgressRepository.countCompletedLessonsByUserAndModuleAndType(
+                USER_ID, MODULE_ID, EModuleStatus.PUBLISHED, ELessonType.VIDEO)).thenReturn(1L);
+
+        UpdateLessonProgressRequest req = UpdateLessonProgressRequest.builder()
+                .watchedSecondsDelta(60)
+                .lastPositionSeconds(60)
+                .playbackRate(1.0)
+                .build();
+
+        LessonProgressResponse progressRes = userLessonService.updateLessonProgress(USER_ID, LESSON_1_ID, req);
+
+        assertThat(progressRes.getIsCompleted()).isTrue();
+        assertThat(progressRes.getJustCompleted()).isTrue();
+        assertThat(progressRes.getModuleTestUnlocked()).isFalse();
+        verify(learningPathItemRepository, never()).save(any(LearningPathItem.class));
+    }
+
     private Module buildModule(Long id, String title) {
         Part part = new Part();
         part.setId(1L);
@@ -425,6 +472,7 @@ class UserLessonServiceImplTest {
         module.setId(id);
         module.setTitle(title);
         module.setSequence(1);
+        module.setStatus(EModuleStatus.PUBLISHED);
         module.setRequiredCompletionRate(80);
         module.setPart(part);
         return module;

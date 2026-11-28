@@ -10,14 +10,17 @@ import com.example.be.entity.content.LearningPath;
 import com.example.be.entity.content.LearningPathItem;
 import com.example.be.entity.content.Lesson;
 import com.example.be.entity.content.Module;
+import com.example.be.entity.content.ModuleAbility;
 import com.example.be.entity.content.Part;
 import com.example.be.entity.user.TargetProfile;
 import com.example.be.enums.ability.ESection;
+import com.example.be.enums.content.ECatalogAccessMode;
 import com.example.be.enums.content.ELearningPathStatus;
 import com.example.be.enums.content.ELessonStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Mapper chuyên biệt chuyển đổi Entity sang DTO cho luồng Lộ trình học cá nhân (UC09)
@@ -34,6 +37,7 @@ public class UserRoadmapMapper {
     private static final String STATUS_IN_PROGRESS_LABEL = "Đang học";
     private static final String STATUS_UNLOCKED_LABEL = "Sẵn sàng học";
     private static final String STATUS_LOCKED_LABEL = "Chưa mở khóa";
+    private static final String STATUS_FREE_STUDY_LABEL = "Học tự do";
 
     /**
      * Chuyển đổi Entity LearningPath và danh sách chặng Module sang RoadmapResponse tổng quan.
@@ -192,6 +196,8 @@ public class UserRoadmapMapper {
                 .abilityName(ability != null ? ability.getName() : null)
                 .status(item.getStatus())
                 .statusLabel(resolveStatusLabel(item.getStatus()))
+                .inRoadmap(true)
+                .accessMode(ECatalogAccessMode.ROADMAP_OPEN)
                 .totalLessons(lessons.size())
                 .completedLessons(completedLessons)
                 .totalVideoLessons(totalVideoLessons)
@@ -200,6 +206,66 @@ public class UserRoadmapMapper {
                 .requiredCompletionRate(requiredCompletionRate)
                 .lessons(lessons)
                 .moduleTest(moduleTestInfo)
+                .build();
+    }
+
+    /**
+     * Tổng hợp thông tin Chi tiết Module ở chế độ Học tự do (FREE_STUDY) dành cho các Mô-đun
+     * nằm ngoài lộ trình cá nhân được mở từ Thư viện khóa học 7 Part (UC17 Catalog).
+     *
+     * @param module                 Thực thể Module đã xuất bản (kèm Part và ModuleAbilities)
+     * @param lessons                Danh sách bài học đã xuất bản kèm tiến độ thật của học viên
+     * @param totalVideoLessons      Tổng số bài giảng Video lý thuyết trong Module
+     * @param completedVideoLessons  Số bài giảng Video đã hoàn thành thực tế
+     * @param completedLessons       Tổng số bài học đã hoàn thành thực tế
+     * @param requiredCompletionRate Tỷ lệ cấu hình của Module
+     * @return {@link UserModuleDetailResponse} ở chế độ Học tự do (không bắt buộc bài thi vượt ải)
+     */
+    public UserModuleDetailResponse toFreeStudyModuleDetailResponse(
+            Module module,
+            List<UserModuleLessonResponse> lessons,
+            int totalVideoLessons,
+            int completedVideoLessons,
+            int completedLessons,
+            int requiredCompletionRate
+    ) {
+        Part part = module.getPart();
+        int totalLessons = lessons.size();
+        int progressPercent = totalLessons > ZERO_PERCENT
+                ? clampPercent((int) Math.round((completedLessons * 100.0) / totalLessons))
+                : ZERO_PERCENT;
+
+        // Lấy tên năng lực đại diện đầu tiên gắn trên Module (nếu có) để hiển thị ở phần mô tả
+        String primaryAbilityName = module.getModuleAbilities() == null
+                ? null
+                : module.getModuleAbilities().stream()
+                .filter(Objects::nonNull)
+                .map(ModuleAbility::getAbility)
+                .filter(Objects::nonNull)
+                .map(Ability::getName)
+                .filter(name -> name != null && !name.isBlank())
+                .findFirst()
+                .orElse(null);
+
+        return UserModuleDetailResponse.builder()
+                .moduleId(module.getId())
+                .title(module.getTitle())
+                .partName(part != null ? part.getName() : DEFAULT_PART_NAME)
+                .section(resolveSection(part))
+                .description(module.getDescriptions() != null ? module.getDescriptions() : "")
+                .abilityName(primaryAbilityName)
+                .status(ELessonStatus.UNLOCKED)
+                .statusLabel(STATUS_FREE_STUDY_LABEL)
+                .inRoadmap(false)
+                .accessMode(ECatalogAccessMode.FREE_STUDY)
+                .totalLessons(totalLessons)
+                .completedLessons(completedLessons)
+                .totalVideoLessons(totalVideoLessons)
+                .completedVideoLessons(completedVideoLessons)
+                .progressPercent(progressPercent)
+                .requiredCompletionRate(requiredCompletionRate)
+                .lessons(lessons)
+                .moduleTest(null)
                 .build();
     }
 
